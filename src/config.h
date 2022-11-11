@@ -1,5 +1,5 @@
-#ifndef __CHATCONFIG_H__
-#define __CHATCONFIG_H__
+#ifndef __PROXYCONFIG_H__
+#define __PROXYCONFIG_H__
 #include <limits.h>
 
 #define DEBUG 1
@@ -13,14 +13,6 @@
 #define MAX_ID_SZ   20  // 20 bytes
 #define MAX_MSG_SZ  450
 
-#define HELLO_MSG     1   // HELLO message
-#define HELLO_ACK     2   // HELLO ACK message
-#define LIST_REQUEST  3   // LIST REQUEST message
-#define CLIENT_LIST   4   // CLIENT LIST message
-#define CHAT_MSG      5   // CHAT message
-#define EXIT_MSG      6   // EXIT message
-#define ECLIENTEXISTS 7   // Error: Client already exists
-#define ECANTDELIVER  8   // Error: Can't deliver message
 #define HALT          666 // Halt message
 
 #define SERVER_ID   "Server"
@@ -38,4 +30,4 @@
 #define PARTIAL_MESSAGE  -8
 #define OVERFLOW_MESSAGE -9
 
-#endif /* __CHATCONFIG_H__ */
+#endif /* __PROXYCONFIG_H__ */

@@ -1,15 +1,15 @@
-#include "ChatClient.h"
+#include "Client.h"
 
-/* ChatClient_new
- *    Purpose: Creates a new ChatClient, and returns a pointer to it. Client
+/* Client_new
+ *    Purpose: Creates a new Client, and returns a pointer to it. Client
  *             socket is initialized to -1, all other fields are initialized to
  *             NULL or 0.
  * Parameters: None
- *    Returns: Pointer to a new ChatClient, or NULL if memory allocation fails.
+ *    Returns: Pointer to a new Client, or NULL if memory allocation fails.
  */
-ChatClient *ChatClient_new()
+Client *Client_new()
 {
-    ChatClient *client = calloc(1, sizeof(struct ChatClient));
+    Client *client = calloc(1, sizeof(struct Client));
     if (client == NULL) {
         return NULL;
     }
@@ -24,32 +24,32 @@ ChatClient *ChatClient_new()
     return client;
 }
 
-/* ChatClient_create
- *    Purpose: Creates a new ChatClient and initializes it with the given socket
+/* Client_create
+ *    Purpose: Creates a new Client and initializes it with the given socket
  *             and client id. Client is considered logged in.
  * Parameters: @socket - Client's socket file descriptor
  *             @id - Client id
- *    Returns: Pointer to a new ChatClient, or NULL if memory allocation fails.
+ *    Returns: Pointer to a new Client, or NULL if memory allocation fails.
  */
-ChatClient *ChatClient_create(int socket, char *id)
+Client *Client_create(int socket, char *id)
 {
-    ChatClient *client = ChatClient_new();
+    Client *client = Client_new();
     if (client == NULL) {
         return NULL;
     }
 
-    if (ChatClient_init(client, id, socket) != 0) {
-        ChatClient_free(&client);
+    if (Client_init(client, id, socket) != 0) {
+        Client_free(&client);
         return NULL;
     }
 
     return client;
 }
 
-/* ChatClient_init
- *    Purpose: Initializes a ChatClient with the given socket and client id.
- *             When a ChatClient is initialized
- * Parameters: @client - Pointer to a ChatClient to initialize
+/* Client_init
+ *    Purpose: Initializes a Client with the given socket and client id.
+ *             When a Client is initialized
+ * Parameters: @client - Pointer to a Client to initialize
  *             @socket - Client's socket file descriptor
  *             @id - Client id
  *    Returns: 0 on success, -1 on failure.
@@ -57,32 +57,32 @@ ChatClient *ChatClient_create(int socket, char *id)
  * Note: If id is too long, it will be truncated to fit in the buffer
  *       including the null terminator.
  */
-int ChatClient_init(ChatClient *client, char *id, int socket)
+int Client_init(Client *client, char *id, int socket)
 {
     if (client == NULL || socket == -1 || id == NULL) {
         return -1;
     }
 
-    ChatClient_setSocket(client, socket);
-    ChatClient_setId(client, id);
+    Client_setSocket(client, socket);
+    Client_setId(client, id);
     client->loggedIn = false;
     client->buffer_l = 0;
 
     return 0;
 }
 
-/* ChatClient_free
- *    Purpose: Frees a ChatClient
- * Parameters: @client - Pointer to a pointer to a ChatClient to free
+/* Client_free
+ *    Purpose: Frees a Client
+ * Parameters: @client - Pointer to a pointer to a Client to free
  *    Returns: None
  */
-void ChatClient_free(void *client)
+void Client_free(void *client)
 {
     if (client == NULL) {
         return;
     }
 
-    ChatClient *c = (ChatClient *)client;
+    Client *c = (Client *)client;
     if (c->socket != -1) {
         close(c->socket);
         c->socket = -1;
@@ -91,18 +91,18 @@ void ChatClient_free(void *client)
     free(c);
 }
 
-/* ChatClient_print
- *    Purpose: Prints a ChatClient to stdout
- * Parameters: @client - Pointer to a ChatClient to print
+/* Client_print
+ *    Purpose: Prints a Client to stdout
+ * Parameters: @client - Pointer to a Client to print
  *    Returns: None
  */
-void ChatClient_print(void *client)
+void Client_print(void *client)
 {
-    ChatClient *c = (ChatClient *)client;
+    Client *c = (Client *)client;
     if (c == NULL) {
-        printf("[ChatClient] (null)\n");
+        printf("[Client] (null)\n");
     } else {
-        fprintf(stderr, "%s[ChatClient]%s\n", CYN, CRESET);
+        fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
         fprintf(stderr, "  id = %s\n", c->id);
         fprintf(stderr, "  socket = %d\n", c->socket);
         fprintf(stderr, "  loggedIn = %s\n", (c->loggedIn) ? "true" : "false");
@@ -119,21 +119,21 @@ void ChatClient_print(void *client)
     }
 }
 
-/* ChatClient_compare
- *    Purpose: Compares a ChatClient and a client id string to see if they are
+/* Client_compare
+ *    Purpose: Compares a Client and a client id string to see if they are
  *             equal.
- * Parameters: @client1 - Pointer to a ChatClient
+ * Parameters: @client1 - Pointer to a Client
  *             @id - Pointer to a socket file descriptor
  *    Returns: 1 (true) if the clients are equal, 0  otherwise. If either
  *             parameter is NULL, -1 is returned.
  */
-int ChatClient_compare(void *client1, void *client2)
+int Client_compare(void *client1, void *client2)
 {
     if (client1 == NULL || client2 == NULL) {
         return -1;
     }
-    ChatClient *c1 = (ChatClient *)client1;
-    ChatClient *c2 = (ChatClient *)client2;
+    Client *c1 = (Client *)client1;
+    Client *c2 = (Client *)client2;
 
     if (c1->socket == c2->socket) {
         return 1;
@@ -142,13 +142,13 @@ int ChatClient_compare(void *client1, void *client2)
     return 0;
 }
 
-/* ChatClient_timestamp
+/* Client_timestamp
  *    Purpose: Gets the timestamp of the last time a message was received from
  *             the client.
- * Parameters: @client - Pointer to a ChatClient to timestamp
+ * Parameters: @client - Pointer to a Client to timestamp
  *    Returns: 0 on success, -1 on failure.
  */
-int ChatClient_timestamp(ChatClient *client)
+int Client_timestamp(Client *client)
 {
     if (client == NULL) {
         return -1;
@@ -157,14 +157,14 @@ int ChatClient_timestamp(ChatClient *client)
     return gettimeofday(&client->last_recv, NULL);
 }
 
-/* ChatClient_setSocket
- *    Purpose: Sets the socket file descriptor for a ChatClient, if the client's
+/* Client_setSocket
+ *    Purpose: Sets the socket file descriptor for a Client, if the client's
  *             socket is not -1, it will be closed first.
- * Parameters: @client - Pointer to a ChatClient
+ * Parameters: @client - Pointer to a Client
  *             @socket - Socket file descriptor
  *    Returns: 0 on success, -1 on failure.
  */
-int ChatClient_setSocket(ChatClient *client, int socket)
+int Client_setSocket(Client *client, int socket)
 {
     if (client == NULL || socket == -1) {
         return -1;
@@ -179,13 +179,13 @@ int ChatClient_setSocket(ChatClient *client, int socket)
     return 0;
 }
 
-/* ChatClient_setHeader
- *    Purpose: Sets the header for a ChatClient
- * Parameters: @client - Pointer to a ChatClient
+/* Client_setHeader
+ *    Purpose: Sets the header for a Client
+ * Parameters: @client - Pointer to a Client
  *             @header - Pointer to a header string
  *    Returns: 0 on success, -1 on failure.
  */
-int ChatClient_setHeader(ChatClient *client, char *buffer, int length)
+int Client_setHeader(Client *client, char *buffer, int length)
 {
     if (client == NULL || buffer == NULL || length < 0) {
         return -1;
@@ -196,15 +196,15 @@ int ChatClient_setHeader(ChatClient *client, char *buffer, int length)
     return ret;
 }
 
-/* ChatClient_setId
- *    Purpose: Sets the client id for a ChatClient, if the client id is too long
+/* Client_setId
+ *    Purpose: Sets the client id for a Client, if the client id is too long
  *             it is deemed an error and the client id is not set, and -1 is
  *             returned.
- * Parameters: @client - Pointer to a ChatClient
+ * Parameters: @client - Pointer to a Client
  *             @id - Client id string, must be null terminated
  *    Returns: 0 on success, -1 on failure.
  */
-int ChatClient_setId(ChatClient *client, char *id)
+int Client_setId(Client *client, char *id)
 {
     if (client == NULL || id == NULL) {
         return -1;
@@ -225,13 +225,13 @@ int ChatClient_setId(ChatClient *client, char *id)
     return 0;
 }
 
-/* ChatClient_setLoggedIn
- *    Purpose: Sets the logged in status for a ChatClient to given value.
- * Parameters: @client - Pointer to a ChatClient
+/* Client_setLoggedIn
+ *    Purpose: Sets the logged in status for a Client to given value.
+ * Parameters: @client - Pointer to a Client
  *             @loggedIn - Logged in status (true or false)
  *    Returns: 0 on success, -1 on failure.
  */
-int ChatClient_setLoggedIn(ChatClient *client, bool loggedIn)
+int Client_setLoggedIn(Client *client, bool loggedIn)
 {
     if (client == NULL) {
         return -1;
@@ -242,15 +242,15 @@ int ChatClient_setLoggedIn(ChatClient *client, bool loggedIn)
     return 0;
 }
 
-/* ChatClient_setAddr
+/* Client_setAddr
  *     Purpose: Copies the address of the client into the client struct for
  *              later use.
- *  Parameters: @client - Pointer to a ChatClient
+ *  Parameters: @client - Pointer to a Client
  *              @addr - Pointer to a sockaddr_in struct containing the client's
  *                      address
  *     Returns: 0 on success, -1 on failure.
  */
-int ChatClient_setAddr(ChatClient *client, struct sockaddr_in *addr)
+int Client_setAddr(Client *client, struct sockaddr_in *addr)
 {
     if (client == NULL || addr == NULL) {
         return -1;
@@ -262,12 +262,12 @@ int ChatClient_setAddr(ChatClient *client, struct sockaddr_in *addr)
     return 0;
 }
 
-/* ChatClient_getSocket
- *    Purpose: Returns the socket file descriptor for a ChatClient
- * Parameters: @client - Pointer to a ChatClient
+/* Client_getSocket
+ *    Purpose: Returns the socket file descriptor for a Client
+ * Parameters: @client - Pointer to a Client
  *    Returns: Socket file descriptor, or -1 on failure.
  */
-int ChatClient_getSocket(ChatClient *client)
+int Client_getSocket(Client *client)
 {
     if (client == NULL) {
         return -1;
@@ -276,12 +276,12 @@ int ChatClient_getSocket(ChatClient *client)
     return client->socket;
 }
 
-/* ChatClient_getId
- *    Purpose: Returns the client id for a ChatClient
- * Parameters: @client - Pointer to a ChatClient
+/* Client_getId
+ *    Purpose: Returns the client id for a Client
+ * Parameters: @client - Pointer to a Client
  *    Returns: A constant pointer to the client id string, or NULL on failure.
  */
-const char *ChatClient_getId(ChatClient *client)
+const char *Client_getId(Client *client)
 {
     if (client == NULL) {
         return NULL;
@@ -290,12 +290,12 @@ const char *ChatClient_getId(ChatClient *client)
     return client->id;
 }
 
-/* ChatClient_isLoggedIn
- *    Purpose: Returns the logged in status for a ChatClient
- * Parameters: @client - Pointer to a ChatClient
+/* Client_isLoggedIn
+ *    Purpose: Returns the logged in status for a Client
+ * Parameters: @client - Pointer to a Client
  *    Returns: Logged in status (true or false)
  */
-bool ChatClient_isLoggedIn(ChatClient *client)
+bool Client_isLoggedIn(Client *client)
 {
     if (client == NULL) {
         return false;
@@ -304,12 +304,12 @@ bool ChatClient_isLoggedIn(ChatClient *client)
     return client->loggedIn;
 }
 
-/* ChatClient_isSlowMofo
- *    Purpose: Returns the slowMofo status for a ChatClient
- * Parameters: @client - Pointer to a ChatClient
+/* Client_isSlowMofo
+ *    Purpose: Returns the slowMofo status for a Client
+ * Parameters: @client - Pointer to a Client
  *    Returns: slowMofo status (true or false)
  */
-bool ChatClient_isSlowMofo(ChatClient *client)
+bool Client_isSlowMofo(Client *client)
 {
     if (client == NULL) {
         return false;
