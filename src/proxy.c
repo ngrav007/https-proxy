@@ -34,13 +34,13 @@ int Proxy_run(short port, size_t cache_size)
         return -1;
     }
 
-    /* build proxy address */
+    /* build proxy address (type is: struct sockaddr_in) */
     zero(&proxy.addr, sizeof(proxy.addr));
     proxy.addr.sin_family      = AF_INET;
     proxy.addr.sin_addr.s_addr = htonl(INADDR_ANY);
     proxy.addr.sin_port        = htons(proxy.port);
 
-    /* bind listening socket to proxy address */
+    /* bind listening socket to proxy address; binding listent_fd==mastersocket */
     if (bind(proxy.listen_fd, (struct sockaddr *)&proxy.addr,
              sizeof(proxy.addr)) == -1)
     {
@@ -57,7 +57,7 @@ int Proxy_run(short port, size_t cache_size)
         return -1;
     }
 
-    /* Main accept loop */
+    /******************* Main accept loop *******************/
     short flag           = 0;
     socklen_t client_len = sizeof(proxy.client_addr);
     while (true) {
@@ -100,7 +100,51 @@ int Proxy_run(short port, size_t cache_size)
         /* close the connection */
         close(proxy.client_fd);
         proxy.client_fd = -1;
+    } 
+    /******************* End of main accept loop *******************/
+
+
+    /******************* New accept loop *******************/
+    /* add mastersocket to master set; make current maskersocket the fdmax */
+    FD_SET(proxy.listen_fd, &(proxy.master_set)); 
+    proxy.fdmax = proxy.listen_fd;
+    
+    while (true) {
+        proxy.readfds = proxy.master_set;
+
+        /* blocks until at least 1 socket is ready to either: 
+           1) masterSocket at the start of the program when no clients 
+              are connected, or
+           2) client sockets that are trying to send data. 
+           3) someone timed-out (proxy's timer is initialized to null, but in reading data, clients' timers starts, and those timers with less time to a timeout gets their timeval copied to proxy's timeval). For case #3, iterate through clients as if you are searching for someone to read from, but boot if you find someone has timedout. Don't need to check if select() returned a 0 for timeout(?) */
+        if (select(proxy.fdmax + 1, &(proxy.readfds), NULL, NULL, proxy.timeout) < 0) { // ?? < 0 or  == -1
+            fprintf(stderr, "[Error] Proxy_run: select failed\n");
+            // ?? do we quit if a select fails?
+            Proxy_free(&proxy);
+            return -1;
+        }
+
+        /* handle new client request */
+        if (FD_ISSET(proxy.listen_fd, &(proxy.readfds))) {
+            /* Accept new client and add to master set */
+            // Note: Make a new persisting "client"-struct since we are recv()'ing data one read at a time 
+
+            if (Proxy_accept_new_client(&proxy) < 0) {
+                /* handle when accept fails */
+            }
+
+        } 
+        /* otherwise: handle either recv()'ing from a client or dealing with a timeout */
+        else {
+
+            // iterate thorugh client list, and recv' from or check timeout?
+
+        }
+
+
+
     }
+    /******************* End of new accept loop *******************/
 
     Proxy_free(&proxy);
 
@@ -443,6 +487,12 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     proxy->buffer_l  = 0;
     proxy->buffer    = calloc(proxy->buffer_sz, sizeof(char));
 
+    /* zero out fd_sets and initialize fdmax of muliclient set */
+    FD_ZERO(&master_set);   /* clear the sets */
+    FD_ZERO(&readfds);
+    proxy->fdmax = 0;
+    proxy->timeout = NULL;
+
     return 0;
 }
 
@@ -619,4 +669,39 @@ static void clear_buffer(struct Proxy *proxy)
     /* clear the buffer */
     zero(proxy->buffer, proxy->buffer_sz);
     proxy->buffer_l = 0;
+}
+
+
+/**
+ * 1. accepts connection request from new client 
+ * 2. creates a client object for new client 
+ * 3. puts new client's fd in master set 
+ * 4. update the value of fdmax
+ */
+int Proxy_accept_new_client(struct Proxy *proxy)
+{
+    /* 1. accepts connection request from new client */
+    socklen_t client_len = sizeof(proxy->client_addr);
+    proxy->client_fd = accept(proxy->listen_fd, 
+                              (struct sockaddr *) &(proxy->client_addr)
+                              &client_len);
+    if (proxy->client_fd == -1) {
+        fprintf(stderr, "[Error] Proxy_accept_new_client: accept failed\n");
+        // Proxy_free(proxy);
+        return -1;
+    }
+
+    /** 
+     * 2. Create ew client object here ...
+     * ?? Client list carried by Proxy?
+     */
+
+    /* 3. puts new client's fd in master set */
+    FD_SET(proxy->client_fd, &(proxy->listen_fd));
+
+    /* 4. update the value of fdmax */
+    proxy->fdmax = proxy->client_fd > proxy->fdmax ? 
+                    proxy->client_fd : proxy->fdmax;
+
+    return 0; // success
 }

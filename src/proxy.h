@@ -45,10 +45,16 @@ struct Proxy {
     char *buffer;
     size_t buffer_l;
     size_t buffer_sz;
-    int listen_fd;
+    int listen_fd;  // mastersocket in a multiclient proxy
     int client_fd;
     int server_fd;
     short port;
+
+    /* new members for handling multiple clients */
+    fd_set master_set; 
+    fd_set readfds;
+    int fdmax;
+    struct timeval *timeout; // ?? do we need timeouts
 };
 
 int Proxy_run(short port, size_t cache_size);
@@ -65,5 +71,7 @@ void Connection_init(struct Connection *conn, struct HTTP_Request *request,
                      struct HTTP_Response *response);
 void Connection_free(void *conn);
 void Connection_print(void *conn);
+
+int Proxy_accept_new_client(struct Proxy *proxy);
 
 #endif /* _PROXY_H_ */
