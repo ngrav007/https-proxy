@@ -16,16 +16,16 @@
 #include <unistd.h>
 
 typedef struct Client {
-    ChatHeader header;        // header for most recent message
+    // ChatHeader header;        // header for most recent message // TODO remove
     struct sockaddr_in addr;  // Client address
     struct timeval last_recv; // Time of last activity
     socklen_t addr_l;         // Length of client address
-    unsigned buffer_l;        // Length of buffer
+    ssize_t buffer_l;        // Length of buffer
     int socket;               // Client socket
     bool slowMofo;            // True if sends partial messages
-    bool loggedIn;            // True if logged in
-    char id[MAX_ID_SZ];       // Client ID
-    char buffer[MAX_MSG_SZ];  // Buffer for outgoing messages
+    // bool loggedIn;            // True if logged in // TODO remove
+    // char id[MAX_ID_SZ];       // Client ID // TODO remove
+    char buffer;  // Buffer for outgoing messages
 } Client;
 
 Client *Client_new();
@@ -45,4 +45,4 @@ bool Client_isLoggedIn(Client *client);
 bool Client_isSlowMofo(Client *client);
 int Client_timestamp(Client *client);
 
-#endif /* _Client_H_ */
+#endif /* _CLIENT_H_ */

@@ -18,6 +18,9 @@
 #define SERVER_ID   "Server"
 #define SERVER_ID_L sizeof(SERVER_ID) - 1
 
+/* indicators */
+#define RECVD_BODY       2
+#define RECVD_HEAD       1 
 #define CLIENT_TIMEDOUT  6
 #define CLIENT_CLOSED    0
 #define ERROR_FAILURE    -1

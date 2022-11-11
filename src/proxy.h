@@ -6,6 +6,8 @@
 #include "http.h"
 #include "utility.h"
 #include "linkedlist.h"
+#include "config.h"
+#include "client.h"
 
 #include <arpa/inet.h>
 #include <error.h>
@@ -37,9 +39,9 @@ struct Connection {
 struct Proxy {
     Cache cache;
     struct sockaddr_in addr;
-    struct sockaddr_in client_addr;
+    // struct sockaddr_in client_addr;
     struct sockaddr_in server_addr;
-    struct hostent *client;
+    struct hostent *client; // TODO - add to client
     struct hostent *server;
     char *client_ip;
     char *server_ip;
@@ -78,7 +80,7 @@ void Connection_print(void *conn);
 
 int Proxy_accept_new_client(struct Proxy *proxy);
 int Proxy_handleListener(struct Proxy *proxy);
-int Proxy_handleClient(struct Proxy *proxy, int client_fd);
+int Proxy_handleClient(struct Proxy *proxy, Client *client);
 int Proxy_handleTimeout(struct Proxy *proxy);
 int Proxy_errorHandle(struct Proxy *proxy, int error_code);
 
