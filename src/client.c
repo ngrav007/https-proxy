@@ -59,7 +59,7 @@ Client *Client_create(int socket, char *id)
  */
 int Client_init(Client *client, char *id, int socket)
 {
-    if (client == NULL || socket == -1 || id == NULL) {
+    if (client == NULL || socket == -1) {
         return -1;
     }
 

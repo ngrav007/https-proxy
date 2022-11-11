@@ -77,5 +77,9 @@ void Connection_free(void *conn);
 void Connection_print(void *conn);
 
 int Proxy_accept_new_client(struct Proxy *proxy);
+int Proxy_handleListener(struct Proxy *proxy);
+int Proxy_handleClient(struct Proxy *proxy, int client_fd);
+int Proxy_handleTimeout(struct Proxy *proxy);
+int Proxy_errorHandle(struct Proxy *proxy, int error_code);
 
 #endif /* _PROXY_H_ */

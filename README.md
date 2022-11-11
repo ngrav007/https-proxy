@@ -32,6 +32,12 @@ Final due data: Wednesday 12/14/2022
 ## TODO - for Baseline: handle multiple client
 - Add outline for using select() method. 
 - Change ChatClient to Client
+  - remove extra data members, ex. client id
 - Update config file
 - Fix Cache to work with LinkedList instead of List 
+- Consider adding List_map so we can loop through clients instead of looping until fdmax. 
+  - Alternatively, consider looping through client_list nodes instead of looping until fdmax (list nodes are not private, so we can do this)
+- Add timeout min update when we are looping through clients
+- Halt recognition 
+- Error handling
 
