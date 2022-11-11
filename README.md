@@ -27,3 +27,11 @@ Final due data: Wednesday 12/14/2022
   - http://www.cs.cmu.edu/~dga/dga-headshot.jpg
 
 ## ARCHITECTURE 
+
+
+## TODO - for Baseline: handle multiple client
+- Add outline for using select() method. 
+- Change ChatClient to Client
+- Update config file
+- Fix Cache to work with LinkedList instead of List 
+

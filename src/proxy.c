@@ -697,7 +697,7 @@ int Proxy_accept_new_client(struct Proxy *proxy)
      */
 
     /* 3. puts new client's fd in master set */
-    FD_SET(proxy->client_fd, &(proxy->listen_fd));
+    FD_SET(proxy->client_fd, &(proxy->master_set));
 
     /* 4. update the value of fdmax */
     proxy->fdmax = proxy->client_fd > proxy->fdmax ? 

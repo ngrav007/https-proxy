@@ -1,5 +1,6 @@
 #ifndef __CHATCONFIG_H__
 #define __CHATCONFIG_H__
+#include <limits.h>
 
 #define DEBUG 1
 

@@ -5,6 +5,7 @@
 #include "colors.h"
 #include "http.h"
 #include "utility.h"
+#include "linkedlist.h"
 
 #include <arpa/inet.h>
 #include <error.h>
@@ -55,6 +56,9 @@ struct Proxy {
     fd_set readfds;
     int fdmax;
     struct timeval *timeout; // ?? do we need timeouts
+
+    /* persisting client list */
+    List client_list;
 };
 
 int Proxy_run(short port, size_t cache_size);
