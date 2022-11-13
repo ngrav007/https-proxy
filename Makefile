@@ -11,7 +11,7 @@ SRCS = $(wildcard $(SRCDIR)/*.c)
 OBJS = $(patsubst $(SRCDIR)/%.c, $(BLDDIR)/%.o, $(SRCS))
 INCS = $(wildcard $(INCDIR)/*.h)
 
-CFLAGS = -g -Wall -Wextra -I$(INCDIR) # -Werror
+CFLAGS = -g -Wall -Wextra -I$(INCDIR) -fdiagnostics-color=always # -Werror
 LDFLAGS = -g
 
 .PHONY: all clean

@@ -42,6 +42,27 @@ char *readline(int fd, size_t *len)
     return line;
 }
 
+/* returns a malloc'd string copy of buffer where letters are all lowercase 
+   up to but not including end. */
+char *to_lower(char *buf, char *end) 
+{
+    int size = end - buf;
+    char *copy = malloc(size + 1);
+    copy[size] = '\0';
+
+    char *i;
+    int j = 0;
+    for (i = buf, j = 0; i != end; i++, j++) {
+        if (isalpha(*i)) {
+            copy[j] = tolower(*i);
+        } else {
+            copy[j] = *i;
+        }
+    }
+
+    return copy;
+}
+
 /* hash_foo
  * @brief: djb2 - a simple hash function for strings, developed by Dan Bernstein
  *         (http://www.cse.yorku.ca/~oz/hash.html)
@@ -95,4 +116,16 @@ void print_ascii(char *buf, size_t len)
         }
     }
     printf("\n");
+}
+
+/* returns a malloc'd string copy of buffer 
+   up to but not including end. */
+char *get_buffer(char *start, char *end)
+{
+    int size = end - start;
+    char *copy = calloc(size + 1, sizeof(char));
+    // copy[size] = '\0';
+    memcpy(copy, start, size);
+
+    return copy;
 }

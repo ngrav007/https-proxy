@@ -1,194 +1,129 @@
 #include "http.h"
 
-HTTP_Request *HTTP_parse_request(char *request, size_t len)
+// assume we have a header
+int HTTP_parse(HTTP_Header *header, char *buffer, size_t len)
 {
-    HTTP_Request *req = calloc(1, sizeof(struct HTTP_Request));
-    req->request_l    = len;
+    // parse out just header,
+    size_t header_len = 0; 
+    char *hd = parse_header_lower(buffer, &header_len); /* malloc'd */
+    // fprintf(stderr, "Header: (%ld) %s\n", header_len, hd); // TODO - debug
+    // parse out the method 
+    header->method = parse_method(hd, &(header->method_l)); /* malloc'd */
+    // fprintf(stderr, "Method: (%ld) %s\n", header->method_l, header->method); // TODO - debug
 
-    /* store the request string */
-    req->request = calloc(len + 1, sizeof(char));
-    memcpy(req->request, request, len);
-    req->request[len] = '\0';
 
-    /* find the path */
-    char *path = strstr(req->request, " "); // find the first space
-    if (path == NULL) {
-        fprintf(stderr, "[Error] invalid request - no path found\n");
-        HTTP_free_request(req);
+    // parse path 
+    header->path = parse_path(hd, &(header->path_l)); /* malloc'd */
+    // fprintf(stderr, "Path: (%ld) %s\n", header->path_l, header->path); // TODO - debug
+
+    
+    // parse out host & port
+    header->host = parse_host(hd, &(header->host_l), &(header->port), &(header->port_l)); /* malloc'd*/
+    // fprintf(stderr, "Host: (%ld) %s\n", header->host_l, header->host);// TODO - debug
+    // fprintf(stderr, "Port: (%ld) %s\n", header->port_l, header->port);// TODO - debug
+
+    free(hd);
+
+    return 0;
+}
+
+// Get the method from an HTTP header
+char *parse_method(char *header, size_t *len)
+{
+    char *method = NULL;
+    char *end = NULL;
+    char *start = NULL;
+
+    end = strchr(header, ' ');
+    if (end == NULL) {
         return NULL;
     }
-    path++;                             // skip the space
-    char *path_end = strstr(path, " "); // find the second space
-    if (path_end == NULL) {
-        fprintf(stderr, "[Error] no path end found in request\n");
-        HTTP_free_request(req);
+
+    start = header;
+
+    method = malloc(end - start + 1);
+    if (method == NULL) {
         return NULL;
     }
-    req->path_l = path_end - path;
-    req->path   = calloc(path_end - path + 1, sizeof(char));
-    memcpy(req->path, path, path_end - path);
-    req->path[path_end - path] = '\0';
 
-    /* find the host */
-    char *host = strstr(req->request, "Host: ");
-    if (host == NULL) {
-        fprintf(stderr, "[Error] invalid request - no host found\n");
-        HTTP_free_request(req);
-        return NULL;
+    memcpy(method, start, end - start);
+    method[end - start] = '\0';
+
+    *len = end - start;
+
+    return method;
+}
+
+// assume header is the to_lower'd version of the buffer
+char *parse_host(char *header, size_t *host_len, char **port, size_t *port_len)
+{
+    char *start = strstr(header, HOST);
+    char *end = strstr(start, CRLF);
+
+    char *field = get_buffer(start + HOST_SIZE, end); /* malloc'd */
+
+    end = field;
+
+    /* find end of host string */
+    while(*end != '\0') {
+        end++;
     }
-    host += 6; // skip "Host: "
-    while (*host == ' ') {
-        host++;
-    }
-    char *host_end = strchr(host, '\r');
-    if (host_end == NULL) {
-        fprintf(stderr, "[Error] no host end found in request\n");
-        HTTP_free_request(req);
-        return NULL;
-    }
-    req->host_l = host_end - host;
-    req->host   = calloc(host_end - host + 1, sizeof(char));
-    memcpy(req->host, host, host_end - host);
-    req->host[host_end - host] = '\0';
 
-    /* check for a port */
-    char *port = strrchr(req->host, ':');
-    if (port != NULL) {
-        port++; // skip the colon
-        while (!isdigit(*port)) {
-            port++;
-        }
+    field = removeSpaces(field, strlen(field));
+    *host_len = strlen(field);
 
-        /*find the end of the port */
-        char *port_end = port;
-        while (isdigit(*port_end)) {
-            port_end++;
-        }
+    // get port 
+    *port = NULL;
+    *port_len = 0;
+    char *hostname;
+    char *colon = strstr(field, ":");
+    if (colon != NULL) {
+        *port = get_buffer(colon + 1, end); /* malloc'd */
+        *port_len = end - colon - 1; 
+        *host_len = colon - field;
+        hostname = malloc(*host_len + 1);  /* malloc'd */
+        hostname[*host_len] = '\0';
 
-        /* store the port */
-        req->port_l = port_end - port;
-        req->port   = calloc(req->port_l + 1, sizeof(char));
-        memcpy(req->port, port, req->port_l);
-        req->port[req->port_l] = '\0';
-
-        /* remove the port from the host */
-        req->host_l            = port - req->host - 1;
-        req->host              = realloc(req->host, req->host_l + 1);
-        req->host[req->host_l] = '\0';
+        memcpy(hostname, field, *host_len); 
     } else {
-        req->port = calloc(DEFAULT_PORT_L + 1, sizeof(char));
-        memcpy(req->port, DEFAULT_PORT_S, DEFAULT_PORT_L);
-        req->port[DEFAULT_PORT_L] = '\0';
-        req->port_l               = DEFAULT_PORT_L;
+        
+        *port = calloc(HTTP_PORT_L + 1, sizeof(char));
+        memcpy(*port, HTTP_PORT, HTTP_PORT_L); 
+        *port_len = HTTP_PORT_L;
+
+
+        hostname = malloc(*host_len + 1);  /* malloc'd */
+        hostname[*host_len] = '\0';
+        memcpy(hostname, field, *host_len);
     }
 
-    return req;
+    free(field);
+
+    return hostname;
 }
 
-void HTTP_free_request(void *request)
+char *parse_path(char *header, size_t *len)
 {
-    if (request == NULL) {
-        return;
-    }
-    HTTP_Request *req = (HTTP_Request *)request;
-    free(req->request);
-    free(req->path);
-    free(req->host);
-    free(req->port);
-    free(req);
+    char *start = strstr(header, " ");
+    char *end = strstr(start + 1, " ");
+    char *resource = get_buffer(start + 1, end); /* malloc'd */
+
+    *len = end - start;
+    
+    return resource; 
 }
 
-HTTP_Response *HTTP_parse_response(char *response, size_t len)
+void HTTP_free_header(void *header)
 {
-    HTTP_Response *res = calloc(1, sizeof(struct HTTP_Response));
-    res->response_l    = len;
-
-    /* store the header string */
-    ssize_t header_len = HTTP_header_len(response);
-    if (header_len == -1) {
-        fprintf(stderr, "[Error] invalid response - no header found\n");
-        HTTP_free_response(res);
-        return NULL;
-    }
-    res->header_l = header_len;
-    res->header   = calloc(header_len + 1, sizeof(char));
-    memcpy(res->header, response, header_len);
-
-    /* store the body string */
-    size_t body_len = HTTP_body_len(response, len);
-    res->body_l     = body_len;
-    res->body       = calloc(body_len + 1, sizeof(char));
-    memcpy(res->body, response + header_len + CRLF_L + CRLF_L, body_len);
-
-    /* find the max-age */
-    char *max_age = strstr(res->header, "max-age");
-    if (max_age != NULL) {
-        while (!isdigit(*max_age)) { // find the first digit
-            max_age++;
-        }
-        char *max_age_end = max_age;
-        while (isdigit(*max_age_end)) { // find the end of the number
-            max_age_end++;
-        }
-        size_t max_age_l = max_age_end - max_age; // store the length
-
-        char max_age_str[max_age_l + 1];
-        memcpy(max_age_str, max_age, max_age_l);
-        max_age_str[max_age_l] = '\0';
-        res->max_age           = atoi(max_age_str);
-    } else {
-        res->max_age = DEFAULT_MAX_AGE;
-    }
-
-    return res;
-}
-
-void HTTP_free_response(void *response)
-{
-    if (response == NULL) {
-        return;
-    }
-    HTTP_Response *res = (HTTP_Response *)response;
-    free(res->header);
-    free(res->body);
-    free(res);
-}
-
-void HTTP_print_request(void *request)
-{
-    if (request == NULL) {
-        fprintf(stderr, "[Error] invalid request\n");
+    if (header == NULL) {
         return;
     }
 
-    HTTP_Request *req = (HTTP_Request *)request;
-    printf("%sRequest:%s\n", YEL, reset);
-    printf("%s\n(%ld)\n", req->request, req->request_l);
-    printf("  path: %s (%ld)\n", req->path, req->path_l);
-    printf("  host: %s (%ld)\n", req->host, req->host_l);
-    printf("  port: %s (%ld)\n", req->port, req->port_l);
-}
-
-void HTTP_print_response(void *response)
-{
-    if (response == NULL) {
-        fprintf(stderr, "[Error] invalid response\n");
-        return;
-    }
-
-    HTTP_Response *res = (HTTP_Response *)response;
-    printf("%sResponse:%s\n", YEL, reset);
-    printf("  header:\n%s (%ld)\n", res->header, res->header_l);
-    printf("  max-age: %ld\n", res->max_age);
-}
-
-short HTTP_get_port(HTTP_Request *request)
-{
-    if (request == NULL) {
-        fprintf(stderr, "[Error] invalid request\n");
-        return -1;
-    }
-    return atoi(request->port);
+    HTTP_Header *hdr = (HTTP_Header *)header;
+    free(hdr->method);
+    free(hdr->path);
+    free(hdr->host);
+    free(hdr->port);
 }
 
 long HTTP_get_max_age(char *httpstr)
@@ -225,7 +160,7 @@ long HTTP_get_max_age(char *httpstr)
         max_age_val[max_age_end - max_age] = '\0';
         return atoi(max_age_val);
     } else {
-        return DEFAULT_MAX_AGE;
+        return MAX_AGE;
     }
 }
 
@@ -273,48 +208,6 @@ ssize_t HTTP_get_content_length(char *httpstr)
     return atol(content_length_value);
 }
 
-char *HTTP_response_to_string(HTTP_Response *response, long age, size_t *len,
-                              bool is_from_cache)
-{
-    if (response == NULL) {
-        fprintf(stderr, "[Error] invalid response\n");
-        return NULL;
-    }
-
-    size_t age_header_l  = 0;
-    char age_header[100] = {0};
-    if (is_from_cache) {
-        sprintf(age_header, "Age: %ld", age);
-        age_header_l = strlen(age_header);
-    }
-
-    if (is_from_cache) {
-        *len = response->header_l + CRLF_L + age_header_l + CRLF_L + CRLF_L +
-               response->body_l;
-    } else {
-        *len = response->header_l + CRLF_L + CRLF_L + response->body_l;
-    }
-
-    char *res     = calloc(*len + 1, sizeof(char));
-    size_t offset = 0;
-    memcpy(res, response->header, response->header_l);
-    offset += response->header_l;
-    memcpy(res + offset, "\r\n", CRLF_L);
-    offset += CRLF_L;
-    if (is_from_cache) {
-        memcpy(res + offset, age_header, age_header_l);
-        offset += age_header_l;
-        memcpy(res + offset, "\r\n", CRLF_L);
-        offset += CRLF_L;
-    }
-    memcpy(res + offset, "\r\n", CRLF_L);
-    offset += CRLF_L;
-    memcpy(res + offset, response->body, response->body_l);
-    offset += response->body_l;
-
-    return res;
-}
-
 ssize_t HTTP_header_len(char *httpstr)
 {
     if (httpstr == NULL) {
@@ -330,7 +223,7 @@ ssize_t HTTP_header_len(char *httpstr)
     return header_end - httpstr;
 }
 
-size_t HTTP_body_len(char *httpstr, size_t len)
+ssize_t HTTP_body_len(char *httpstr, size_t len)
 {
     if (httpstr == NULL) {
         fprintf(stderr, "[Error] invalid http string\n");
@@ -345,3 +238,165 @@ size_t HTTP_body_len(char *httpstr, size_t len)
     body += 4; // skip the "\r\n\r\n"
     return len - (body - httpstr);
 }
+
+bool HTTP_got_header(char *buffer)
+{
+    char *flag = strstr(buffer, HEADER_END);
+    if (flag == NULL) return 0;
+    else return 1;
+}
+
+/* Given an HTTP response message, return just the header parsed out as a 
+   new heap allocated string with \0 at end; inlcudes last \r\n\r\n */
+char *parse_header_raw(char *message, size_t *len)
+{
+    char *end = strstr(message, HEADER_END);
+    if (end == NULL) return NULL;
+
+    char *header = get_buffer(message, end + 4); /* malloc'd */
+    *len = (end + HEADER_END_L) - message;
+    return header;
+}
+
+/* Given an HTTP response message, return just the header parsed out as a 
+   new heap allocated string with \0 at end, all letters lowercase.
+   header goes until the last \r\n\r\n */
+char *parse_header_lower(char *message, size_t *len)
+{
+    char *end = strstr(message, HEADER_END);
+    if (end == NULL) return NULL;
+
+    char *header = to_lower(message, end + 4); /* malloc'd */
+    *len = (end + HEADER_END_L) - message;
+    return header;
+}
+
+
+/* returns content-length from given header; header must have all lowercase; 
+   -1 if it did not exist */
+long parse_contentLength(char *header)
+{
+    char *startContLenField = strstr(header, CONTLEN);
+    if (startContLenField == NULL) return -1;
+
+    char *endContLenField = strstr(startContLenField, HDR_LN_END);
+
+    char *value = get_buffer(startContLenField + CONTLEN_SIZE, 
+                                endContLenField); /* malloc'd */
+
+    value = removeSpaces(value, strlen(value));
+ 
+    unsigned long contentLength = strtoul(value, NULL, 10);
+
+    free(value);
+    return contentLength;
+}
+
+
+/**
+ * Removes space characters in a given string, and returns the modified string.
+ */
+char *removeSpaces(char *str, int size)
+{
+    unsigned int strIdx = 0;
+    int i = 0;
+    for (i = 0; i < size; i++) {
+        if (str[i] != ' ') {
+            str[strIdx] = str[i];
+            strIdx++;
+        }
+    }
+    str[strIdx] = '\0';
+    return str;
+}
+
+/* parses out the max age if any from a lowercase'd header. Default age
+   if field isn't present. */
+unsigned int parse_maxAge(char *header)
+{
+    char *startCCField = strstr(header, CACHECONTROL);
+    if (startCCField == NULL) {
+        return MAX_AGE;
+    }
+
+    char *endCCField = strstr(startCCField, HDR_LN_END);
+
+    char *value = get_buffer(startCCField + CACHECONTROL_SIZE, 
+                                endCCField + 2); /* malloc'd */
+    value = removeSpaces(value, strlen(value));
+
+    char *startMAField = strstr(value, MAXAGE);
+    if (startMAField == NULL) {
+        return MAX_AGE;
+    }
+
+    char *endMAField = strstr(startMAField, HDR_LN_END);
+
+    char *age = get_buffer(startMAField + MAXAGE_SIZE, 
+                                endMAField); /* malloc'd */
+    age = removeSpaces(age, strlen(age));
+    unsigned int maxAge = strtoul(age, NULL, 10);
+
+    free(value);
+    free(age);
+    return maxAge;
+}
+
+/* sets key (resource string), hostname, and port numbers from 
+   given header (lowercase'd) */
+// void parse_host(char *header, char **key, 
+//                 char **hostname, short *port)
+// {
+//     // char *endResourceLine = strstr(header, HDR_LN_END);
+//     char *start = strstr(header, " ");
+//     char *secondSpaceResourceLine = strstr(start + 1, " ");
+//     char *resource = get_buffer(start + 1, 
+//                                    secondSpaceResourceLine); /* malloc'd */
+//     int keysize = strlen(resource);
+//     *key = malloc(keysize + 1); /* malloc'd */
+//     (*key)[keysize] = '\0';
+//     memcpy(*key, resource, keysize);
+//     /*****/
+
+//     char *startHostField = strstr(header, HOST); // "Host :"
+//     char *endHostField = strstr(startHostField, HDR_LN_END);
+
+//     char *value = get_buffer(startHostField + HOST_SIZE, 
+//                                 endHostField); /* malloc'd */
+    
+//     value = removeSpaces(value, strlen(value));
+//     int size = strlen(value);
+
+//     char *colon = strstr(value, ":");
+//     if (colon != NULL) {
+//         *port = (unsigned short) strtoul(colon + 1, NULL, 10);
+//         // printf("Port (parser): %u\n", *port);
+
+//         size = colon - value;
+//         *hostname = malloc(size + 1);  /* malloc'd */
+//         (*hostname)[size] = '\0';
+
+//         memcpy(*hostname, value, size); 
+//         // printf("Hostname (parser): %s\n", *hostname);
+//     } else {
+//         *hostname = malloc(size + 1);  /* malloc'd */
+//         (*hostname)[size] = '\0';
+//         memcpy(*hostname, value, size); 
+//         // printf("Hostname (parser): %s\n", *hostname);
+//     }
+
+//     free(resource);
+//     free(value);
+// }
+
+/* returns the string for "Age: <age>\r\n" */
+char *make_ageField(unsigned int age)
+{
+    char *field = calloc(18, sizeof(char));
+    int size = snprintf(field, 18, "Age: %u\r\n", age);
+    // printf("Age field: \"%s\"\t\tSize: %d\t\t\"size\": %d\n\n", field, strlen(field), size);
+    field = realloc(field, size + 1);
+    // printf("Age field: \"%s\"\t\tSize: %d\t\t\"size\": %d\n\n", field, strlen(field), size);
+    return field;
+}
+

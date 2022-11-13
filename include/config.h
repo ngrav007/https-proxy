@@ -12,7 +12,23 @@
 #define CACHE_SZ 10
 
 /* HTTP */
+#define HTTP_PORT "80"
+#define HTTP_PORT_L 2
+#define HEADER_END "\r\n\r\n"
+#define HEADER_END_L 4
+#define CRLF  "\r\n"
 #define CRLF_L 2
+// #define HDRFLAG "\r\n\r\n"
+#define HDR_LN_END "\r\n"
+#define CONTLEN "content-length:"
+#define CONTLEN_SIZE 15
+#define HOST "host: " /* "host:" appears in localhost:9010 in first line */
+#define HOST_SIZE 6
+#define CACHECONTROL "cache-control:"
+#define CACHECONTROL_SIZE 14
+#define MAXAGE "max-age="
+#define MAXAGE_SIZE 8
+#define MAX_AGE 3600
 
 #define LISTEN_BACKLOG 5
 #define TIMEOUT        60 // 60 seconds

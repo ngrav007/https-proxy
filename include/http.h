@@ -7,48 +7,41 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_PORT_S  "80"
-#define DEFAULT_PORT_L  2
-#define DEFAULT_PORT    80
-#define DEFAULT_MAX_AGE 3600
-
-typedef struct HTTP_Request {
-    char *request;
+typedef struct HTTP_Header {
+    char *method;
     char *path;
     char *host;
     char *port;
 
-    size_t request_l;
     size_t path_l;
     size_t host_l;
     size_t port_l;
-} HTTP_Request;
+    size_t method_l;
+} HTTP_Header;
 
-typedef struct HTTP_Response {
-    char *header;
-    char *body;
-    long max_age;
-
-    size_t header_l;
-    size_t body_l;
-    size_t response_l;
-} HTTP_Response;
-
-HTTP_Request *HTTP_parse_request(char *request, size_t len);
-HTTP_Response *HTTP_parse_response(char *response, size_t len);
+bool HTTP_got_header (char *buffer);
+int HTTP_parse(HTTP_Header *header, char *buffer, size_t len);
+void HTTP_free_header(void *header);
 void HTTP_free_request(void *request);
-void HTTP_free_response(void *response);
 void HTTP_print_request(void *request);
-void HTTP_print_response(void *response);
-short HTTP_get_port(HTTP_Request *request);
+short HTTP_get_port(HTTP_Header *request);
 long HTTP_get_max_age(char *httpstr);
 ssize_t HTTP_get_content_length(char *httpstr);
-char *HTTP_response_to_string(HTTP_Response *request, long age, size_t *strlen,
-                              bool is_from_cache);
-size_t HTTP_body_len(char *httpstr, size_t len);
+ssize_t HTTP_body_len(char *httpstr, size_t len);
 ssize_t HTTP_header_len(char *httpstr);
+
+char *parse_path(char *header, size_t *len);
+char *parse_method(char *header, size_t *len);
+char *parse_host(char *header, size_t *host_len, char **port, size_t *port_len);
+char *parse_header_raw   (char *message, size_t *len);
+char *parse_header_lower (char *message, size_t *len);
+long parse_contentLength(char *header);
+char *removeSpaces      (char *str, int size);
+unsigned int parse_maxAge(char *header);
+char *make_ageField(unsigned int age);
 
 #endif /* _HTTP_H_ */

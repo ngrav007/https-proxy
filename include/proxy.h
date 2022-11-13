@@ -66,12 +66,12 @@ ssize_t Proxy_read(Proxy *proxy, int socket);
 ssize_t Proxy_write(Proxy *proxy, int socket);
 int Proxy_handle(Proxy *proxy);
 
-Connection *Connection_new(struct HTTP_Request *request,
-                           struct HTTP_Response *response);
-void Connection_init(Connection *conn, struct HTTP_Request *request,
-                     struct HTTP_Response *response);
-void Connection_free(void *conn);
-void Connection_print(void *conn);
+// Connection *Connection_new(struct HTTP_Request *request,
+//                            struct HTTP_Response *response);
+// void Connection_init(Connection *conn, struct HTTP_Request *request,
+//                      struct HTTP_Response *response);
+// void Connection_free(void *conn);
+// void Connection_print(void *conn);
 
 int Proxy_accept_new_client(Proxy *proxy);
 int Proxy_handleListener(Proxy *proxy);

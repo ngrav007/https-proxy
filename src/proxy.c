@@ -248,7 +248,8 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     }
 
     /* initialize the proxy cache */
-    proxy->cache = Cache_new(cache_size, Connection_free, Connection_print);
+    proxy->cache = NULL;
+    // proxy->cache = Cache_new(cache_size, Connection_free, Connection_print);
     if (proxy->cache == NULL) {
         return -1;
     }
@@ -356,76 +357,76 @@ static int expand_buffer(struct Proxy *proxy)
     return 0;
 }
 
-void Connection_init(struct Connection *conn, struct HTTP_Request *request,
-                     struct HTTP_Response *response)
-{
-    if (conn == NULL) {
-        return;
-    }
+// void Connection_init(struct Connection *conn, struct HTTP_Request *request,
+//                      struct HTTP_Response *response)
+// {
+//     if (conn == NULL) {
+//         return;
+//     }
 
-    if (conn->request != NULL) {
-        HTTP_free_request(conn->request);
-    }
+//     if (conn->request != NULL) {
+//         HTTP_free_request(conn->request);
+//     }
 
-    if (conn->response != NULL) {
-        HTTP_free_response(conn->response);
-    }
+//     if (conn->response != NULL) {
+//         HTTP_free_response(conn->response);
+//     }
 
-    conn->request  = request;
-    conn->response = response;
+//     conn->request  = request;
+//     conn->response = response;
 
-    conn->is_from_cache = false;
-}
+//     conn->is_from_cache = false;
+// }
 
-struct Connection *Connection_new(struct HTTP_Request *request,
-                                  struct HTTP_Response *response)
-{
-    struct Connection *conn = calloc(1, sizeof(struct Connection));
-    if (conn == NULL) {
-        return NULL;
-    }
+// struct Connection *Connection_new(struct HTTP_Request *request,
+//                                   struct HTTP_Response *response)
+// {
+//     struct Connection *conn = calloc(1, sizeof(struct Connection));
+//     if (conn == NULL) {
+//         return NULL;
+//     }
 
-    Connection_init(conn, request, response);
+//     Connection_init(conn, request, response);
 
-    return conn;
-}
+//     return conn;
+// }
 
-void Connection_free(void *conn)
-{
-    if (conn == NULL) {
-        return;
-    }
+// void Connection_free(void *conn)
+// {
+//     if (conn == NULL) {
+//         return;
+//     }
 
-    struct Connection *c = (struct Connection *)conn;
+//     struct Connection *c = (struct Connection *)conn;
 
-    if (c->request != NULL) {
-        HTTP_free_request(c->request);
-    }
+//     if (c->request != NULL) {
+//         HTTP_free_request(c->request);
+//     }
 
-    if (c->response != NULL) {
-        HTTP_free_response(c->response);
-    }
+//     if (c->response != NULL) {
+//         HTTP_free_response(c->response);
+//     }
 
-    free(c);
-}
+//     free(c);
+// }
 
-void Connection_print(void *conn)
-{
-    if (conn == NULL) {
-        return;
-    }
+// void Connection_print(void *conn)
+// {
+//     if (conn == NULL) {
+//         return;
+//     }
 
-    struct Connection *c = (struct Connection *)conn;
+//     struct Connection *c = (struct Connection *)conn;
 
-    fprintf(stderr, "Connection {\n");
-    fprintf(stderr, "    %sRequest {%s\n", YEL, reset);
-    HTTP_print_request(c->request);
-    fprintf(stderr, "    }\n");
-    fprintf(stderr, "    %sResponse {%s\n", YEL, reset);
-    HTTP_print_response(c->response);
-    fprintf(stderr, "    }\n");
-    fprintf(stderr, "}\n");
-}
+//     fprintf(stderr, "Connection {\n");
+//     fprintf(stderr, "    %sRequest {%s\n", YEL, reset);
+//     HTTP_print_request(c->request);
+//     fprintf(stderr, "    }\n");
+//     fprintf(stderr, "    %sResponse {%s\n", YEL, reset);
+//     HTTP_print_response(c->response);
+//     fprintf(stderr, "    }\n");
+//     fprintf(stderr, "}\n");
+// }
 
 static int compact_buffer(struct Proxy *proxy)
 {
@@ -541,6 +542,10 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     gettimeofday(&client->last_recv, NULL);
 
     // Check for Header
+    if (HTTP_got_header(client->buffer)) {
+        // parse out header information
+
+    }
 
     // Check for Body
 
