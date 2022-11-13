@@ -1,7 +1,7 @@
 #ifndef _LINKEDLIST_H_
 #define _LINKEDLIST_H_
 
-#include "Node.h"
+#include "node.h"
 #include "utility.h"
 
 #include <limits.h>

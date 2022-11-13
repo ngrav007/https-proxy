@@ -1,8 +1,8 @@
 #include "entry.h"
 
-Entry Entry_new(void *value, void *key, size_t key_l, long max_age)
+Entry *Entry_new(void *value, void *key, size_t key_l, long max_age)
 {
-    Entry entry = calloc(1, sizeof(struct Entry));
+    Entry *entry = calloc(1, sizeof(struct Entry));
     if (entry == NULL) {
         return NULL;
     }
@@ -23,7 +23,7 @@ Entry Entry_new(void *value, void *key, size_t key_l, long max_age)
     return entry;
 }
 
-void Entry_init(Entry entry, char *key, void *value, unsigned long hash,
+void Entry_init(Entry *entry, char *key, void *value, unsigned long hash,
                 long max_age)
 {
     if (entry == NULL) {
@@ -42,7 +42,7 @@ void Entry_init(Entry entry, char *key, void *value, unsigned long hash,
     }
 }
 
-void Entry_free(Entry *entry, void (*foo)(void *))
+void Entry_free(Entry **entry, void (*foo)(void *))
 {
     if (entry == NULL || *entry == NULL) {
         return;
@@ -65,7 +65,7 @@ void Entry_free(Entry *entry, void (*foo)(void *))
     (*entry) = NULL;
 }
 
-void Entry_delete(Entry entry, void (*foo)(void *))
+void Entry_delete(Entry *entry, void (*foo)(void *))
 {
     if (entry == NULL) {
         return;
@@ -84,7 +84,7 @@ void Entry_delete(Entry entry, void (*foo)(void *))
     entry->deleted = true;
 }
 
-void Entry_print(Entry entry, void (*foo)(void *))
+void Entry_print(Entry *entry, void (*foo)(void *))
 {
     if (entry == NULL) {
         return;
@@ -106,7 +106,7 @@ void Entry_print(Entry entry, void (*foo)(void *))
     fprintf(stderr, "}\n");
 }
 
-int Entry_update(Entry entry, void *value, long max_age, void (*foo)(void *))
+int Entry_update(Entry *entry, void *value, long max_age, void (*foo)(void *))
 {
     if (entry == NULL) {
         return -1;
@@ -122,26 +122,23 @@ int Entry_update(Entry entry, void *value, long max_age, void (*foo)(void *))
     entry->value   = value;
     entry->max_age = max_age;
     entry->ttl     = max_age;
-    entry->created = Util_get_time();
+    entry->created = get_time();
     entry->stale   = (entry->ttl <= 0) ? true : false;
     entry->deleted = false;
 
     return 0;
 }
 
-long Entry_get_ttl(Entry entry)
-{
-    return entry->ttl;
-}
+long Entry_get_ttl(Entry *entry) { return entry->ttl; }
 
 /* Updates the entry's time to live and sets the stale flag if stale  */
-int Entry_touch(Entry entry)
+int Entry_touch(Entry *entry)
 {
     if (entry == NULL) {
         return -1;
     }
 
-    double now = Util_get_time();
+    double now = get_time();
     double age = now - entry->created;
     entry->ttl = entry->max_age - age;
 
@@ -155,20 +152,20 @@ int Entry_touch(Entry entry)
     return 0;
 }
 
-long Entry_get_age(Entry entry)
+long Entry_get_age(Entry *entry)
 {
     if (entry == NULL) {
         return -1;
     }
 
-    double now = Util_get_time();
+    double now = get_time();
     double age = now - entry->created;
 
     return (long)age;
 }
 
 /* Boolean function that returns true if the entry is stale */
-bool Entry_is_stale(Entry entry)
+bool Entry_is_stale(Entry *entry)
 {
     if (entry == NULL) {
         return false;
@@ -177,7 +174,7 @@ bool Entry_is_stale(Entry entry)
 }
 
 /* Is entry 1 older than entry 2? */
-bool Entry_is_older(Entry entry1, Entry entry2)
+bool Entry_is_older(Entry *entry1, Entry *entry2)
 {
     if (entry1 == NULL || entry2 == NULL) {
         return false;
@@ -185,7 +182,7 @@ bool Entry_is_older(Entry entry1, Entry entry2)
     return entry1->created < entry2->created;
 }
 
-bool Entry_is_equal(Entry entry, char *key)
+bool Entry_is_equal(Entry *entry, char *key)
 {
     if (entry == NULL || key == NULL) {
         return false;
@@ -198,17 +195,11 @@ bool Entry_is_equal(Entry entry, char *key)
     return strncmp(entry->key, key, entry->key_l) == 0;
 }
 
-bool Entry_is_empty(Entry entry)
-{
-    return (entry->value == NULL);
-}
+bool Entry_is_empty(Entry *entry) { return (entry->value == NULL); }
 
-bool Entry_is_deleted(Entry entry)
-{
-    return entry->deleted;
-}
+bool Entry_is_deleted(Entry *entry) { return entry->deleted; }
 
-void Entry_debug_print(Entry entry)
+void Entry_debug_print(Entry *entry)
 {
     if (entry == NULL) {
         return;

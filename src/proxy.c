@@ -2,8 +2,6 @@
 
 // Ports -- 9055 to 9059
 
-#define DEBUG 0
-
 static void zero(void *p, size_t n);
 static int expand_buffer(struct Proxy *proxy);
 static int compact_buffer(struct Proxy *proxy);
@@ -40,7 +38,8 @@ int Proxy_run(short port, size_t cache_size)
     proxy.addr.sin_addr.s_addr = htonl(INADDR_ANY);
     proxy.addr.sin_port        = htons(proxy.port);
 
-    /* bind listening socket to proxy address; binding listent_fd==mastersocket */
+    /* bind listening socket to proxy address; binding listent_fd==mastersocket
+     */
     if (bind(proxy.listen_fd, (struct sockaddr *)&proxy.addr,
              sizeof(proxy.addr)) == -1)
     {
@@ -59,13 +58,14 @@ int Proxy_run(short port, size_t cache_size)
 
     /******************* New accept loop *******************/
     /* add mastersocket to master set; make current maskersocket the fdmax */
-    FD_SET(proxy.listen_fd, &(proxy.master_set)); 
+    FD_SET(proxy.listen_fd, &(proxy.master_set));
     proxy.fdmax = proxy.listen_fd;
-    
-    short flag; 
+
+    short flag;
     while (true) {
-        proxy.readfds = proxy.master_set;
-        int select_value = select(proxy.fdmax + 1, &(proxy.readfds), NULL, NULL, proxy.timeout);
+        proxy.readfds    = proxy.master_set;
+        int select_value = select(proxy.fdmax + 1, &(proxy.readfds), NULL, NULL,
+                                  proxy.timeout);
         if (select_value < 0) { // ?? < 0 or  == -1
             fprintf(stderr, "[Error] Proxy_run: select failed\n");
             // ?? do we quit if a select fails?
@@ -73,16 +73,19 @@ int Proxy_run(short port, size_t cache_size)
             return -1;
         }
         /* timeout */
-        else if (select_value == 0) {
+        else if (select_value == 0)
+        {
             // TODO: TIMEOUT
             Proxy_handleTimeout(&proxy);
-        } 
+        }
         /* select_value > 0 */
-        else {
+        else
+        {
             flag = Proxy_handle(&proxy);
         }
 
-        if (flag == 666) break; // HALT signal
+        if (flag == 666)
+            break; // HALT signal
     }
     /******************* End of new accept loop *******************/
 
@@ -94,7 +97,7 @@ int Proxy_run(short port, size_t cache_size)
 // TODO
 int Proxy_handle(struct Proxy *proxy)
 {
-    int ret; 
+    int ret;
     /* handle when a new client wants to connect */
     if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
         ret = Proxy_handleListener(proxy);
@@ -104,20 +107,22 @@ int Proxy_handle(struct Proxy *proxy)
     }
 
     /* handle when clients are sending data */
-    Node curr = NULL;
+    Node *curr = NULL;
     Client *client;
     for (curr = proxy->client_list->head; curr != NULL; curr = curr->next) {
-        client = (Client *) curr->entry->value;
+        client             = (Client *)curr->data;
         int curr_client_fd = client->socket;
-        if (FD_ISSET(curr_cliend_fd, proxy->readfds)) {
+        if (FD_ISSET(curr_client_fd, &proxy->readfds)) {
             ret = Proxy_handleClient(proxy, client);
-        } 
+        }
         if (ret < 0) {
             Proxy_errorHandle(proxy, ret);
         } else {
-            refresh();
+            // refresh(); // TODO
         }
     }
+
+    return 0;
 }
 
 ssize_t Proxy_write(struct Proxy *proxy, int socket)
@@ -172,7 +177,7 @@ ssize_t Proxy_read(struct Proxy *proxy, int socket)
         }
 
         bytes_to_read = proxy->buffer_sz - proxy->buffer_l - 1;
-ƒ
+
         /* look for end of header */
         char *end_of_header = strstr(proxy->buffer, "\r\n\r\n");
         if (end_of_header != NULL) {
@@ -250,7 +255,7 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
 
     /* zero out the proxy addresses */
     zero(&proxy->addr, sizeof(proxy->addr));
-    zero(&proxy->client_addr, sizeof(proxy->client_addr));
+    // zero(&proxy->client_addr, sizeof(proxy->client_addr)); // TODO - Remove
     zero(&proxy->server_addr, sizeof(proxy->server_addr));
     zero(&proxy->client, sizeof(proxy->client));
     zero(&proxy->server, sizeof(proxy->server));
@@ -271,9 +276,9 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     proxy->buffer    = calloc(proxy->buffer_sz, sizeof(char));
 
     /* zero out fd_sets and initialize fdmax of muliclient set */
-    FD_ZERO(&master_set);   /* clear the sets */
-    FD_ZERO(&readfds);
-    proxy->fdmax = 0;
+    FD_ZERO(&proxy->master_set); /* clear the sets */
+    FD_ZERO(&proxy->readfds);
+    proxy->fdmax   = 0;
     proxy->timeout = NULL;
 
     return 0;
@@ -438,10 +443,7 @@ static int compact_buffer(struct Proxy *proxy)
     return 0;
 }
 
-static void zero(void *p, size_t n)
-{
-    memset(p, 0, n);
-}
+static void zero(void *p, size_t n) { memset(p, 0, n); }
 
 static void clear_buffer(struct Proxy *proxy)
 {
@@ -454,11 +456,10 @@ static void clear_buffer(struct Proxy *proxy)
     proxy->buffer_l = 0;
 }
 
-
 /**
- * 1. accepts connection request from new client 
- * 2. creates a client object for new client 
- * 3. puts new client's fd in master set 
+ * 1. accepts connection request from new client
+ * 2. creates a client object for new client
+ * 3. puts new client's fd in master set
  * 4. update the value of fdmax
  */
 int Proxy_accept(struct Proxy *proxy)
@@ -467,31 +468,29 @@ int Proxy_accept(struct Proxy *proxy)
     // Make a new client struct
     Client *client = Client_new();
     client->addr_l = sizeof(client->addr);
-    client->socket = accept(proxy->listen_fd, 
-                              (struct sockaddr *) &(client->addr),
-                              &(client->addr_l));
+    client->socket =
+        accept(proxy->listen_fd, (struct sockaddr *)&(client->addr),
+               &(client->addr_l));
     if (client->socket == -1) {
         fprintf(stderr, "[Error] Proxy_accept: accept failed\n");
         // Proxy_free(proxy);
         return ERROR_FAILURE;
     }
 
-    /** 
+    /**
      * 2. Create new client object here ...
      */
-    List_push_back(&(proxy->client_list), (void *)client);
+    List_push_back(proxy->client_list, (void *)client);
 
     /* 3. puts new client's fd in master set */
     FD_SET(client->socket, &(proxy->master_set));
 
     /* 4. update the value of fdmax */
-    proxy->fdmax = client->socket > proxy->fdmax ? 
-                   client->socket : proxy->fdmax;
-                   
+    proxy->fdmax =
+        client->socket > proxy->fdmax ? client->socket : proxy->fdmax;
 
     return EXIT_SUCCESS; // success
 }
-
 
 // TODO
 int Proxy_handleListener(struct Proxy *proxy)
@@ -514,25 +513,28 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     memset(tmp_buffer, 0, BUFFER_SZ);
     int num_bytes = recv(client->socket, tmp_buffer, BUFFER_SZ, 0);
     if (num_bytes < 0) {
-        perror(recv);
+        perror("recv");
         return ERROR_FAILURE;
     } else if (num_bytes == 0) {
         // client closed
         return CLIENT_CLOSED;
     }
 
-    client->buffer = realloc(client->buffer, client->buffer_l + num_bytes);  // Not null terminated
+    client->buffer = realloc(
+        client->buffer, client->buffer_l + num_bytes); // Not null terminated
     if (client->buffer == NULL) {
         return ERROR_FAILURE;
     }
-    
-    // get client buffer 
+
+    // get client buffer
     char *buffer = client->buffer;
-    char *buffer_rest = buffer + client->buffer_l; /* point to where we need to write the bytes. */
+    char *buffer_rest =
+        buffer +
+        client->buffer_l; /* point to where we need to write the bytes. */
     // write recv'd bytes to client's current buffer
     memcpy(buffer_rest, tmp_buffer, num_bytes);
-    
-    // update buffer length 
+
+    // update buffer length
     client->buffer_l += num_bytes;
 
     // reset timer since we received from client
@@ -542,24 +544,15 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
 
     // Check for Body
 
-    // assume all GETs for now, GETs don't have a body 
-    // If we have both call HandleRequest -- determine what to do depnding on HTTP Method
-
-
-
+    // assume all GETs for now, GETs don't have a body
+    // If we have both call HandleRequest -- determine what to do depnding on
+    // HTTP Method
 
     return 0;
 }
 
 // TODO
-int Proxy_handleTimeout(struct Proxy *proxy)
-{
-    return 0;
-}
-
+int Proxy_handleTimeout(struct Proxy *proxy) { return 0; }
 
 // TODO
-int Proxy_errorHandle(struct Proxy *proxy, int error_code)
-{
-    return 0;
-}
+int Proxy_errorHandle(struct Proxy *proxy, int error_code) { return 0; }

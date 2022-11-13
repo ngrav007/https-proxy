@@ -1,17 +1,21 @@
 #include "utility.h"
 
-int Util_getchar(int fd)
+int get_char(int fd)
 {
     char c;
-    return (read(fd, &c, 1) == 1) ? (unsigned char)c : EOF;
+    int n = read(fd, &c, 1);
+    if (n == 1) {
+        return c;
+    }
+    return EOF;
 }
 
-char *Util_readline(int fd, size_t *len)
+char *readline(int fd, size_t *len)
 {
     char *line = NULL;
     size_t n   = 0;
     int c;
-    while ((c = Util_getchar(fd)) != EOF) {
+    while ((c = get_char(fd)) != EOF) {
         line      = realloc(line, n + 1);
         line[n++] = c;
 
@@ -55,7 +59,7 @@ unsigned long hash_foo(unsigned char *str)
     return hash;
 }
 
-double Util_get_time(void)
+double get_time(void)
 {
     struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
@@ -81,7 +85,14 @@ struct timespec timespec_diff(struct timespec start, struct timespec end)
     return diff;
 }
 
-bool Util_is_whitespace(char c)
+void print_ascii(char *buf, size_t len)
 {
-    return (c == ' ' || c == '\t' || c == '\r' || c == '\n');
+    for (size_t i = 0; i < len; i++) {
+        if (isprint(buf[i])) {
+            printf("%c", buf[i]);
+        } else {
+            printf(".");
+        }
+    }
+    printf("\n");
 }

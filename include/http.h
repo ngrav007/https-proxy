@@ -2,6 +2,7 @@
 #define _HTTP_H_
 
 #include "colors.h"
+#include "config.h"
 #include "utility.h"
 
 #include <ctype.h>
@@ -24,7 +25,7 @@ typedef struct HTTP_Request {
     size_t path_l;
     size_t host_l;
     size_t port_l;
-} * HTTP_Request;
+} HTTP_Request;
 
 typedef struct HTTP_Response {
     char *header;
@@ -34,18 +35,18 @@ typedef struct HTTP_Response {
     size_t header_l;
     size_t body_l;
     size_t response_l;
-} * HTTP_Response;
+} HTTP_Response;
 
-HTTP_Request HTTP_parse_request(char *request, size_t len);
-HTTP_Response HTTP_parse_response(char *response, size_t len);
+HTTP_Request *HTTP_parse_request(char *request, size_t len);
+HTTP_Response *HTTP_parse_response(char *response, size_t len);
 void HTTP_free_request(void *request);
 void HTTP_free_response(void *response);
 void HTTP_print_request(void *request);
 void HTTP_print_response(void *response);
-short HTTP_get_port(HTTP_Request request);
+short HTTP_get_port(HTTP_Request *request);
 long HTTP_get_max_age(char *httpstr);
 ssize_t HTTP_get_content_length(char *httpstr);
-char *HTTP_response_to_string(HTTP_Response request, long age, size_t *strlen,
+char *HTTP_response_to_string(HTTP_Response *request, long age, size_t *strlen,
                               bool is_from_cache);
 size_t HTTP_body_len(char *httpstr, size_t len);
 ssize_t HTTP_header_len(char *httpstr);

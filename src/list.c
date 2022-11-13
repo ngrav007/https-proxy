@@ -1,4 +1,4 @@
-#include "LinkedList.h"
+#include "list.h"
 
 static Node *get_node(List *list, int index);
 static Node *get_nodeByVal(List *list, void *data);

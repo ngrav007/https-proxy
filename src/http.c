@@ -1,11 +1,9 @@
 #include "http.h"
 
-#define CRLF_L 2
-
-HTTP_Request HTTP_parse_request(char *request, size_t len)
+HTTP_Request *HTTP_parse_request(char *request, size_t len)
 {
-    HTTP_Request req = calloc(1, sizeof(struct HTTP_Request));
-    req->request_l   = len;
+    HTTP_Request *req = calloc(1, sizeof(struct HTTP_Request));
+    req->request_l    = len;
 
     /* store the request string */
     req->request = calloc(len + 1, sizeof(char));
@@ -92,7 +90,7 @@ void HTTP_free_request(void *request)
     if (request == NULL) {
         return;
     }
-    HTTP_Request req = (HTTP_Request)request;
+    HTTP_Request *req = (HTTP_Request *)request;
     free(req->request);
     free(req->path);
     free(req->host);
@@ -100,10 +98,10 @@ void HTTP_free_request(void *request)
     free(req);
 }
 
-HTTP_Response HTTP_parse_response(char *response, size_t len)
+HTTP_Response *HTTP_parse_response(char *response, size_t len)
 {
-    HTTP_Response res = calloc(1, sizeof(struct HTTP_Response));
-    res->response_l   = len;
+    HTTP_Response *res = calloc(1, sizeof(struct HTTP_Response));
+    res->response_l    = len;
 
     /* store the header string */
     ssize_t header_len = HTTP_header_len(response);
@@ -150,7 +148,7 @@ void HTTP_free_response(void *response)
     if (response == NULL) {
         return;
     }
-    HTTP_Response res = (HTTP_Response)response;
+    HTTP_Response *res = (HTTP_Response *)response;
     free(res->header);
     free(res->body);
     free(res);
@@ -163,7 +161,7 @@ void HTTP_print_request(void *request)
         return;
     }
 
-    HTTP_Request req = (HTTP_Request)request;
+    HTTP_Request *req = (HTTP_Request *)request;
     printf("%sRequest:%s\n", YEL, reset);
     printf("%s\n(%ld)\n", req->request, req->request_l);
     printf("  path: %s (%ld)\n", req->path, req->path_l);
@@ -178,13 +176,13 @@ void HTTP_print_response(void *response)
         return;
     }
 
-    HTTP_Response res = (HTTP_Response)response;
+    HTTP_Response *res = (HTTP_Response *)response;
     printf("%sResponse:%s\n", YEL, reset);
     printf("  header:\n%s (%ld)\n", res->header, res->header_l);
     printf("  max-age: %ld\n", res->max_age);
 }
 
-short HTTP_get_port(HTTP_Request request)
+short HTTP_get_port(HTTP_Request *request)
 {
     if (request == NULL) {
         fprintf(stderr, "[Error] invalid request\n");
@@ -275,7 +273,7 @@ ssize_t HTTP_get_content_length(char *httpstr)
     return atol(content_length_value);
 }
 
-char *HTTP_response_to_string(HTTP_Response response, long age, size_t *len,
+char *HTTP_response_to_string(HTTP_Response *response, long age, size_t *len,
                               bool is_from_cache)
 {
     if (response == NULL) {

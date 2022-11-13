@@ -22,9 +22,8 @@ int main(int argc, char **argv)
     // HTTP_free_request(req);
 
     // /* --- Testing HTTP_Response --- */
-    // struct HTTP_Response *res = HTTP_parse_response(response, sizeof(response));
-    // HTTP_print_response(res);
-    // size_t res_str_len = 0;
+    // struct HTTP_Response *res = HTTP_parse_response(response,
+    // sizeof(response)); HTTP_print_response(res); size_t res_str_len = 0;
     // fprintf(stderr, "response body: %s\n", res->body);
     // char *res_str = HTTP_response_to_string(res, 42, &res_str_len);
     // fprintf(stderr, "%sResponse string:%s\n%s", BLU, reset, res_str);

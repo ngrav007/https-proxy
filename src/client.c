@@ -1,4 +1,4 @@
-#include "Client.h"
+#include "client.h"
 
 /* Client_new
  *    Purpose: Creates a new Client, and returns a pointer to it. Client
@@ -14,8 +14,8 @@ Client *Client_new()
         return NULL;
     }
 
-    client->socket            = -1;
-    client->loggedIn          = false;
+    client->socket = -1;
+    // client->loggedIn          = false; // TODO - remove
     client->slowMofo          = false;
     client->buffer_l          = 0;
     client->last_recv.tv_sec  = 0;
@@ -31,14 +31,14 @@ Client *Client_new()
  *             @id - Client id
  *    Returns: Pointer to a new Client, or NULL if memory allocation fails.
  */
-Client *Client_create(int socket, char *id)
+Client *Client_create(int socket)
 {
     Client *client = Client_new();
     if (client == NULL) {
         return NULL;
     }
 
-    if (Client_init(client, id, socket) != 0) {
+    if (Client_init(client, socket) != 0) {
         Client_free(&client);
         return NULL;
     }
@@ -57,15 +57,15 @@ Client *Client_create(int socket, char *id)
  * Note: If id is too long, it will be truncated to fit in the buffer
  *       including the null terminator.
  */
-int Client_init(Client *client, char *id, int socket)
+int Client_init(Client *client, int socket)
 {
     if (client == NULL || socket == -1) {
         return -1;
     }
 
     Client_setSocket(client, socket);
-    Client_setId(client, id);
-    client->loggedIn = false;
+    // Client_setId(client, id);    // TODO - remove
+    // client->loggedIn = false;    // TODO - Remove
     client->buffer_l = 0;
 
     return 0;
@@ -103,16 +103,17 @@ void Client_print(void *client)
         printf("[Client] (null)\n");
     } else {
         fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
-        fprintf(stderr, "  id = %s\n", c->id);
+        // fprintf(stderr, "  id = %s\n", c->id);
         fprintf(stderr, "  socket = %d\n", c->socket);
-        fprintf(stderr, "  loggedIn = %s\n", (c->loggedIn) ? "true" : "false");
+        // fprintf(stderr, "  loggedIn = %s\n", (c->loggedIn) ? "true" :
+        // "false");
         fprintf(stderr, "  partialRead = %s\n",
                 (c->slowMofo) ? "true" : "false");
-        fprintf(stderr, "   last_recv = %ld.%06ld\n", c->last_recv.tv_sec,
+        fprintf(stderr, "   last_recv = %ld.%d\n", c->last_recv.tv_sec,
                 c->last_recv.tv_usec);
-        fprintf(stderr, "  buffer_l = %d\n", c->buffer_l);
+        fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
         if (c->buffer_l > 0) {
-            printAscii(c->buffer, c->buffer_l);
+            print_ascii(c->buffer, c->buffer_l);
         } else {
             fprintf(stderr, "  buffer = \"\"\n");
         }
@@ -185,16 +186,16 @@ int Client_setSocket(Client *client, int socket)
  *             @header - Pointer to a header string
  *    Returns: 0 on success, -1 on failure.
  */
-int Client_setHeader(Client *client, char *buffer, int length)
-{
-    if (client == NULL || buffer == NULL || length < 0) {
-        return -1;
-    }
+// int Client_setHeader(Client *client, char *buffer, int length)
+// {
+//     if (client == NULL || buffer == NULL || length < 0) {
+//         return -1;
+//     }
 
-    int ret = ChatHdr_fromNetString(&client->header, buffer, length);
+//     int ret = ChatHdr_fromNetString(&client->header, buffer, length);
 
-    return ret;
-}
+//     return ret;
+// }
 
 /* Client_setId
  *    Purpose: Sets the client id for a Client, if the client id is too long
@@ -204,26 +205,26 @@ int Client_setHeader(Client *client, char *buffer, int length)
  *             @id - Client id string, must be null terminated
  *    Returns: 0 on success, -1 on failure.
  */
-int Client_setId(Client *client, char *id)
-{
-    if (client == NULL || id == NULL) {
-        return -1;
-    }
+// int Client_setId(Client *client, char *id)
+// {
+//     if (client == NULL || id == NULL) {
+//         return -1;
+//     }
 
-    /* clear the id if it's already set */
-    if (client->id[0] != '\0') {
-        memset(client->id, 0, MAX_ID_SZ);
-    }
+//     /* clear the id if it's already set */
+//     if (client->id[0] != '\0') {
+//         memset(client->id, 0, MAX_ID_SZ);
+//     }
 
-    size_t idLength = strlen(id);
-    if (idLength > MAX_ID_SZ) {
-        return -1;
-    } else {
-        strncpy(client->id, id, idLength);
-    }
+//     size_t idLength = strlen(id);
+//     if (idLength > MAX_ID_SZ) {
+//         return -1;
+//     } else {
+//         strncpy(client->id, id, idLength);
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 /* Client_setLoggedIn
  *    Purpose: Sets the logged in status for a Client to given value.
@@ -231,16 +232,16 @@ int Client_setId(Client *client, char *id)
  *             @loggedIn - Logged in status (true or false)
  *    Returns: 0 on success, -1 on failure.
  */
-int Client_setLoggedIn(Client *client, bool loggedIn)
-{
-    if (client == NULL) {
-        return -1;
-    }
+// int Client_setLoggedIn(Client *client, bool loggedIn)
+// {
+//     if (client == NULL) {
+//         return -1;
+//     }
 
-    client->loggedIn = loggedIn;
+//     client->loggedIn = loggedIn;
 
-    return 0;
-}
+//     return 0;
+// }
 
 /* Client_setAddr
  *     Purpose: Copies the address of the client into the client struct for
@@ -281,28 +282,28 @@ int Client_getSocket(Client *client)
  * Parameters: @client - Pointer to a Client
  *    Returns: A constant pointer to the client id string, or NULL on failure.
  */
-const char *Client_getId(Client *client)
-{
-    if (client == NULL) {
-        return NULL;
-    }
+// const char *Client_getId(Client *client)
+// {
+//     if (client == NULL) {
+//         return NULL;
+//     }
 
-    return client->id;
-}
+//     return client->id;
+// }
 
 /* Client_isLoggedIn
  *    Purpose: Returns the logged in status for a Client
  * Parameters: @client - Pointer to a Client
  *    Returns: Logged in status (true or false)
  */
-bool Client_isLoggedIn(Client *client)
-{
-    if (client == NULL) {
-        return false;
-    }
+// bool Client_isLoggedIn(Client *client)
+// {
+//     if (client == NULL) {
+//         return false;
+//     }
 
-    return client->loggedIn;
-}
+//     return client->loggedIn;
+// }
 
 /* Client_isSlowMofo
  *    Purpose: Returns the slowMofo status for a Client

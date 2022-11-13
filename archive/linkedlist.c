@@ -1,11 +1,12 @@
-#include "list.h"
+#include "linkedlist.h"
 
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-List List_new() {
+List List_new()
+{
     List list = calloc(1, sizeof(struct List));
     if (list == NULL) {
         fprintf(stderr, "[Error] List_new: calloc failed\n");
@@ -20,9 +21,10 @@ List List_new() {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-void List_free(List *list) {
+void List_free(List *list)
+{
     if (list == NULL || *list == NULL) {
         return;
     }
@@ -41,9 +43,10 @@ void List_free(List *list) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-void List_print(List list, void (*foo)(void *)) {
+void List_print(List list, void (*foo)(void *))
+{
     Node node = list->head;
     while (node != NULL) {
         Entry_print(node->entry, foo);
@@ -55,9 +58,10 @@ void List_print(List list, void (*foo)(void *)) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-int List_add_back(List list, Entry entry) {
+int List_add_back(List list, Entry entry)
+{
     if (list == NULL) {
         fprintf(stderr, "[Error] List_add_to_back: list == NULL\n");
         return -1;
@@ -82,9 +86,10 @@ int List_add_back(List list, Entry entry) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-int List_add_front(List list, Entry entry) {
+int List_add_front(List list, Entry entry)
+{
     if (list == NULL) {
         fprintf(stderr, "[Error] List_add_to_front: list == NULL\n");
         return -1;
@@ -111,9 +116,10 @@ int List_add_front(List list, Entry entry) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-Entry List_remove_back(List list) {
+Entry List_remove_back(List list)
+{
     if (list == NULL) {
         fprintf(stderr, "[Error] List_get_back: list == NULL\n");
         return NULL;
@@ -140,9 +146,10 @@ Entry List_remove_back(List list) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-Entry List_remove_front(List list) {
+Entry List_remove_front(List list)
+{
     if (list == NULL) {
         fprintf(stderr, "[Error] List_get_front: list == NULL\n");
         return NULL;
@@ -168,9 +175,10 @@ Entry List_remove_front(List list) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-Entry List_remove(List list, Entry entry) {
+Entry List_remove(List list, Entry entry)
+{
     if (list == NULL) {
         fprintf(stderr, "[Error] List_remove: list == NULL\n");
         return NULL;
@@ -200,9 +208,10 @@ Entry List_remove(List list, Entry entry) {
 /*
  *    Purpose:
  * Parameters:
- *    Returns: 
+ *    Returns:
  */
-Entry List_get(List list, char *key) {
+Entry List_get(List list, char *key)
+{
     if (list == NULL) {
         fprintf(stderr, "[Error] List_get: list == NULL\n");
         return NULL;

@@ -15,7 +15,7 @@
 typedef struct List {
     Node head;
     Node tail;
-} * List;
+} *List;
 
 List List_new();
 void List_free(List *list);
