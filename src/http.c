@@ -342,53 +342,6 @@ unsigned int parse_maxAge(char *header)
     return maxAge;
 }
 
-/* sets key (resource string), hostname, and port numbers from 
-   given header (lowercase'd) */
-// void parse_host(char *header, char **key, 
-//                 char **hostname, short *port)
-// {
-//     // char *endResourceLine = strstr(header, HDR_LN_END);
-//     char *start = strstr(header, " ");
-//     char *secondSpaceResourceLine = strstr(start + 1, " ");
-//     char *resource = get_buffer(start + 1, 
-//                                    secondSpaceResourceLine); /* malloc'd */
-//     int keysize = strlen(resource);
-//     *key = malloc(keysize + 1); /* malloc'd */
-//     (*key)[keysize] = '\0';
-//     memcpy(*key, resource, keysize);
-//     /*****/
-
-//     char *startHostField = strstr(header, HOST); // "Host :"
-//     char *endHostField = strstr(startHostField, HDR_LN_END);
-
-//     char *value = get_buffer(startHostField + HOST_SIZE, 
-//                                 endHostField); /* malloc'd */
-    
-//     value = removeSpaces(value, strlen(value));
-//     int size = strlen(value);
-
-//     char *colon = strstr(value, ":");
-//     if (colon != NULL) {
-//         *port = (unsigned short) strtoul(colon + 1, NULL, 10);
-//         // printf("Port (parser): %u\n", *port);
-
-//         size = colon - value;
-//         *hostname = malloc(size + 1);  /* malloc'd */
-//         (*hostname)[size] = '\0';
-
-//         memcpy(*hostname, value, size); 
-//         // printf("Hostname (parser): %s\n", *hostname);
-//     } else {
-//         *hostname = malloc(size + 1);  /* malloc'd */
-//         (*hostname)[size] = '\0';
-//         memcpy(*hostname, value, size); 
-//         // printf("Hostname (parser): %s\n", *hostname);
-//     }
-
-//     free(resource);
-//     free(value);
-// }
-
 /* returns the string for "Age: <age>\r\n" */
 char *make_ageField(unsigned int age)
 {
