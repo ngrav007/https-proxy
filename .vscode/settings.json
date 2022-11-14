@@ -6,6 +6,9 @@
         "bitset": "c",
         "initializer_list": "c",
         "unordered_map": "c",
-        "vector": "c"
+        "vector": "c",
+        "__threading_support": "cpp",
+        "string": "c",
+        "string_view": "c"
     }
 }

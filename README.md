@@ -42,3 +42,6 @@ Final due data: Wednesday 12/14/2022
 - Error handling
 - ask if in http 2.0 do we keep connection with user if we already served them the requested resource.
 
+
+## Advances - to benchmark later 
+- optimization: dynamic key strings for proxy cache. 

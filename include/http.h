@@ -23,6 +23,12 @@ typedef struct HTTP_Header {
     size_t method_l;
 } HTTP_Header;
 
+typedef struct Response {
+    unsigned long size;     /* size of entire message in bytes */
+    char *raw;              /* original "raw" response message. */
+} Response;
+
+/* Header related functions */
 bool HTTP_got_header (char *buffer);
 int HTTP_parse(HTTP_Header *header, char *buffer, size_t len);
 void HTTP_free_header(void *header);
@@ -34,6 +40,7 @@ ssize_t HTTP_get_content_length(char *httpstr);
 ssize_t HTTP_body_len(char *httpstr, size_t len);
 ssize_t HTTP_header_len(char *httpstr);
 
+/* Parsing related functions */
 char *parse_path(char *header, size_t *len);
 char *parse_method(char *header, size_t *len);
 char *parse_host(char *header, size_t *host_len, char **port, size_t *port_len);
@@ -43,5 +50,12 @@ long parse_contentLength(char *header);
 char *removeSpaces      (char *str, int size);
 unsigned int parse_maxAge(char *header);
 char *make_ageField(unsigned int age);
+
+/* Response related functions */
+Response *Response_new(unsigned long size, char *message);
+void Response_free(void *response);
+unsigned long Response_size(Response *response);
+char *Response_get(Response *response);
+void Response_print(void *response);
 
 #endif /* _HTTP_H_ */

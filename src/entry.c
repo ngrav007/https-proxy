@@ -10,7 +10,6 @@ Entry *Entry_new(void *value, void *key, size_t key_l, long max_age)
     entry->value = value;
     memcpy(entry->key, key, key_l);
     entry->key_l     = key_l;
-    entry->hash      = hash_foo((unsigned char *)key);
     entry->max_age   = max_age;
     entry->ttl       = max_age;
     entry->stale     = (entry->ttl <= 0) ? true : false;
@@ -18,7 +17,7 @@ Entry *Entry_new(void *value, void *key, size_t key_l, long max_age)
     entry->retrieved = RETRIEVED_VALUE;
     struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
-    entry->created = timespec_to_double(now);
+    entry->init_time = timespec_to_double(now);
 
     return entry;
 }
@@ -32,7 +31,6 @@ void Entry_init(Entry *entry, char *key, void *value, unsigned long hash,
         entry->value = value;
         entry->key_l = strlen(key);
         strncpy(entry->key, key, entry->key_l);
-        entry->hash    = hash;
         entry->max_age = max_age;
         entry->ttl     = max_age;
 
@@ -56,7 +54,6 @@ void Entry_free(Entry **entry, void (*foo)(void *))
     (*entry)->value = NULL;
     memset((*entry)->key, 0, PATH_MAX);
     (*entry)->key_l   = 0;
-    (*entry)->hash    = 0;
     (*entry)->max_age = 0;
     (*entry)->ttl     = 0;
     (*entry)->stale   = false;
@@ -78,7 +75,6 @@ void Entry_delete(Entry *entry, void (*foo)(void *))
     entry->value = NULL;
     memset(entry->key, 0, PATH_MAX);
     entry->key_l   = 0;
-    entry->hash    = 0;
     entry->max_age = 0;
     entry->ttl     = 0;
     entry->deleted = true;
@@ -97,8 +93,7 @@ void Entry_print(Entry *entry, void (*foo)(void *))
         foo(entry->value);
     }
     fprintf(stderr, "    key = %s\n", entry->key);
-    fprintf(stderr, "    hash = %lu\n", entry->hash);
-    fprintf(stderr, "    created = %f\n", entry->created);
+    fprintf(stderr, "    init_time = %f\n", entry->init_time);
     fprintf(stderr, "    max_age = %f\n", entry->max_age);
     fprintf(stderr, "    ttl = %f\n", entry->ttl);
     fprintf(stderr, "    stale = %d\n", entry->stale);
@@ -122,7 +117,7 @@ int Entry_update(Entry *entry, void *value, long max_age, void (*foo)(void *))
     entry->value   = value;
     entry->max_age = max_age;
     entry->ttl     = max_age;
-    entry->created = get_time();
+    entry->init_time = get_time();
     entry->stale   = (entry->ttl <= 0) ? true : false;
     entry->deleted = false;
 
@@ -139,7 +134,7 @@ int Entry_touch(Entry *entry)
     }
 
     double now = get_time();
-    double age = now - entry->created;
+    double age = now - entry->init_time;
     entry->ttl = entry->max_age - age;
 
     if (entry->ttl <= 0) {
@@ -159,7 +154,7 @@ long Entry_get_age(Entry *entry)
     }
 
     double now = get_time();
-    double age = now - entry->created;
+    double age = now - entry->init_time;
 
     return (long)age;
 }
@@ -179,7 +174,7 @@ bool Entry_is_older(Entry *entry1, Entry *entry2)
     if (entry1 == NULL || entry2 == NULL) {
         return false;
     }
-    return entry1->created < entry2->created;
+    return entry1->init_time < entry2->init_time;
 }
 
 bool Entry_is_equal(Entry *entry, char *key)
@@ -206,7 +201,7 @@ void Entry_debug_print(Entry *entry)
     }
     fprintf(stderr, "Entry {\n");
     fprintf(stderr, "    key = %s\n", entry->key);
-    fprintf(stderr, "    created = %f\n", entry->created);
+    fprintf(stderr, "    init_time = %f\n", entry->init_time);
     fprintf(stderr, "    max_age = %f\n", entry->max_age);
     fprintf(stderr, "    ttl = %f\n", entry->ttl);
     fprintf(stderr, "    stale = %d\n", entry->stale);

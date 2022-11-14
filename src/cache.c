@@ -3,7 +3,6 @@
 static int remove_stale_entry(Cache *cache);
 
 /* ----------------------- Cache Function Definitions ----------------------- */
-
 Cache *Cache_new(size_t cap, void (*free_foo)(void *),
                  void (*print_foo)(void *))
 {
@@ -18,18 +17,10 @@ Cache *Cache_new(size_t cap, void (*free_foo)(void *),
         return NULL;
     }
 
-    /* Note: uncomment to enable first-in-first-out eviction policy */
-    // cache->fifo = List_new();
-    // if (cache->fifo == NULL) {
-    //     free(cache->table);
-    //     free(cache);
-    //     return NULL;
-    // }
 
     cache->lru = List_new(NULL, NULL, NULL); // TODO - insert correct params
     if (cache->lru == NULL) {
         /* Note: uncomment to enable first-in-first-out eviction policy */
-        // List_free(&cache->fifo);
         free(cache->table);
         free(cache);
         return NULL;
@@ -64,11 +55,10 @@ int Cache_put(Cache *cache, char *key, void *value, long max_age)
     size_t i;
     for (i = 0; i < cache->capacity; i++) {
         /* Empty slot */
-        if (&cache->table[i] == NULL) {
+        if (cache->table[i] == NULL) {
             cache->table[i] = e;
             cache->size++;
             /* Note: uncomment to enable first-in-first-out eviction policy */
-            // List_push_back(cache->fifo, e);
             List_push_back(cache->lru, e);
             return 0;
         } else if (cache->table[i]->deleted) {
@@ -76,7 +66,6 @@ int Cache_put(Cache *cache, char *key, void *value, long max_age)
             cache->table[i] = e;
             cache->size++;
             /* Note: uncomment to enable first-in-first-out eviction policy */
-            // List_push_back(cache->fifo, e);
             List_push_back(cache->lru, e);
             return 0;
         }
@@ -97,14 +86,8 @@ void *Cache_get(Cache *cache, char *key)
         if (e == NULL) {
             continue;
         } else if (strncmp(e->key, key, strlen(key)) == 0) { // Key Found
-            /* note: uncomment to enable first-in-first-out eviction policy */
-            // if (!e->retrieved) {
-            // List_remove(cache->fifo, e);
-            // List_push_back(cache->lru, e);
-            // } else {
             List_remove(cache->lru, e);
             List_push_back(cache->lru, e);
-            // }
 
             e->retrieved = true;
             if (e->stale) { // TODO - check if this is correct
@@ -152,7 +135,6 @@ int Cache_remove(Cache *cache, char *key)
     }
 
     /* Note: uncomment to enable first-in-first-out eviction policy */
-    // List_remove(cache->fifo, e);
     List_remove(cache->lru, e);
 
     Entry_free(&e, cache->free_foo);
@@ -176,20 +158,9 @@ int Cache_evict(Cache *cache)
         return 0;
     }
 
-    /* Note: uncomment to enable first-in-first-out eviction policy */
-    /* Evict FIFO Entry */
-    // if (cache->fifo->head != NULL) {
-    //     Entry e = List_pop_front(cache->fifo);
-    //     Entry_delete(e, cache->free_foo);
-    //     cache->size--;
-    //     return 0;
-    // }
-
     /* Evict LRU Entry */
     if (cache->lru->head != NULL) {
         List_pop_front(cache->lru);
-        // Entry *e = List_pop_front(cache->lru);
-        // Entry_delete(e, cache->free_foo);
         cache->size--;
 
         return 0;
@@ -239,9 +210,7 @@ void Cache_free(Cache **cache)
     }
 
     /* Note: uncomment to enable first-in-first-out eviction policy */
-    // List_free(&(*cache)->fifo);
     List_free(&(*cache)->lru);
-
     free((*cache)->table);
     free((*cache));
     cache = NULL;
@@ -259,9 +228,8 @@ void Cache_print(Cache *cache)
     size_t i;
     for (i = 0; i < cache->capacity; i++) {
         Entry_print(cache->table[i], cache->print_foo);
-        /* Note: uncomment to enable first-in-first-out eviction policy */
-        // Entry_debug_print(cache->table[i]);
     }
+    fprintf(stderr, "}\n");
 }
 
 long Cache_get_age(Cache *cache, char *key)
@@ -275,7 +243,7 @@ long Cache_get_age(Cache *cache, char *key)
         return -1;
     }
 
-    return get_time() - e->created;
+    return get_time() - e->init_time;
 }
 
 static int remove_stale_entry(Cache *cache)
@@ -301,7 +269,6 @@ static int remove_stale_entry(Cache *cache)
 
     /* remove oldest entry from fifo and lru lists */
     /* Note: uncomment to enable first-in-first-out eviction policy */
-    // List_remove(cache->fifo, oldest);
     List_remove(cache->lru, oldest);
 
     /* remove oldest stale entry */

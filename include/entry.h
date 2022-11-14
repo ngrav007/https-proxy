@@ -20,9 +20,8 @@
 typedef struct Entry {
     void *value;
     char key[PATH_MAX + HOST_NAME_MAX + 1];
-    unsigned long hash;
     size_t key_l;
-    double created;
+    double init_time;     // time this entry was created
     double max_age;
     double ttl;
 

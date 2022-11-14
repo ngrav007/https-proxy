@@ -353,3 +353,113 @@ char *make_ageField(unsigned int age)
     return field;
 }
 
+
+
+
+/**
+ * Response_new
+ * Purpose: Allocates memory for a Response and initializes it's size
+ *          and original raw bytes of the response..
+ * Parameter: the number of bytes of the response to store, and the 
+ *            original response message.
+ * Returns: pointer to a Response containing the response data.
+ * Note: Response creates its own heap allocate memory for the raw 
+ *       response message. It does NOT copy the point to the string 
+ *       that the message parameter points to. It is the responsibility of 
+ *       the caller to deallocate the memory of the message argument, if need.
+ */
+Response *Response_new(unsigned long size, char *message)
+{
+    Response *response = malloc(sizeof(struct Response));
+    if (response == NULL) {
+        fprintf(stderr, "Unable to allocate memory for Response structure.\n");
+        exit(1);
+    }
+
+    /* create malloc'd copy of message buffer */
+    response->size = size;
+    response->raw = calloc(size, sizeof(char));
+    if (response->raw == NULL) {
+        fprintf(stderr, "Unable to allocate memory for response data.\n");
+        exit(1);
+    }
+    memcpy(response->raw, message, size);
+
+    // Response_print(response);
+
+    return response;
+}
+
+/**
+ * Response_free
+ * Purpose: Deallocates the memory pointed to by content.
+ * Parameter: Pointer to the FileContent to deallocate.
+ * Returns: nothing. 
+ */
+void Response_free(void *response)
+{
+    if (response == NULL) {
+        return;
+    }
+
+    Response *r = response; 
+    free(r->raw);
+    free(r);
+}
+
+/**
+ * Response_get
+ * Parameter: a Response called response.
+ * Return: char array representing the raw bytes of the original store response
+ *         message.
+ */
+char *Response_get(Response *response) 
+{ 
+    if (response == NULL) { return NULL; }
+    return response->raw; 
+}
+
+/**
+ * Response_size
+ * Parameter: a Response called response.
+ * Return: size of response message in bytes.
+ */
+unsigned long Response_size(Response *response) 
+{ 
+    if (response == NULL) { return 0; }
+    return response->size; 
+}
+
+/**
+ * Response_print
+ * Purpose: Prints the file response message contained in given Response.
+ * Parameter: a Response called response.
+ * Returns: nothing. 
+ */
+void Response_print(void *response)
+{
+    if (response == NULL) { return; }
+    Response *r = (Response *)response;
+    print_ascii(r->raw, r->size);
+}
+
+
+// void Response_print(void *response)
+// {
+//     if (response == NULL) return;
+//     Response *r = (Response *)response;
+
+//     unsigned long i = 0;
+//     unsigned long size = r->size;
+
+//     for (i = 0; i < size; i++) {
+//         if (r->raw[i] == '\n') {
+//             putc('\n', stdout);
+//         } else if (r->raw[i] == '\r') {
+//             putc('\r', stdout);
+//         } else {
+//             putc(r->raw[i], stdout);
+//         }
+        
+//     }
+// }

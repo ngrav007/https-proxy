@@ -1,4 +1,5 @@
 #include "http.h"
+#include "cache.h"
 #include <assert.h>
 
 int main(int argc, char **argv)
@@ -8,36 +9,57 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    char request[] = "GET http://www.example.com/some/path HTTP/1.1\r\n"
-                     "Host: www.someschool.edu:666\r\n\r\n";    // 86 bytes
+    // char request[] = "GET http://www.example.com/some/path HTTP/1.1\r\n"
+    //                  "Host: www.someschool.edu:666\r\n\r\n";    // 85 bytes
     
-    char request2[] = "GET http://www.tombombadill.com/some/path HTTP/1.1\r\n"
-                     "Host: www.someschool.edu\r\n\r\n";        // 82 bytes
+    // char request2[] = "GET http://www.tombombadill.com/some/path HTTP/1.1\r\n"
+    //                  "Host: www.someschool.edu\r\n\r\n";        // 82 bytes
     
-    bool testbool = HTTP_got_header(request);
-    assert(testbool == true);
-    fprintf(stderr, "HTTP_got_header: passed\n");
+    // bool testbool = HTTP_got_header(request);
+    // assert(testbool == true);
+    // fprintf(stderr, "HTTP_got_header: passed\n");
 
-    HTTP_Header test_header;
-    int ret = HTTP_parse(&test_header, request, 86);
-    assert(ret == 0);
+    // HTTP_Header test_header;
+    // int ret = HTTP_parse(&test_header, request, 86);
+    // assert(ret == 0);
 
-    fprintf(stderr, "Method: %s (%ld)\nPath: %s (%ld)\nHost: %s (%ld)\nPort: %s (%ld)\n\n", 
-                    test_header.method, test_header.method_l, 
-                    test_header.path, test_header.path_l, 
-                    test_header.host, test_header.host_l, 
-                    test_header.port, test_header.port_l);
+    // fprintf(stderr, "Method: %s (%ld)\nPath: %s (%ld)\nHost: %s (%ld)\nPort: %s (%ld)\n\n", 
+    //                 test_header.method, test_header.method_l, 
+    //                 test_header.path, test_header.path_l, 
+    //                 test_header.host, test_header.host_l, 
+    //                 test_header.port, test_header.port_l);
 
-    HTTP_free_header(&test_header);
-    ret = HTTP_parse(&test_header, request2, 82);
-    assert(ret == 0);
+    // HTTP_free_header(&test_header);
+    // ret = HTTP_parse(&test_header, request2, 82);
+    // assert(ret == 0);
 
-    fprintf(stderr, "Method: %s (%ld)\nPath: %s (%ld)\nHost: %s (%ld)\nPort: %s (%ld)\n\n", 
-                    test_header.method, test_header.method_l, 
-                    test_header.path, test_header.path_l, 
-                    test_header.host, test_header.host_l, 
-                    test_header.port, test_header.port_l);
+    // fprintf(stderr, "Method: %s (%ld)\nPath: %s (%ld)\nHost: %s (%ld)\nPort: %s (%ld)\n\n", 
+    //                 test_header.method, test_header.method_l, 
+    //                 test_header.path, test_header.path_l, 
+    //                 test_header.host, test_header.host_l, 
+    //                 test_header.port, test_header.port_l);
 
+    Cache *cache = Cache_new(2, Response_free, Response_print);
+    Cache_print(cache);
+
+
+    char request0[85] = "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu:666\r\n\r\n"; // 85 bytes
+    char request1[85] = "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu:666\r\n\r\n"; // 85 bytes
+    char request2[85] = "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu:666\r\n\r\n"; // 85 bytes
+    Response *r0 = Response_new(85, request0); /* malloc'd */
+    Cache_put(cache, "ZippidyZap", r0, 10);
+    Cache_print(cache);
+
+    Response *r1 = Response_new(85, request1);
+    Cache_put(cache, "ByeFelicia", r1, 0);
+    Cache_print(cache);
+
+    Response *r2 = Response_new(85, request2);
+    Cache_put(cache, "StayWithMe", r2, 20);
+    Cache_print(cache);
+
+
+    // Response_free((void *)r0);
 
     // char request[] =
     //     "GET http://www.example.com/some/path HTTP/1.1\r\n"
@@ -67,7 +89,9 @@ int main(int argc, char **argv)
     // int port = atoi(argv[1]);
     // Proxy_run(port, CACHE_SZ);
 
-    HTTP_free_header(&test_header);
+    // HTTP_free_header(&test_header);
+
+    Cache_free(&cache);
 
     return 0;
 }

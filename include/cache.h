@@ -18,7 +18,6 @@
 
 typedef struct Cache {
     Entry **table;
-    // List fifo;
     List *lru;
 
     size_t capacity;

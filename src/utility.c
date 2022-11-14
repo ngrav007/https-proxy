@@ -108,11 +108,12 @@ struct timespec timespec_diff(struct timespec start, struct timespec end)
 
 void print_ascii(char *buf, size_t len)
 {
-    for (size_t i = 0; i < len; i++) {
+    size_t i;
+    for (i = 0; i < len; i++) {
         if (isprint(buf[i])) {
-            printf("%c", buf[i]);
+            fprintf(stderr, "%c", buf[i]);
         } else {
-            printf(".");
+            fprintf(stderr, ".");
         }
     }
     printf("\n");
