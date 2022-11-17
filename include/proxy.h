@@ -65,7 +65,7 @@ void Proxy_print(Proxy *proxy);
 ssize_t Proxy_read(Proxy *proxy, int socket);
 ssize_t Proxy_write(Proxy *proxy, int socket);
 int Proxy_handle(Proxy *proxy);
-
+// ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port);
 // Connection *Connection_new(struct HTTP_Request *request,
 //                            struct HTTP_Response *response);
 // void Connection_init(Connection *conn, struct HTTP_Request *request,
@@ -78,5 +78,8 @@ int Proxy_handleListener(Proxy *proxy);
 int Proxy_handleClient(Proxy *proxy, Client *client);
 int Proxy_handleTimeout(Proxy *proxy);
 int Proxy_errorHandle(Proxy *proxy, int error_code);
+void Proxy_close_socket(int socket, fd_set *master_set, List *client_list, Client *client);
+
+ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request, int requestSize);
 
 #endif /* _PROXY_H_ */

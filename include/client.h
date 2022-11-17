@@ -2,6 +2,7 @@
 #define _CLIENT_H_
 
 #include "config.h"
+#include "http.h"
 #include "utility.h"
 
 #include <arpa/inet.h>
@@ -17,6 +18,7 @@
 typedef struct Client {
     // ChatHeader header;        // header for most recent message // TODO
     // remove
+    char *key;
     struct sockaddr_in addr;  // Client address
     struct timeval last_recv; // Time of last activity
     socklen_t addr_l;         // Length of client address
@@ -44,5 +46,6 @@ const char *Client_getId(Client *client);
 bool Client_isLoggedIn(Client *client);
 bool Client_isSlowMofo(Client *client);
 int Client_timestamp(Client *client);
+int Client_setKey(Client *client, HTTP_Header *header);
 
 #endif /* _CLIENT_H_ */

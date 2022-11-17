@@ -25,4 +25,4 @@ $(BLDDIR)/%.o: $(SRCDIR)/%.c $(INCS)
 	$(CC) $(CFLAGS) -o $@ -c $< 
 
 clean:
-	rm -f $(BLDDIR)/*.o $(BINDIR)/$(TARGET)
+	rm -f $(BLDDIR)/*.o $(BINDIR)/$(TARGET) vgcore.*

@@ -58,14 +58,12 @@ int Cache_put(Cache *cache, char *key, void *value, long max_age)
         if (cache->table[i] == NULL) {
             cache->table[i] = e;
             cache->size++;
-            /* Note: uncomment to enable first-in-first-out eviction policy */
             List_push_back(cache->lru, e);
             return 0;
         } else if (cache->table[i]->deleted) {
             Entry_free(&cache->table[i], cache->free_foo);
             cache->table[i] = e;
             cache->size++;
-            /* Note: uncomment to enable first-in-first-out eviction policy */
             List_push_back(cache->lru, e);
             return 0;
         }
@@ -86,14 +84,14 @@ void *Cache_get(Cache *cache, char *key)
         if (e == NULL) {
             continue;
         } else if (strncmp(e->key, key, strlen(key)) == 0) { // Key Found
-            List_remove(cache->lru, e);
-            List_push_back(cache->lru, e);
-
-            e->retrieved = true;
             if (e->stale) { // TODO - check if this is correct
-                List_remove(cache->lru, e);
-                Entry_delete(e, cache->free_foo);
+                List_remove(cache->lru, e->value);
+                Entry_delete(e, cache->free_foo);   // clear entry and set as 'deleted' for cache linear probing
                 return NULL;
+            } else {
+                List_remove(cache->lru, e);
+                List_push_back(cache->lru, e);
+                e->retrieved = true;
             }
 
             return e->value;

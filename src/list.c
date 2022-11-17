@@ -219,6 +219,8 @@ int List_remove(List *list, void *data)
     }
 
     Node *node = list->head;
+    fprintf(stderr, "[List_remove]");
+    Node_print(node, list->print_data);
     while (node != NULL) {
         if (list->compare(node->data, data)) {
             if (node->prev == NULL) { // head
@@ -244,8 +246,11 @@ int List_remove(List *list, void *data)
             node = NULL;
             list->size--;
 
+            List_print(list); // TODO
+
             return 0;
         }
+        
         node = node->next;
     }
 

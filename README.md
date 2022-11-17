@@ -45,3 +45,5 @@ Final due data: Wednesday 12/14/2022
 
 ## Advances - to benchmark later 
 - optimization: dynamic key strings for proxy cache. 
+- use select on proxy-server side
+  - make proxy carry a List *server_list, and loop through it to access their file descriptors like in the client_list loop. 

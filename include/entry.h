@@ -14,8 +14,6 @@
 #include <unistd.h>
 
 #define RETRIEVED_VALUE true
-#define PATH_MAX        1024
-#define HOST_NAME_MAX   1024
 
 typedef struct Entry {
     void *value;
