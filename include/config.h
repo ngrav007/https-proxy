@@ -54,4 +54,9 @@
 #define PARTIAL_MESSAGE  -8
 #define OVERFLOW_MESSAGE -9
 
+/* Limits */
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 64
+#endif
+
 #endif /* __PROXYCONFIG_H__ */

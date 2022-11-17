@@ -20,7 +20,7 @@ Client *Client_new()
     client->buffer_l          = 0;
     client->last_recv.tv_sec  = 0;
     client->last_recv.tv_usec = 0;
-    client->key = NULL;
+    client->key               = NULL;
 
     return client;
 }
@@ -105,13 +105,10 @@ void Client_print(void *client)
         printf("[Client] (null)\n");
     } else {
         fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
-        // fprintf(stderr, "  id = %s\n", c->id);
         fprintf(stderr, "  socket = %d\n", c->socket);
-        // fprintf(stderr, "  loggedIn = %s\n", (c->loggedIn) ? "true" :
-        // "false");
         fprintf(stderr, "  partialRead = %s\n",
                 (c->slowMofo) ? "true" : "false");
-        fprintf(stderr, "  last_recv = %ld.%ld\n", c->last_recv.tv_sec,
+        fprintf(stderr, "  last_recv = %ld.%d\n", c->last_recv.tv_sec,
                 c->last_recv.tv_usec);
         fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
         if (c->buffer_l > 0) {
