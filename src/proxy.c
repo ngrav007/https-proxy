@@ -21,7 +21,7 @@ int Proxy_run(short port, size_t cache_size)
     if (proxy.listen_fd == -1) {
         fprintf(stderr, "[!] proxy: socket failed\n");
         Proxy_free(&proxy);
-        return -1;
+        return ERROR_FAILURE;
     }
 
     /* set socket options */
@@ -31,7 +31,7 @@ int Proxy_run(short port, size_t cache_size)
     {
         fprintf(stderr, "[!] proxy: setsockopt failed\n");
         Proxy_free(&proxy);
-        return -1;
+        return ERROR_FAILURE;
     }
 
     /* build proxy address (type is: struct sockaddr_in) */
@@ -40,17 +40,14 @@ int Proxy_run(short port, size_t cache_size)
     proxy.addr.sin_addr.s_addr = htonl(INADDR_ANY);
     proxy.addr.sin_port        = htons(proxy.port);
 
-    /* bind listening socket to proxy address; binding listent_fd==mastersocket
-     */
-    // Proxy_print(&proxy);
+    /* bind listening socket to proxy address and port */
     fprintf(stderr, "[DEBUG] listen_fd = %d\n", proxy.listen_fd);
-
     if (bind(proxy.listen_fd, (struct sockaddr *)&(proxy.addr),
              sizeof(proxy.addr)) == -1)
     {
         fprintf(stderr, "[!] proxy: bind failed - %s\n", strerror(errno));
         Proxy_free(&proxy);
-        return -1;
+        return ERROR_FAILURE;
     }
 
     /* listen for connections */
@@ -60,35 +57,35 @@ int Proxy_run(short port, size_t cache_size)
         return -1;
     }
 
-    /******************* New accept loop *******************/
-    /* add mastersocket to master set; make current maskersocket the fdmax */
+    /* add listening socket to master set */
     FD_SET(proxy.listen_fd, &(proxy.master_set));
     proxy.fdmax = proxy.listen_fd;
-    short flag;
+
+    /* Accept Loop ---------------------------------------------------------- */
+    short ret;
     while (true) {
         proxy.readfds    = proxy.master_set;
         int select_value = select(proxy.fdmax + 1, &(proxy.readfds), NULL, NULL,
                                   proxy.timeout);
         if (select_value < 0) {
-            fprintf(stderr, "[!] proxy: select failed\n");  // ? do we quit
+            fprintf(stderr, "[!] proxy: select failed\n"); // ? do we quit
             Proxy_free(&proxy);
             return -1;
         } else if (select_value == 0) {
             // TODO: TIMEOUT
             Proxy_handleTimeout(&proxy);
         } else {
-            flag = Proxy_handle(&proxy);
+            ret = Proxy_handle(&proxy);
         }
 
-        if (flag == 666) {
+        if (ret == 666) {
             break; // HALT signal
-        } else if (flag < 0) {
+        } else if (ret < 0) {
             // Handle error
-        } else if (flag > 0) {
+        } else if (ret > 0) {
             // Handle success
         }
     }
-    /******************* End of new accept loop *******************/
 
     Proxy_free(&proxy);
 
@@ -99,107 +96,102 @@ int Proxy_run(short port, size_t cache_size)
 int Proxy_handle(struct Proxy *proxy)
 {
     int ret;
-    /* handle when a new client wants to connect */
+
+    /* check listening socket for new clients */
     if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
         ret = Proxy_handleListener(proxy);
         if (ret < 0) {
-            Proxy_errorHandle(proxy, ret);
+            Proxy_errorHandle(proxy, ret); // TODO - handle error 1 layer up
         }
     }
 
-    /* handle when clients are sending data */
+    /* check client sockets for requests */
     Node *curr = proxy->client_list->head;
     Node *next = curr->next;
     Client *client;
     for (curr = proxy->client_list->head; curr != NULL; curr = next) {
-        next = curr->next;
-        if (curr == NULL) {
-            fprintf(stderr, "[Proxy_handle] curr was null\n");
-        }
-        client             = (Client *)curr->data;
-        int curr_client_fd = client->socket;
-        if (FD_ISSET(curr_client_fd, &proxy->readfds)) {
+        next   = curr->next;
+        client = (Client *)curr->data;
+        if (FD_ISSET(client->socket, &proxy->readfds)) {
             ret = Proxy_handleClient(proxy, client);
         }
+
+        /* check for errors */
         if (ret < 0) {
-            Proxy_errorHandle(proxy, ret);  // TODO -- handle error 1 layer up
+            Proxy_errorHandle(proxy, ret); // TODO -- handle error 1 layer up
         } else {
             // refresh(); // TODO
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-ssize_t Proxy_write(struct Proxy *proxy, int socket)
+ssize_t Proxy_send(struct Proxy *proxy, int socket)
 {
     if (proxy == NULL) {
-        fprintf(stderr, "[!] Proxy_write: NULL parameter not allowed\n");
-        return -1;
+        fprintf(stderr, "[!] proxy: null parameter passed to send call\n");
+        return ERROR_FAILURE;
     }
 
     /* write request to server */
-    size_t bytes_written  = 0;
-    size_t bytes_to_write = proxy->buffer_l;
-    while (bytes_written < proxy->buffer_l) {
-        ssize_t n =
-            send(socket, proxy->buffer + bytes_written, bytes_to_write, 0);
+    ssize_t written  = 0;
+    ssize_t to_write = proxy->buffer_l;
+    while (written < (ssize_t)proxy->buffer_l) {
+        ssize_t n = send(socket, proxy->buffer + written, to_write, 0);
         if (n == -1) {
-            fprintf(stderr, "%s[!]%s write failed: %s\n", RED, reset,
-                    strerror(errno));
-            return -1;
+            fprintf(stderr, "[!] proxy: write failed: %s\n", strerror(errno));
+            return ERROR_FAILURE;
         }
-        bytes_written += (size_t)n;
-        bytes_to_write -= (size_t)n;
+        written += n;
+        to_write -= n;
     }
 
-    return bytes_written;
+    return written;
 }
 
-ssize_t Proxy_read(struct Proxy *proxy, int socket)
+ssize_t Proxy_recv(struct Proxy *proxy, int socket)
 {
     if (proxy == NULL) {
-        fprintf(stderr, "[!] Proxy_read: NULL parameter not allowed\n");
+        fprintf(stderr, "[!] proxy: null parameter passed to receive call\n");
         return -1;
     }
 
-    ssize_t bytes_read     = 0;
-    size_t bytes_to_read   = proxy->buffer_sz - proxy->buffer_l - 1;
-    size_t body_bytes_read = 0;
+    ssize_t recvd     = 0;
+    size_t to_recv    = proxy->buffer_sz - proxy->buffer_l - 1;
+    size_t body_recvd = 0;
     clear_buffer(proxy->buffer, &proxy->buffer_l);
-    while ((bytes_read = read(socket, proxy->buffer + proxy->buffer_l,
-                              bytes_to_read)) > 0)
+    while ((recvd = read(socket, proxy->buffer + proxy->buffer_l, to_recv)) > 0)
     {
         /* update buffer length */
-        proxy->buffer_l += bytes_read;
+        proxy->buffer_l += recvd;
 
         /* check if buffer is full */
         if (proxy->buffer_l == (proxy->buffer_sz - 1)) {
             if (expand_buffer(proxy) == -1) {
-                fprintf(stderr, "[!] Proxy_read: expand_buffer failed\n");
-                return -1;
+                fprintf(stderr, "[!] proxy: failed to expand buffer\n");
+                return ERROR_FAILURE;
             }
-            proxy->buffer[proxy->buffer_l] = '\0';
         }
 
-        bytes_to_read = proxy->buffer_sz - proxy->buffer_l - 1;
+        to_recv = proxy->buffer_sz - proxy->buffer_l - 1;
 
         /* look for end of header */
         char *end_of_header = strstr(proxy->buffer, "\r\n\r\n");
         if (end_of_header != NULL) {
             char *body = end_of_header + 4;
-            body_bytes_read += proxy->buffer_l - (body - proxy->buffer);
+            body_recvd += proxy->buffer_l - (body - proxy->buffer);
             break;
         }
     }
 
-    if (bytes_read == -1) {
-        fprintf(stderr, "[!] Proxy_read: read failed\n");
-        return -1;
+    if (recvd == -1) {
+        fprintf(stderr, "[!] proxy: recv failed\n");
+        return ERROR_FAILURE;
     }
 
     /* get content length */
-    size_t body_length       = 0;
+    size_t body_l            = 0;
     char *content_length_str = strstr(proxy->buffer, "Content-Length: ");
     if (content_length_str != NULL) {
         char content_length[11];
@@ -207,40 +199,38 @@ ssize_t Proxy_read(struct Proxy *proxy, int socket)
         content_length_str += 16;
         char *end = strstr(content_length_str, "\r\n");
         if (end == NULL) {
-            fprintf(stderr, "[!] Proxy_read: invalid Content-Length header\n");
+            fprintf(stderr, "[!] Proxy_recv: invalid Content-Length header\n");
             return -1;
         }
         if (end - content_length_str > 10) {
-            fprintf(stderr, "[!] Proxy_read: Content-Length too large\n");
+            fprintf(stderr, "[!] Proxy_recv: Content-Length too large\n");
             return -1;
         }
         memcpy(content_length, content_length_str, end - content_length_str);
-        body_length = atoi(content_length);
+        body_l = atoi(content_length);
     } else {
-        body_length = 0;
+        body_l = 0;
     }
 
     /* read body */
-    while (body_bytes_read < body_length) {
-        bytes_read =
-            read(socket, proxy->buffer + proxy->buffer_l, bytes_to_read);
-        proxy->buffer_l += bytes_read;
-        body_bytes_read += bytes_read;
-        if (bytes_read == -1) {
-            fprintf(stderr, "[!] Proxy_read: read failed\n");
+    while (body_recvd < body_l) {
+        recvd = read(socket, proxy->buffer + proxy->buffer_l, to_recv);
+        proxy->buffer_l += recvd;
+        body_recvd += recvd;
+        if (recvd == -1) {
+            fprintf(stderr, "[!] Proxy_recv: read failed\n");
             return -1;
         }
 
         /* check if buffer is full */
         if (proxy->buffer_l == (proxy->buffer_sz - 1)) {
             if (expand_buffer(proxy) == -1) {
-                fprintf(stderr, "[!] Proxy_read: expand_buffer failed\n");
-                return -1;
+                fprintf(stderr, "[!] proxy: failed to expand buffer\n");
+                return ERROR_FAILURE;
             }
-            proxy->buffer[proxy->buffer_l] = '\0';
         }
 
-        bytes_to_read = proxy->buffer_sz - proxy->buffer_l - 1;
+        to_recv = proxy->buffer_sz - proxy->buffer_l - 1;
     }
 
     return proxy->buffer_l;
@@ -528,7 +518,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 char *raw_response = Response_get(response);
                 memcpy(proxy->buffer, raw_response, response_size);
                 proxy->buffer_l = response_size;
-                if (Proxy_write(proxy, client->socket) == -1) {
+                if (Proxy_send(proxy, client->socket) == -1) {
                     fprintf(stderr, "[!] Error: write()\n");
                     return ERROR_FAILURE;
                 }
@@ -547,7 +537,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                           DEFAULT_MAX_AGE);
 
                 // serve response to client
-                if (Proxy_write(proxy, client->socket) == -1) {
+                if (Proxy_send(proxy, client->socket) == -1) {
                     fprintf(stderr, "[!] Error: write()\n");
                     return ERROR_FAILURE;
                 }
@@ -653,7 +643,7 @@ ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request,
     /*
      * receive message from server
      */
-    int r = Proxy_read(proxy, sockfd); // puts response in proxy->buffer
+    int r = Proxy_recv(proxy, sockfd); // puts response in proxy->buffer
     if (r < 0) {
         fprintf(stderr, "[!] proxy: error receiving from host\n");
         return -1;
