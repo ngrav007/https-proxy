@@ -22,8 +22,7 @@ Entry *Entry_new(void *value, void *key, size_t key_l, long max_age)
     return entry;
 }
 
-void Entry_init(Entry *entry, char *key, void *value, unsigned long hash,
-                long max_age)
+void Entry_init(Entry *entry, char *key, void *value, long max_age)
 {
     if (entry == NULL) {
         entry = Entry_new(value, key, strlen(key), max_age);
@@ -33,7 +32,6 @@ void Entry_init(Entry *entry, char *key, void *value, unsigned long hash,
         strncpy(entry->key, key, entry->key_l);
         entry->max_age = max_age;
         entry->ttl     = max_age;
-
         entry->stale     = false;
         entry->deleted   = false;
         entry->retrieved = RETRIEVED_VALUE;

@@ -5,10 +5,16 @@
 
 #define DEBUG 1
 
+/* Proxy */
+#define DEFAULT_MAX_AGE 3600
+#define LISTEN_BACKLOG 5
+#define TIMEOUT        60 // 60 seconds
+#define HALT 666 // Halt message
+
 /* Utility */
 #define BUFFER_SZ 1024 // default buffer size
 
-/* Cache Configuration */
+/* Cache */
 #define CACHE_SZ 10
 
 /* HTTP */
@@ -18,33 +24,22 @@
 #define HEADER_END_L 4
 #define CRLF  "\r\n"
 #define CRLF_L 2
+#define HTTP_GET "get"
+#define HTTP_GET_L 3
+#define HTTP_CONNECT "connect"
+#define HTTP_CONNECT_L 7
 
-// #define HDRFLAG "\r\n\r\n"
-#define HDR_LN_END "\r\n"
-#define CONTLEN "content-length:"
-#define CONTLEN_SIZE 15
-#define HOST "host: " /* "host:" appears in localhost:9010 in first line */
-#define HOST_SIZE 6
+/* HTTP Header Fields */
+#define CONTENT_LEN "content-length:"
+#define CONTENT_LEN_L 15
+#define HOST "host:" /* "host:" appears in localhost:9010 in first line */
+#define HOST_L 5
 #define CACHECONTROL "cache-control:"
-#define CACHECONTROL_SIZE 14
+#define CACHECONTROL_L 14
 #define MAXAGE "max-age="
-#define MAXAGE_SIZE 8
-#define MAX_AGE 3600
+#define MAXAGE_L 8
 
-#define LISTEN_BACKLOG 5
-#define TIMEOUT        60 // 60 seconds
-
-#define HEADER_SZ   50  // 50 bytes
-#define MAX_DATA_SZ 400 // 400 bytes
-#define MAX_ID_SZ   20  // 20 bytes
-#define MAX_MSG_SZ  450
-
-#define HALT 666 // Halt message
-
-#define SERVER_ID   "Server"
-#define SERVER_ID_L sizeof(SERVER_ID) - 1
-
-/* indicators */
+/* Indicators */
 #define RECVD_BODY       2
 #define RECVD_HEAD       1
 #define CLIENT_TIMEDOUT  6

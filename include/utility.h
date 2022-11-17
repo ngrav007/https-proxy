@@ -21,7 +21,8 @@ double get_time();
 double timespec_to_double(struct timespec t);
 struct timespec timespec_diff(struct timespec start, struct timespec end);
 void print_ascii(char *buffer, size_t length);
-char *to_lower       (char *buf, char *end);
+char *get_buffer_lc(char *buf, char *end);
 char *get_buffer(char *start, char *end);
+char *remove_whitespace(char *str, int size);
 
 #endif

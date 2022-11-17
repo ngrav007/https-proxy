@@ -34,8 +34,6 @@ typedef struct Connection {
 typedef struct Proxy {
     Cache *cache;
     struct sockaddr_in addr;
-    // struct sockaddr_in client_addr;
-    struct sockaddr_in server_addr;
     struct hostent *client; // TODO - add to client
     struct hostent *server;
     char *client_ip;
@@ -80,6 +78,6 @@ int Proxy_handleTimeout(Proxy *proxy);
 int Proxy_errorHandle(Proxy *proxy, int error_code);
 void Proxy_close_socket(int socket, fd_set *master_set, List *client_list, Client *client);
 
-ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request, int requestSize);
+ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request, int request_len);
 
 #endif /* _PROXY_H_ */

@@ -30,7 +30,7 @@ typedef struct Response {
 
 /* Header related functions */
 bool HTTP_got_header (char *buffer);
-int HTTP_parse(HTTP_Header *header, char *buffer, size_t len);
+int HTTP_parse(HTTP_Header *header, char *buffer);
 void HTTP_free_header(void *header);
 void HTTP_free_request(void *request);
 void HTTP_print_request(void *request);
@@ -46,13 +46,13 @@ char *parse_method(char *header, size_t *len);
 char *parse_host(char *header, size_t *host_len, char **port, size_t *port_len);
 char *parse_header_raw   (char *message, size_t *len);
 char *parse_header_lower (char *message, size_t *len);
-long parse_contentLength(char *header);
+long parse_content_length(char *header);
 char *removeSpaces      (char *str, int size);
 unsigned int parse_maxAge(char *header);
 char *make_ageField(unsigned int age);
 
 /* Response related functions */
-Response *Response_new(unsigned long size, char *message);
+Response *Response_new(char *message, size_t message_l);
 void Response_free(void *response);
 unsigned long Response_size(Response *response);
 char *Response_get(Response *response);

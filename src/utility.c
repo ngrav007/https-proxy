@@ -44,7 +44,7 @@ char *readline(int fd, size_t *len)
 
 /* returns a malloc'd string copy of buffer where letters are all lowercase 
    up to but not including end. */
-char *to_lower(char *buf, char *end) 
+char *get_buffer_lc(char *buf, char *end) 
 {
     int size = end - buf;
     char *copy = malloc(size + 1);
@@ -129,4 +129,21 @@ char *get_buffer(char *start, char *end)
     memcpy(copy, start, size);
 
     return copy;
+}
+
+/**
+ * Removes space characters in a given string, and returns the modified string.
+ */
+char *remove_whitespace(char *str, int size)
+{
+    unsigned int strIdx = 0;
+    int i = 0;
+    for (i = 0; i < size; i++) {
+        if (str[i] != ' ') {
+            str[strIdx] = str[i];
+            strIdx++;
+        }
+    }
+    str[strIdx] = '\0';
+    return str;
 }

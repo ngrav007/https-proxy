@@ -29,8 +29,7 @@ typedef struct Entry {
 } Entry;
 
 Entry *Entry_new(void *value, void *key, size_t key_l, long max_age);
-void Entry_init(Entry *entry, char *key, void *value, unsigned long hash,
-                long max_age);
+void Entry_init(Entry *entry, char *key, void *value, long max_age);
 void Entry_free(Entry **entry, void (*foo)(void *));
 void Entry_delete(Entry *entry, void (*foo)(void *));
 int Entry_touch(Entry *entry);

@@ -22,7 +22,7 @@ typedef struct Client {
     struct sockaddr_in addr;  // Client address
     struct timeval last_recv; // Time of last activity
     socklen_t addr_l;         // Length of client address
-    ssize_t buffer_l;         // Length of buffer
+    size_t buffer_l;          // Length of buffer
     int socket;               // Client socket
     bool slowMofo;            // True if sends partial messages
     // bool loggedIn;            // True if logged in // TODO remove
