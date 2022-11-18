@@ -25,28 +25,21 @@
 #include <time.h>
 #include <unistd.h>
 
-typedef struct Connection {
-    struct HTTP_Request *request;
-    struct HTTP_Response *response;
-    bool is_from_cache;
-} Connection;
-
 typedef struct Proxy {
     Cache *cache;
     List *client_list;
     struct sockaddr_in addr;
-    struct hostent *client; // TODO - add to client
-    struct hostent *server;
+    struct hostent *client;  // ? do we need this?
+    struct hostent *server;  // ? do we need this?
     struct timeval *timeout; // ? do we need timeouts
-    /* new members for handling multiple clients */
     fd_set master_set;
     fd_set readfds;
-    int fdmax;
+    size_t buffer_l;
+    size_t buffer_sz;
     char *client_ip;
     char *server_ip;
     char *buffer;
-    size_t buffer_l;
-    size_t buffer_sz;
+    int fdmax;
     int listen_fd;
     int client_fd;
     int server_fd;
@@ -65,8 +58,7 @@ int Proxy_handleListener(Proxy *proxy);
 int Proxy_handleClient(Proxy *proxy, Client *client);
 int Proxy_handleTimeout(Proxy *proxy);
 int Proxy_errorHandle(Proxy *proxy, int error_code);
-void Proxy_close_socket(int socket, fd_set *master_set, List *client_list, Client *client);
-
+void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client);
 ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request, int request_len);
 
 #endif /* _PROXY_H_ */

@@ -1,5 +1,5 @@
-#ifndef _LINKEDLIST_H_
-#define _LINKEDLIST_H_
+#ifndef _LIST_H_
+#define _LIST_H_
 
 #include "node.h"
 #include "utility.h"
@@ -40,4 +40,4 @@ int List_size(List *list);
 bool List_contains(List *list, void *data);
 void *List_find(List *list, void *data);
 
-#endif /* _LINKEDLIST_H_ */
+#endif /* _LIST_H_ */

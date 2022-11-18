@@ -124,6 +124,9 @@ int Proxy_handle(struct Proxy *proxy)
         }
     }
 
+    /* check server sockets for responses */
+    // TODO
+
     return EXIT_SUCCESS;
 }
 
@@ -174,6 +177,7 @@ ssize_t Proxy_recv(struct Proxy *proxy, int socket)
             }
         }
 
+        /* update number of bytes to receive */
         to_recv = proxy->buffer_sz - proxy->buffer_l - 1;
 
         /* look for end of header */
@@ -239,21 +243,19 @@ ssize_t Proxy_recv(struct Proxy *proxy, int socket)
 int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
 {
     if (proxy == NULL) {
-        fprintf(stderr, "[Proxy_init] proxy was null\n");
+        fprintf(stderr, "[!] proxy: init was passed a NULL proxy\n");
         return -1;
     }
 
     /* initialize the proxy cache */
     proxy->cache = Cache_new(cache_size, Response_free, Response_print);
     if (proxy->cache == NULL) {
-        fprintf(stderr, "[Proxy_init] Cache was null\n");
+        fprintf(stderr, "[!] proxy: failed to initialize cache\n");
         return -1;
     }
 
     /* zero out the proxy addresses */
-    bzero((char *)&(proxy->addr), sizeof(proxy->addr));
-    // zero(&proxy->client_addr, sizeof(proxy->client_addr)); // TODO - Remove
-    // zero(&proxy->server_addr, sizeof(proxy->server_addr));
+    zero((char *)&(proxy->addr), sizeof(proxy->addr));
     zero(&(proxy->client), sizeof(proxy->client));
     zero(&(proxy->server), sizeof(proxy->server));
     zero(&(proxy->client_ip), sizeof(proxy->client_ip));
@@ -268,11 +270,11 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     proxy->port = port;
 
     /* set buffer to NULL */
-    proxy->buffer_sz = BUFSIZE;
+    proxy->buffer_sz = BUFFER_SZ;
     proxy->buffer_l  = 0;
     proxy->buffer    = calloc(proxy->buffer_sz, sizeof(char));
 
-    /* zero out fd_sets and initialize fdmax of muliclient set */
+    /* zero out fd_sets and initialize max fd of master_set */
     FD_ZERO(&(proxy->master_set)); /* clear the sets */
     FD_ZERO(&(proxy->readfds));
     proxy->fdmax   = 0;
@@ -280,7 +282,10 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
 
     /* initialize client list */
     proxy->client_list = List_new(Client_free, Client_print, Client_compare);
-
+    if (proxy->client_list == NULL) {
+        fprintf(stderr, "[!] proxy: failed to initialize client list\n");
+        return -1;
+    }
     return 0;
 }
 
@@ -328,79 +333,9 @@ void Proxy_print(struct Proxy *proxy)
     fprintf(stderr, "    server_fd = %d\n", proxy->server_fd);
     fprintf(stderr, "    client_fd = %d\n", proxy->client_fd);
     Cache_print(proxy->cache);
+    List_print(proxy->client_list);
     fprintf(stderr, "}\n");
 }
-
-// void Connection_init(struct Connection *conn, struct HTTP_Request *request,
-//                      struct HTTP_Response *response)
-// {
-//     if (conn == NULL) {
-//         return;
-//     }
-
-//     if (conn->request != NULL) {
-//         HTTP_free_request(conn->request);
-//     }
-
-//     if (conn->response != NULL) {
-//         HTTP_free_response(conn->response);
-//     }
-
-//     conn->request  = request;
-//     conn->response = response;
-
-//     conn->is_from_cache = false;
-// }
-
-// struct Connection *Connection_new(struct HTTP_Request *request,
-//                                   struct HTTP_Response *response)
-// {
-//     struct Connection *conn = calloc(1, sizeof(struct Connection));
-//     if (conn == NULL) {
-//         return NULL;
-//     }
-
-//     Connection_init(conn, request, response);
-
-//     return conn;
-// }
-
-// void Connection_free(void *conn)
-// {
-//     if (conn == NULL) {
-//         return;
-//     }
-
-//     struct Connection *c = (struct Connection *)conn;
-
-//     if (c->request != NULL) {
-//         HTTP_free_request(c->request);
-//     }
-
-//     if (c->response != NULL) {
-//         HTTP_free_response(c->response);
-//     }
-
-//     free(c);
-// }
-
-// void Connection_print(void *conn)
-// {
-//     if (conn == NULL) {
-//         return;
-//     }
-
-//     struct Connection *c = (struct Connection *)conn;
-
-//     fprintf(stderr, "Connection {\n");
-//     fprintf(stderr, "    %sRequest {%s\n", YEL, reset);
-//     HTTP_print_request(c->request);
-//     fprintf(stderr, "    }\n");
-//     fprintf(stderr, "    %sResponse {%s\n", YEL, reset);
-//     HTTP_print_response(c->response);
-//     fprintf(stderr, "    }\n");
-//     fprintf(stderr, "}\n");
-// }
 
 /**
  * 1. accepts connection request from new client
@@ -466,7 +401,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
         return ERROR_FAILURE;
     } else if (num_bytes == 0) {
         fprintf(stderr, "[*] proxy: client closed connection\n");
-        Proxy_close_socket(client->socket, &(proxy->master_set),
+        Proxy_close(client->socket, &(proxy->master_set),
                            proxy->client_list, client);
         return CLIENT_CLOSED;
     }
@@ -549,7 +484,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
 
             // TODO - might need to close socket after confirming fullresponse
             // was sent
-            Proxy_close_socket(client->socket, &(proxy->master_set),
+            Proxy_close(client->socket, &(proxy->master_set),
                                proxy->client_list, client);
         } else if (strncmp(header.method, "connect", 7) == 0) { // CONNECT
             fprintf(stderr, "[DEBUG] CONNECT : unimplemented.\n");
@@ -572,14 +507,13 @@ int Proxy_handleTimeout(struct Proxy *proxy) { return 0; }
 int Proxy_errorHandle(struct Proxy *proxy, int error_code) { return 0; }
 
 /**
- * Proxy_close_socket
+ * Proxy_close
  * Closes the given socket and removes it from the master fd_set, and marks
  * the node tracking the client associated to the client for removal from
  * the clients_status and registered_users tracking lists that belong to
  * the server.
  */
-void Proxy_close_socket(int socket, fd_set *master_set, List *client_list,
-                        Client *client)
+void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client)
 {
     /* close this connection */
     fprintf(stderr, "[DEBUG] Closing Socket # = %d\n", socket);

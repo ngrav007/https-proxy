@@ -65,8 +65,7 @@ int Client_init(Client *client, int socket)
     }
 
     Client_setSocket(client, socket);
-    // Client_setId(client, id);    // TODO - remove
-    // client->loggedIn = false;    // TODO - Remove
+    client->request_list = List_new();
     client->buffer_l = 0;
 
     return 0;
@@ -192,68 +191,18 @@ int Client_setKey(Client *client, HTTP_Header *header)
     return 0;
 }
 
-/* Client_setHeader
- *    Purpose: Sets the header for a Client
- * Parameters: @client - Pointer to a Client
- *             @header - Pointer to a header string
- *    Returns: 0 on success, -1 on failure.
- */
-// int Client_setHeader(Client *client, char *buffer, int length)
-// {
-//     if (client == NULL || buffer == NULL || length < 0) {
-//         return -1;
-//     }
+int Client_addRequest(Client *client, Client_request *req)
+{
+    if (client == NULL || req == NULL) {
+        return -1;
+    }
 
-//     int ret = ChatHdr_fromNetString(&client->header, buffer, length);
+    if (client->key == NULL) {
+        Client_setKey(client, req);
+    }
 
-//     return ret;
-// }
-
-/* Client_setId
- *    Purpose: Sets the client id for a Client, if the client id is too long
- *             it is deemed an error and the client id is not set, and -1 is
- *             returned.
- * Parameters: @client - Pointer to a Client
- *             @id - Client id string, must be null terminated
- *    Returns: 0 on success, -1 on failure.
- */
-// int Client_setId(Client *client, char *id)
-// {
-//     if (client == NULL || id == NULL) {
-//         return -1;
-//     }
-
-//     /* clear the id if it's already set */
-//     if (client->id[0] != '\0') {
-//         memset(client->id, 0, MAX_ID_SZ);
-//     }
-
-//     size_t idLength = strlen(id);
-//     if (idLength > MAX_ID_SZ) {
-//         return -1;
-//     } else {
-//         strncpy(client->id, id, idLength);
-//     }
-
-//     return 0;
-// }
-
-/* Client_setLoggedIn
- *    Purpose: Sets the logged in status for a Client to given value.
- * Parameters: @client - Pointer to a Client
- *             @loggedIn - Logged in status (true or false)
- *    Returns: 0 on success, -1 on failure.
- */
-// int Client_setLoggedIn(Client *client, bool loggedIn)
-// {
-//     if (client == NULL) {
-//         return -1;
-//     }
-
-//     client->loggedIn = loggedIn;
-
-//     return 0;
-// }
+    return 0;
+}
 
 /* Client_setAddr
  *     Purpose: Copies the address of the client into the client struct for
@@ -266,13 +215,13 @@ int Client_setKey(Client *client, HTTP_Header *header)
 int Client_setAddr(Client *client, struct sockaddr_in *addr)
 {
     if (client == NULL || addr == NULL) {
-        return -1;
+        return EXIT_FAILURE;
     }
 
     memcpy(&client->addr, addr, sizeof(struct sockaddr_in));
     client->addr_l = sizeof(*addr);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /* Client_getSocket
@@ -283,7 +232,7 @@ int Client_setAddr(Client *client, struct sockaddr_in *addr)
 int Client_getSocket(Client *client)
 {
     if (client == NULL) {
-        return -1;
+        return EXIT_FAILURE;
     }
 
     return client->socket;

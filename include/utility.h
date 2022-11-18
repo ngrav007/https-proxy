@@ -12,7 +12,6 @@
 #include <unistd.h>
 
 #define NS_PER_S 1000000000.0
-#define BUFSIZE  1024
 
 int get_char(int fd);
 char *readline(int fd, size_t *len);
