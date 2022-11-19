@@ -1,429 +1,1048 @@
 #include "http.h"
 
+static int parse_response(Response *res, char *buffer, size_t buffer_l);
+static int parse_response_fields(Response *res, char *buffer, size_t buffer_l);
+static int parse_statusline(Response *res, char *response);
+static char *parse_status(char *response, size_t *status_l, char **saveptr);
+static size_t parse_contentlength(char *header, size_t header_l);
+static unsigned int parse_maxage(char *cachecontrol, size_t cachecontrol_l);
+static char *parse_cachecontrol(char *header, size_t *cachecontrol_l);
+static int parse_request(Request *req, char *buffer, size_t buffer_l);
+static int parse_request_fields(Request *req, char *buffer, size_t buffer_l);
+static int parse_startline(Request *req, char *request);
+static char *parse_method(char *header, size_t *method_len, char **saveptr);
+static char *parse_path(char *header, size_t *path_l, char **saveptr);
+static char *parse_host(char *header, size_t header_l, size_t *host_l);
+static char *parse_port(char **host, size_t *host_l, char *path, size_t *port_l);
+static char *parse_version_req(char *header, size_t *version_l, char **saveptr);
+static char *parse_body(char *buffer, size_t buffer_l, size_t *body_l);
+static char *parse_version_res(char *header, size_t *version_l, char **saveptr);
 /* HTTP Functions ----------------------------------------------------------- */
 
-/* HTTP_Parse
- *    Purpose: Parse an HTTP request header and store the information in the
- *             given HTTP_Header struct.
- * Parameters: @header - Pointer to an HTTP_Header struct to store the parsed
- *                      information
- *             @buffer - Pointer to a buffer containing the HTTP request
- *             @len    - Length of the buffer
- *    Returns: 0 on success, -1 on failure.
+/* HTTP_add_field
+ *    Purpose: Adds a new field to a buffer containing an HTTP header with the
+ *             given name and value. If the field already exists, the value is
+ *             updated. If the field does not exist, it is added. The buffer is
+ *             reallocated if necessary. The buffer must be null terminated.
  *
- *   Note: This function does not check for a valid HTTP request, it only
- *         parses the header.
- * 
- *   Note: This function allocates memory for the method, host, and path fields
- *         of the HTTP_Header struct. It is the responsibility of the caller to
- *         free this memory.
  */
-int HTTP_parse(HTTP_Header *header, char *buffer)
+int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l)
 {
-    // parse out just header,
-    size_t header_len = 0; 
-    char *hd = parse_header_lower(buffer, &header_len);
-    header->method = parse_method(hd, &(header->method_l));
-    header->path = parse_path(hd, &(header->path_l));
-    header->host = parse_host(hd, &(header->host_l), &(header->port), &(header->port_l));
-    free(hd);
+    if (buffer == NULL || *buffer == NULL || field == NULL || value == NULL || buffer_l == NULL) {
+        fprintf(stderr, "Error: invalid params\n");
+        return -1;
+    }
+
+    /* convert buffer to lowercase */
+    char *buffer_lc = get_buffer_lc(*buffer, *buffer + *buffer_l);
+
+    char *header_start = buffer_lc;
+    char *header_end = strstr(buffer_lc, "\r\n\r\n");
+    if (header_end == NULL) {
+        fprintf(stderr, "Error: invalid header 0\n");
+        return -1;
+    }
+
+    char *field_start;
+    // char *field_end;
+    char *new_buffer;
+    size_t header_l = header_end - header_start;
+    size_t field_l = strlen(field);
+    size_t value_l = strlen(value);
+    size_t offset = 0;
+    size_t new_buffer_l;
+    char *field_lc = get_buffer_lc(field, field + field_l);
+
+
+    /* check if field already exists */
+    field_start = strstr(buffer_lc, field_lc);
+    if (field_start == NULL) {  // field does not exist
+        new_buffer_l = *buffer_l + field_l + value_l + FIELD_SEP_L + CRLF_L;
+        new_buffer = calloc(new_buffer_l + 1, sizeof(char));
+        if (new_buffer == NULL) {
+            fprintf(stderr, "Error: invalid header 1\n");
+            free(buffer_lc);
+            return -1;
+        }
+        fprintf(stderr, "*buffer = %s\n", *buffer);
+        fprintf(stderr, "field = %s\n", field);
+        fprintf(stderr, "value = %s\n", value);
+        fprintf(stderr, "buffer_l = %zu\n", *buffer_l);
+        fprintf(stderr, "field_l = %zu\n", field_l);
+        fprintf(stderr, "value_l = %zu\n", value_l);
+        fprintf(stderr, "header_l = %zu\n", header_l);
+        fprintf(stderr, "new_buffer_l = %zu\n", new_buffer_l);
+
+        memcpy(new_buffer, *buffer, header_l); // copy header
+        offset += header_l;
+        memcpy(new_buffer + offset, CRLF, CRLF_L); // add CRLF
+        offset += CRLF_L;
+        memcpy(new_buffer + offset, field, field_l); // copy field
+        offset += field_l;
+        memcpy(new_buffer + offset, FIELD_SEP, FIELD_SEP_L); // copy field sep
+        offset += FIELD_SEP_L;
+        memcpy(new_buffer + offset, value, value_l); // copy value
+        offset += value_l;
+        memcpy(new_buffer + offset, header_end, *buffer_l - header_l); // copy rest of header
+        offset += *buffer_l - header_l;
+
+        free(*buffer);
+        *buffer = new_buffer;
+        *buffer_l = new_buffer_l;
+    }
+    // } else { // field exists
+    //     field_end = strstr(field_start, CRLF);
+    //     if (field_end == NULL) {
+    //         fprintf(stderr, "Error: invalid header 1\n");
+    //         return -1;
+    //     }
+
+    //     new_buffer_l = *buffer_l + value_l + field_l - (field_end - field_start);
+    //     new_buffer = calloc(new_buffer_l + 1, sizeof(char));
+    //     if (new_buffer == NULL) {
+    //         fprintf(stderr, "Error: invalid header 2\n");
+    //         return -1;
+    //     }
+
+    //     memcpy(new_buffer, *buffer, field_start - *buffer); // copy header up to field
+    //     offset += field_start - *buffer;
+    //     memcpy(new_buffer + offset, field, field_l); // copy field
+    //     offset += field_l;
+    //     memcpy(new_buffer + offset, FIELD_SEP, FIELD_SEP_L); // copy field sep
+    //     offset += FIELD_SEP_L;
+    //     memcpy(new_buffer + offset, value, value_l); // copy value
+    //     offset += value_l;
+    //     memcpy(new_buffer + offset, field_end, *buffer_l - (field_end - *buffer)); // copy rest of header
+    //     offset += *buffer_l - (field_end - *buffer);
+    // }
+
+    free(field_lc);
+    free(buffer_lc);
 
     return 0;
 }
 
-void HTTP_free_header(void *header)
+/* HTTP_got_header
+ *    Purpose: Checks if a buffer contains a complete HTTP header.
+ * Parameters: @buffer - buffer to check for header, must be null terminated
+ *    Returns: true (1) if header is complete, false (0) if not
+ */
+bool HTTP_got_header(char *buffer)
 {
-    if (header == NULL) {
+    if (strstr(buffer, "\r\n\r\n") != NULL) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+/* Request Functions -------------------------------------------------------- */
+
+/* Request_new
+ *    Purpose: Creates a new Request initialized with null values.
+ * Parameters: None
+ *    Returns: Pointer to a new Request, or NULL if memory allocation fails.
+ */
+Request *Request_new(char *buffer, size_t buffer_l)
+{
+    Request *request = calloc(1, sizeof(struct Request));
+    if (request == NULL) {
+        return NULL;
+    }
+
+    parse_request(request, buffer, buffer_l);
+
+    return request;
+}
+
+/* Request_create
+ *    Purpose: Creates a new Request populated with the given values.
+ * Parameters: @method - Pointer to a buffer containing the HTTP method
+ *             @path - Pointer to a buffer containing the HTTP URI
+ *             @version - Pointer to a buffer containing the HTTP version
+ *             @host - Pointer to a buffer containing the HTTP host
+ *             @port - Pointer to a buffer containing the HTTP port, can be NULL
+ *                     and a default port will be used
+ *             @body - Pointer to a buffer containing the HTTP body, can be NULL
+ *   Returns: Pointer to a new Request, or NULL if memory allocation fails.
+ * 
+ * Note: All parameters must be null terminated.
+ * 
+ */
+Request *Request_create(char *method, char *path, char *version, char *host, char *port, char *body)
+{
+    Request *request = calloc(1, sizeof(struct Request));
+    if (request == NULL) {
+        return NULL;
+    }
+
+    request->method = method;
+    request->path = path;
+    request->version = version;
+    request->host = host;
+    request->port = port;
+    request->body = body;
+
+    return request;
+}
+
+void Request_free(Request *req)
+{
+    if (req == NULL) {
         return;
     }
 
-    HTTP_Header *hdr = (HTTP_Header *)header;
-    free(hdr->method);
-    free(hdr->path);
-    free(hdr->host);
-    free(hdr->port);
+    free(req->method);
+    free(req->path);
+    free(req->version);
+    free(req->host);
+    free(req->port);
+    free(req->body);
+    free(req->raw);
+    free(req);
 }
 
-long HTTP_get_max_age(char *httpstr)
+void Request_print(void *req)
 {
-    if (httpstr == NULL) {
-        fprintf(stderr, "[Error] invalid http string\n");
+    if (req == NULL) {
+        return;
+    }
+
+    Request *r = (Request *)req;
+
+    fprintf(stderr, "[Request]\n");
+    fprintf(stderr, "   Method: %s\n", r->method);
+    fprintf(stderr, "     Path: %s\n", r->path);
+    fprintf(stderr, "  Version: %s\n", r->version);
+    fprintf(stderr, "     Host: %s\n", r->host);
+    fprintf(stderr, "     Port: %s\n", r->port);
+    fprintf(stderr, "     Body: %s\n", r->body);
+}
+
+int Request_compare(Request *req1, Request *req2)
+{
+    if (req1 == NULL || req2 == NULL) {
         return -1;
     }
 
-    /* copy the header */
-    size_t header_len = HTTP_header_len(httpstr);
-    char header[header_len + 1];
-    memcpy(header, httpstr, header_len);
-    header[header_len] = '\0';
-
-    /* lowercase the header */
-    size_t i;
-    for (i = 0; i < header_len; i++) {
-        header[i] = tolower(header[i]);
-    }
-
-    /* find the max-age */
-    char *max_age_field = strstr(header, "max-age");
-    if (max_age_field != NULL) {
-        while (!isdigit(*max_age_field)) {
-            max_age_field++;
-        }
-        char *max_age_end = max_age_field;
-        while (isdigit(*max_age_end)) {
-            max_age_end++;
-        }
-        char max_age_val[max_age_end - max_age_field + 1];
-        memcpy(max_age_val, max_age_field, max_age_end - max_age_field);
-        max_age_val[max_age_end - max_age_field] = '\0';
-
-        return atoi(max_age_val);
-    } else {
-        return DEFAULT_MAX_AGE;
-    }
-}
-
-ssize_t HTTP_get_content_length(char *httpstr)
-{
-    if (httpstr == NULL) {
+    if (memcmp(req1->method, req2->method, req1->method_l) != 0) {
         return -1;
     }
 
-    /* copy the header into a new string */
-    size_t header_len = HTTP_header_len(httpstr);
-    char header[header_len + 1];
-    memcpy(header, httpstr, header_len);
-    header[header_len] = '\0';
-
-    /* lowercase the header */
-    size_t i;
-    for (i = 0; i < header_len; i++) {
-        header[i] = tolower(header[i]);
-    }
-
-    /* find the content-length */
-    char *content_length = strstr(header, "content-length");
-    if (content_length == NULL) {
+    if (memcmp(req1->path, req2->path, req1->path_l) != 0) {
         return -1;
     }
 
-    /* find the start of the content-length value */
-    while (!isdigit(*content_length)) {
-        content_length++;
-    }
-
-    /* find the end of the content-length value */
-    char *content_length_end = content_length;
-    while (isdigit(*content_length_end)) {
-        content_length_end++;
-    }
-
-    /* copy the content-length value into a new string */
-    char content_length_value[content_length_end - content_length + 1];
-    memcpy(content_length_value, content_length,
-           content_length_end - content_length);
-    content_length_value[content_length_end - content_length] = '\0';
-
-    return atol(content_length_value);
-}
-
-ssize_t HTTP_header_len(char *httpstr)
-{
-    if (httpstr == NULL) {
-        fprintf(stderr, "[Error] invalid http string\n");
+    if (memcmp(req1->version, req2->version, req1->version_l) != 0) {
         return -1;
     }
 
-    char *header_end = strstr(httpstr, "\r\n\r\n");
-    if (header_end == NULL) {
-        fprintf(stderr, "[Error] no header end found in http string\n");
-        return -1;
-    }
-    return header_end - httpstr;
-}
-
-ssize_t HTTP_body_len(char *httpstr, size_t len)
-{
-    if (httpstr == NULL) {
-        fprintf(stderr, "[Error] invalid http string\n");
+    if (memcmp(req1->host, req2->host, req1->host_l) != 0) {
         return -1;
     }
 
-    char *body = strstr(httpstr, "\r\n\r\n");
-    if (body == NULL) {
-        fprintf(stderr, "[Error] no body found in http string\n");
-        return -1;
-    }
-    body += 4; // skip the "\r\n\r\n"
-    return len - (body - httpstr);
-}
-
-bool HTTP_got_header(char *buffer)
-{
-    char *flag = strstr(buffer, HEADER_END);
-    return flag != NULL;
-}
-
-/* Parser Functions --------------------------------------------------------- */
-
-/* Given an HTTP response message, return just the header parsed out as a 
-   new heap allocated string with \0 at end; includes last \r\n\r\n */
-char *parse_header_raw(char *message, size_t *len)
-{
-    char *end = strstr(message, HEADER_END);
-    if (end == NULL) return NULL;
-
-    char *header = get_buffer(message, end + 4); /* malloc'd */
-    *len = (end + HEADER_END_L) - message;
-    return header;
-}
-
-/* Given an HTTP response message, return just the header parsed out as a 
-   new heap allocated string with \0 at end, all letters lowercase.
-   header goes until the last \r\n\r\n */
-char *parse_header_lower(char *message, size_t *len)
-{
-    char *end = strstr(message, HEADER_END);
-    if (end == NULL) return NULL;
-
-    char *header = get_buffer_lc(message, end + 4); /* malloc'd */
-    *len = (end + HEADER_END_L) - message;
-
-    return header;
-}
-
-
-// Get the method from an HTTP header
-char *parse_method(char *header, size_t *len)
-{
-    char *method = NULL;
-    char *end = NULL;
-    char *start = NULL;
-
-    end = strchr(header, ' ');
-    if (end == NULL) {
-        return NULL;
-    }
-
-    start = header;
-
-    method = malloc(end - start + 1);
-    if (method == NULL) {
-        return NULL;
-    }
-
-    memcpy(method, start, end - start);
-    method[end - start] = '\0';
-
-    *len = end - start;
-
-    return method;
-}
-
-// assume header is the get_buffer_lc'd version of the buffer
-char *parse_host(char *header, size_t *host_len, char **port, size_t *port_len)
-{
-    char *start = strstr(header, HOST);
-    char *end = strstr(start, CRLF);
-    char *field = get_buffer(start + HOST_L, end);
-
-    end = field;
-
-    /* find end of host string */
-    while(*end != '\0') {
-        end++;
-    }
-
-    field = remove_whitespace(field, strlen(field));
-    *host_len = strlen(field);
-
-    /* get the port if there is one */
-    *port = NULL;
-    *port_len = 0;
-    char *hostname;
-    char *colon = strstr(field, ":");
-    if (colon != NULL) {    // port specified
-        *port = get_buffer(colon + 1, end); /* malloc'd */
-        *port_len = end - colon - 1; 
-        *host_len = colon - field;
-        hostname = malloc(*host_len + 1);  /* malloc'd */
-        hostname[*host_len] = '\0';
-        memcpy(hostname, field, *host_len); 
-    } else {    // no port specified
-        *port = calloc(HTTP_PORT_L + 1, sizeof(char));
-        memcpy(*port, HTTP_PORT, HTTP_PORT_L); 
-        *port_len = HTTP_PORT_L;
-        hostname = malloc(*host_len + 1);  /* malloc'd */
-        hostname[*host_len] = '\0';
-        memcpy(hostname, field, *host_len);
-    }
-
-    free(field);
-
-    return hostname;
-}
-
-char *parse_path(char *header, size_t *len)
-{
-    char *start = strstr(header, " ");
-    char *end = strstr(start + 1, " ");
-    char *resource = get_buffer(start + 1, end); /* malloc'd */
-
-    *len = end - start;
-    
-    return resource; 
-}
-
-/* returns content-length from given header; header must have all lowercase; 
-   -1 if it did not exist */
-long parse_contentLength(char *header)
-{
-    char *start = strstr(header, CONTENT_LEN);
-    if (start == NULL) {
+    if (memcmp(req1->port, req2->port, req1->port_l) != 0) {
         return -1;
     }
 
-    char *end = strstr(start, CRLF);
-
-    char *value = get_buffer(start + CONTENT_LEN_L, end); // malloc'd
-
-    value = remove_whitespace(value, strlen(value));
- 
-    unsigned long contentLength = strtoul(value, NULL, 10);
-
-    free(value);
-
-    return contentLength;
-}
-
-/* parses out the max age if any from a lowercase'd header. Default age
-   if field isn't present. */
-unsigned int parse_maxage(char *header)
-{
-    char *cc_start = strstr(header, CACHECONTROL);
-    if (cc_start == NULL) {
-        return DEFAULT_MAX_AGE;
+    if (memcmp(req1->body, req2->body, req1->body_l) != 0) {
+        return -1;
     }
 
-    char *cc_end = strstr(cc_start, CRLF);
-
-    char *value = get_buffer(cc_start + CACHECONTROL_L, cc_end + 2);
-    value = remove_whitespace(value, strlen(value));
-
-    char *ma_start = strstr(value, MAXAGE);
-    if (ma_start == NULL) {
-        return DEFAULT_MAX_AGE;
-    }
-
-    char *ma_end = strstr(ma_start, CRLF);
-
-    char *age = get_buffer(ma_start + MAXAGE_L, ma_end); /* malloc'd */
-    age = remove_whitespace(age, strlen(age));
-    unsigned int max_age_value = strtoul(age, NULL, 10);
-
-    free(value);
-    free(age);
-
-    return max_age_value;
+    return 0;
 }
-
-/* returns the string for "Age: <age>\r\n" */
-char *make_ageField(unsigned int age)
-{
-    char *field = calloc(18, sizeof(char));
-    int size = snprintf(field, 18, "Age: %u\r\n", age);
-    // printf("Age field: \"%s\"\t\tSize: %d\t\t\"size\": %d\n\n", field, strlen(field), size);
-    field = realloc(field, size + 1);
-    // printf("Age field: \"%s\"\t\tSize: %d\t\t\"size\": %d\n\n", field, strlen(field), size);
-    return field;
-}
-
 
 /* Response Functions ------------------------------------------------------- */
-/**
- * Response_new
- *    Purpose: Allocates memory for a Response and initializes it's size
- *             and original raw bytes of the response
- * Parameters: The number of bytes of the response to store, and the 
- *             original response message
- *   Returns: Pointer to a Response containing the response data
- * 
- * Note: It is the responsibility of the caller to deallocate the memory of 
- *       the message argument, if need be.
- */
 Response *Response_new(char *message, size_t message_l)
 {
-    Response *response = malloc(sizeof(struct Response));
+    Response *response = calloc(1, sizeof(struct Response));
     if (response == NULL) {
-        fprintf(stderr, "Unable to allocate memory for Response structure.\n");
-        exit(1);
+        return NULL;
     }
 
-    /* create calloc'd copy of message buffer */
-    response->size = message_l;
-    response->raw = calloc(message_l, sizeof(char));
-    if (response->raw == NULL) {
-        fprintf(stderr, "Unable to allocate memory for response data.\n");
-        exit(1);
-    }
-    memcpy(response->raw, message, message_l);
-
-    // Response_print(response); // DEBUG
+    parse_response(response, message, message_l);
 
     return response;
 }
 
-/**
- * Response_free
- *    Purpose: Deallocates the memory pointed to by content
- * Parameters: Pointer to the FileContent to deallocate
- *    Returns: None
- */
 void Response_free(void *response)
 {
     if (response == NULL) {
         return;
     }
 
-    Response *r = response; 
+    Response *r = (Response *)response;
+
+    free(r->version);
+    free(r->status);
+    free(r->cache_ctrl);
+    free(r->body);
     free(r->raw);
     free(r);
 }
 
-/**
- * Response_get
- *    Purpose: Returns the raw response message
- * Parameters: A response pointer
- *    Returns: Char array representing the raw bytes of the original store
- *             response message
- */
-char *Response_get(Response *response) 
-{ 
-    if (response == NULL) { return NULL; }
-    return response->raw; 
+unsigned long Response_size(Response *response)
+{
+    if (response == NULL) {
+        return 0;
+    }
+
+    return response->raw_l;
 }
 
-/**
- * Response_size
- *   Purpose: Returns the size of the response in bytes
- * Parameter: A response pointer
- *    Returns: Size of response message in bytes
- */
-unsigned long Response_size(Response *response) 
-{ 
-    if (response == NULL) { return 0; }
-    return response->size; 
+char *Response_get(Response *response)
+{
+    if (response == NULL) {
+        return NULL;
+    }
+
+    return response->raw;
 }
 
-/**
- * Response_print
- *    Purpose: Prints the file response message contained in given Response
- * Parameters: A Response called response
- *    Returns: None
- */
 void Response_print(void *response)
 {
-    if (response == NULL) { return; }
+    if (response == NULL) {
+        return;
+    }
+
     Response *r = (Response *)response;
-    print_ascii(r->raw, r->size);
+
+    fprintf(stderr, "[Response]\n");
+    fprintf(stderr, "  Version: %s\n", r->version);
+    fprintf(stderr, "   Status: %s\n", r->status);
+    fprintf(stderr, "   Cache-Control: %s\n", r->cache_ctrl);
+    fprintf(stderr, "   Content-Length: %ld\n", r->content_length);
+}
+int Response_compare(void *response1, void *response2);
+
+/* Static Functions --------------------------------------------------------- */
+
+/* parse_request
+ *    Purpose: Initializes a Request with a buffer containing an HTTP request,
+ *             the buffer must be null terminated. This function assumes that
+ *             the buffer contains a valid HTTP request. If the buffer does not
+ *             contain a valid HTTP request, the behavior is undefined.
+ * Parameters: @req - Pointer to a Request to initialize
+ *             @buffer - Pointer to a buffer containing an HTTP request
+ *    Returns: None
+ */
+static int parse_request(Request *req, char *buffer, size_t buffer_l)
+{
+    if (req == NULL || buffer == NULL) {
+        return -1;
+    }
+
+    char *buffer_lc = get_buffer_lc(buffer, buffer + buffer_l);
+    if (parse_startline(req, buffer_lc) != 0) {
+        return -1;
+    }
+
+    if (parse_request_fields(req, buffer_lc, buffer_l) != 0) {
+        return -1;
+    }
+
+    /* store the raw request */
+    req->raw = calloc(buffer_l + 1, sizeof(char));
+    if (req->raw == NULL) {
+        return -1;
+    }
+
+    memcpy(req->raw, buffer, buffer_l);
+    req->raw_l = buffer_l;
+
+    free(buffer_lc);
+
+    return 0;
+
+}
+
+static int parse_response(Response *res, char *buffer, size_t buffer_l)
+{
+    if (res == NULL || buffer == NULL) {
+        return -1;
+    }
+    
+    if (parse_statusline(res, buffer) != 0) {
+        return -1;
+    }
+
+    if (parse_response_fields(res, buffer, buffer_l) != 0) {
+        return -1;
+    }
+
+    /* store the raw response */
+    res->raw = calloc(buffer_l + 1, sizeof(char));
+    if (res->raw == NULL) {
+        return -1;
+    }
+
+    memcpy(res->raw, buffer, buffer_l);
+    res->raw_l = buffer_l;
+
+    return 0;
+}
+static int parse_response_fields(Response *res, char *buffer, size_t buffer_l)
+{
+    if (res == NULL || buffer == NULL) {
+        return -1;
+    }
+
+    res->cache_ctrl = parse_cachecontrol(buffer, &res->cache_ctrl_l);
+
+    if (res->cache_ctrl != NULL) {
+        res->max_age = parse_maxage(res->cache_ctrl, res->cache_ctrl_l);
+    }
+
+    res->content_length = parse_contentlength(buffer, buffer_l);
+
+    res->body = parse_body(buffer, buffer_l, &res->body_l);
+
+    return 0;
+}
+
+
+
+    
+static int parse_statusline(Response *res, char *response)
+{
+    if (res == NULL || response == NULL) {
+        return -1;
+    }
+    char *saveptr = NULL;
+    res->version = parse_version_res(response, &res->version_l, NULL);
+    res->status = parse_status(response, &res->status_l, NULL);
+
+    return 0;
+}
+
+static char *parse_status(char *response, size_t *status_l, char **saveptr)
+{
+    if (response == NULL || status_l == NULL) {
+        return NULL;
+    }
+
+    char *status = NULL;
+    if (saveptr != NULL && *saveptr != NULL) {
+        status = *saveptr;
+    } else {
+        status = response;
+
+        /* skip the version */
+        status = strchr(status, ' ') + 1;   // skip the space
+        if (status == NULL) {
+            return NULL;
+        }
+    }
+    fprintf(stderr, "%sstatus = %s%s\n", RED, status, reset);
+    char *end = strchr(status, '\r');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    size_t status_len = end - status;
+    if (status_l != NULL) {
+        *status_l = status_len;
+    }
+
+    char *s = calloc(status_len + 1, sizeof(char));
+    if (s == NULL) {
+        return NULL;
+    }
+
+    memcpy(s, status, status_len);
+
+    if (saveptr != NULL) {
+        while(isspace(*end)) {
+            end++;
+        }
+        *saveptr = end;
+    }
+
+    return s;
+}
+
+
+    
+/* parse_request_fields
+ *    Purpose: Parses the fields of an HTTP request and initializes the Request
+ *             with the values. This function assumes that the buffer contains
+ *             a valid HTTP request. If the buffer does not contain a valid HTTP
+ *             request, the behavior is undefined.
+ * Parameters: @req - Pointer to a Request to initialize
+ *             @buffer - Pointer to a buffer containing an HTTP request, must be
+ *                       null terminated
+ *             @buffer_l - Length of the buffer
+ *    Returns: None
+ */
+static int parse_request_fields(Request *req, char *buffer, size_t buffer_l)
+{
+    if (req == NULL || buffer == NULL) {
+        return -1;
+    }
+
+    req->host = parse_host(buffer, buffer_l, &req->host_l);
+    req->port = parse_port(&req->host, &req->host_l, req->path, &req->port_l);
+    req->body = parse_body(buffer, buffer_l, &req->body_l);
+
+    return 0;
+}
+
+/* parse_method
+ *    Purpose: Parses the HTTP method from a HTTP header.
+ * Parameters: @header - Pointer to a buffer containing the HTTP header. The
+ *                       buffer must be null terminated.
+ *             @method_l - Pointer to a size_t to store the length of the
+ *                         method, this value can be NULL.
+ *             @saveptr - Pointer to a char to store the next character after
+ *                        the method, ignoring any whitespace. Can be NULL.
+ *    Returns: Pointer to a buffer containing the HTTP method, or NULL if the
+ *             header does not contain a valid HTTP method or an error occurs.
+ * 
+ * Note: The returned buffer is allocated on the heap and must be freed by the
+ *       caller.
+ */
+static char *parse_method(char *header, size_t *method_l, char **saveptr)
+{
+    if (header == NULL) {
+        return NULL;
+    }
+
+    char *method = header;
+    char *end = strchr(header, ' ');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    size_t method_len = end - method;
+    if (method_l != NULL) {
+        *method_l = method_len;
+    }
+    
+    char *m = calloc(method_len + 1, sizeof(char));
+    if (m == NULL) {
+        return NULL;
+    }
+    memcpy(m, method, method_len);
+
+    if (saveptr != NULL) {
+        while(isspace(*end)) {
+            end++;
+        }
+        *saveptr = end;
+    }
+
+    return m;
+}
+
+
+/* parse_path
+ *    Purpose: Parses the HTTP path from a HTTP header.
+ * Parameters: @header - Pointer to a buffer containing the HTTP header. The
+ *                       buffer must be null terminated.
+ *             @path_l - Pointer to a size_t to store the length of the path,
+ *                       can be NULL
+ *             @saveptr - Pointer to a char to store the next character after
+ *                        the path, ignoring any whitespace. Can be NULL.
+ *    Returns: Pointer to a buffer containing the HTTP path, or NULL if the
+ *             header does not contain a valid HTTP path or an error occurs.
+ * 
+ * Note: The returned buffer is allocated on the heap and must be freed by the
+ *       caller.
+ */
+static char *parse_path(char *header, size_t *path_l, char **saveptr)
+{
+    if (header == NULL) {
+        return NULL;
+    }
+
+    char *path;
+    if (saveptr != NULL && *saveptr != NULL) {
+        path = *saveptr;
+    } else {
+        path = header;
+        path = strchr(header, ' ') + 1; // skip method
+        if (path == NULL) {
+            return NULL;
+        }
+    }
+    
+    char *end = strchr(path, ' ');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    /* calculate the length of the path */
+    size_t path_len = end - path;
+    if (path_l != NULL) {
+        *path_l = path_len;
+    }
+
+    /* allocate memory for the path and copy path */
+    char *p = calloc(path_len + 1, sizeof(char));
+    if (p == NULL) {
+        return NULL;
+    }
+    memcpy(p, path, path_len);
+
+    /* set the saveptr */
+    if (saveptr != NULL) {
+        while(isspace(*end)) {
+            end++;
+        }
+        *saveptr = end;
+    }
+
+    return p;
+}
+
+/* parse_version
+ *    Purpose: Parses the HTTP version from a HTTP header.
+ * Parameters: @header - Pointer to a buffer containing the HTTP header. The
+ *                       buffer must be null terminated.
+ *             @version_l - Pointer to a size_t to store the length of the
+ *                          version, can be NULL
+ *             @saveptr - Pointer to a char to store the next character after
+ *                        the version, ignoring any whitespace. Can be NULL.
+ *    Returns: Pointer to a buffer containing the HTTP version, or NULL if the
+ *             header does not contain a valid HTTP version or an error occurs.
+ * 
+ * Note: The returned buffer is allocated on the heap and must be freed by the
+ *       caller.
+ */
+static char *parse_version_req(char *header, size_t *version_l, char **saveptr)
+{
+    if (header == NULL) {
+        return NULL;
+    }
+
+    char *version;
+    if (saveptr != NULL && *saveptr != NULL) {
+        version = *saveptr;
+    } else {
+        version = header;
+        version = strchr(header, ' ') + 1;  // skip method
+        if (version == NULL) {
+            return NULL;
+        }
+
+        version = strchr(version, ' ') + 1; // skip path
+        if (version == NULL) {
+            return NULL;
+        }
+    }
+    
+    char *end = strchr(version, '\r');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    /* calculate the length of the version */
+    size_t version_len = end - version;
+    if (version_l != NULL) {
+        *version_l = version_len;
+    }
+
+    /* allocate memory for the version and copy version */
+    char *v = calloc(version_len + 1, sizeof(char));
+    if (v == NULL) {
+        return NULL;
+    }
+
+    memcpy(v, version, version_len);
+
+    /* set the saveptr */
+    if (saveptr != NULL) {
+        while(isspace(*end)) {
+            end++;
+        }
+        *saveptr = end;
+    }
+
+
+
+    return v;
+}
+
+
+/* parse_version
+ *    Purpose: Parses the HTTP version from a HTTP header.
+ * Parameters: @header - Pointer to a buffer containing the HTTP header. The
+ *                       buffer must be null terminated.
+ *             @version_l - Pointer to a size_t to store the length of the
+ *                          version, can be NULL
+ *             @saveptr - Pointer to a char to store the next character after
+ *                        the version, ignoring any whitespace. Can be NULL.
+ *    Returns: Pointer to a buffer containing the HTTP version, or NULL if the
+ *             header does not contain a valid HTTP version or an error occurs.
+ * 
+ * Note: The returned buffer is allocated on the heap and must be freed by the
+ *       caller.
+ */
+static char *parse_version_res(char *header, size_t *version_l, char **saveptr)
+{
+    if (header == NULL) {
+        return NULL;
+    }
+
+    char *version = NULL;
+    if (saveptr != NULL && *saveptr != NULL) {
+        version = *saveptr;
+    } else {
+        version = header;
+    }
+    
+    char *end = strchr(version, ' ');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    /* calculate the length of the version */
+    size_t version_len = end - version;
+    if (version_l != NULL) {
+        *version_l = version_len;
+    }
+
+    /* allocate memory for the version and copy version */
+    char *v = calloc(version_len + 1, sizeof(char));
+    if (v == NULL) {
+        return NULL;
+    }
+
+    memcpy(v, version, version_len);
+
+    /* set the saveptr */
+    if (saveptr != NULL && *saveptr != NULL) {
+        while(isspace(*end)) {
+            end++;
+        }
+        *saveptr = end;
+    }
+
+
+
+    return v;
+}
+
+/* parse_startline
+ *    Purpose: Parses the HTTP start line from a HTTP request header. This
+ *             function will parse the HTTP method, path, and version from the
+ *             start line. Any whitespace will be ignored. Assumes the start
+ *             line is the first line in the header. The request must be
+ *             null terminated.
+ * Parameters: @header - Pointer to a buffer containing the HTTP header. The
+ */
+static int parse_startline(Request *req, char *request)
+{
+    if (req == NULL || request == NULL) {
+        return -1;
+    }
+
+    char *saveptr = NULL;
+    char *method = parse_method(request, &req->method_l, &saveptr);
+    if (method == NULL) {
+        return -1;
+    }
+    req->method = method;
+
+    char *path = parse_path(request, &req->path_l, &saveptr);
+    if (path == NULL) {
+        return -1;
+    }
+    req->path = path;
+
+    char *version = parse_version_req(request, &req->version_l, &saveptr);
+    if (version == NULL) {
+        return -1;
+    }
+    req->version = version;
+
+    return EXIT_SUCCESS;
+}
+
+/* parse_host
+ *    Purpose: Parses a Host field from a HTTP header. The header must be null
+ *             terminated. The Host field is the only field that is parsed. If
+ *             the Host field is not found, the function will return NULL.
+ * Parameters: @header - Pointer to a buffer containing the HTTP header. The
+ *                       buffer must be null terminated.
+ *            @host_l - Pointer to a size_t to store the length of the host,
+ *                      can be NULL
+ *   Returns: Pointer to a buffer containing the host, or NULL if the header
+ *            does not contain a valid host or an error occurs.
+ * 
+ * Note: The returned buffer is allocated on the heap and must be freed by the
+ *       caller.
+ */
+static char *parse_host(char *header, size_t header_l, size_t *host_l)
+{
+    if (header == NULL) {
+        return NULL;
+    }
+
+    char *header_lc = get_buffer_lc(header, header + header_l);
+
+    char *host = strstr(header_lc, HOST);
+    if (host == NULL) {
+        return NULL;
+    }
+
+    /* skip field name and any whitespace after the colon */
+    host += 6; // Skip "host:"
+    while (isspace(*host)) {
+        host++;
+    }
+
+    /* find the end of the Host field */
+    char *end = strchr(host, '\r');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    size_t host_len = end - host;
+    if (host_l != NULL) {
+        *host_l = host_len;
+    }
+
+    char *h = calloc(host_len + 1, sizeof(char));
+    if (h == NULL) {
+        return NULL;
+    }
+
+    memcpy(h, host, host_len);
+
+    free(header_lc);
+
+    return h;
+}
+
+static char *parse_port(char **host, size_t *host_l, char *path, size_t *port_l)
+{
+    char *colon = NULL, *port = NULL, *end = NULL;
+    size_t port_len = 0;
+    size_t new_host_len = *host_l;
+    if (*host != NULL) {
+        colon = strchr(*host, ':');
+        if (colon != NULL) {
+            port = colon + 1;
+            end = port;
+            while (isdigit(*end)) {
+                end++;
+            }
+            port_len = end - port;
+            if (port_l != NULL) {
+                *port_l = port_len;
+            }
+
+            new_host_len = colon - *host; // update host length
+        }
+    }
+    
+    if (path != NULL && port == NULL) {
+        port = strrchr(path, ':');
+        port++;
+        
+        /* check if the port is a number */
+        if (isdigit(*port)) {
+            end = port;
+            while (isdigit(*end)) {
+                end++;
+            }
+
+            port_len = end - port;
+            if (port_l != NULL) {
+                *port_l = port_len;
+            }
+        } else {
+            port = NULL;
+        }
+    } 
+
+    /* Default port */
+    fprintf(stderr, "Using default port\n");
+    fprintf(stderr, "port: %s\n", port);
+    if (port == NULL) {
+        port = HTTP_PORT;
+        port_len = HTTP_PORT_L;
+        if (port_l != NULL) {
+            *port_l = port_len;
+        }
+    }
+
+    char *p = calloc(port_len + 1, sizeof(char));
+    if (p == NULL) {
+        return NULL;
+    }
+    memcpy(p, port, port_len);
+
+    if (new_host_len != *host_l) {
+        char *h = calloc(new_host_len + 1, sizeof(char));
+        if (h == NULL) {
+            return NULL;
+        }
+        memcpy(h, *host, new_host_len);
+        free(*host);
+        *host = h;
+        if (host_l != NULL) {
+            *host_l = new_host_len;
+        }
+    }
+
+    return p;
+}
+
+static char *parse_cachecontrol(char *header, size_t *cachecontrol_l)
+{
+    if (header == NULL) {
+        return NULL;
+    }
+
+    char *header_lc = get_buffer_lc(header, header + strlen(header));
+    char *cachecontrol = strstr(header_lc, CACHECONTROL);
+    if (cachecontrol == NULL) {
+        return NULL;
+    }
+
+    /* skip field name and any whitespace after the colon */
+    cachecontrol += CACHECONTROL_L; // Skip "Cache-Control:"
+    while (isspace(*cachecontrol)) {
+        cachecontrol++;
+    }
+
+    /* find the end of the Cache-Control field */
+    char *end = strchr(cachecontrol, '\r');
+    if (end == NULL) {
+        return NULL;
+    }
+
+    size_t cachecontrol_len = end - cachecontrol;
+    if (cachecontrol_l != NULL) {
+        *cachecontrol_l = cachecontrol_len;
+    }
+
+    char *c = calloc(cachecontrol_len + 1, sizeof(char));
+    if (c == NULL) {
+        return NULL;
+    }
+
+    memcpy(c, cachecontrol, cachecontrol_len);
+
+    free(header_lc);
+
+    return c;
+}
+
+static unsigned int parse_maxage(char *cachecontrol, size_t cachecontrol_l)
+{
+    if (cachecontrol == NULL) {
+        return 0;
+    }
+
+    char *cachecontrol_lc = get_buffer_lc(cachecontrol, cachecontrol + cachecontrol_l);
+
+    char *maxage = strstr(cachecontrol_lc, "max-age="); // case insensitive, GNU extension // TODO (check if ok)
+    if (maxage == NULL) {
+        return 0;
+    }
+
+    /* skip field name and any whitespace after the colon */
+    maxage += 8; // Skip "max-age="
+    while (isspace(*maxage)) {
+        maxage++;
+    }
+
+    /* find the end of the Cache-Control field */
+    char *end = strchr(maxage, ',');
+    if (end == NULL) {
+        end = maxage + cachecontrol_l;  // end of string
+    }
+
+    size_t maxage_len = end - maxage;
+
+    char *m = calloc(maxage_len + 1, sizeof(char));
+    if (m == NULL) {
+        return 0;
+    }
+
+    memcpy(m, maxage, maxage_len);
+
+    unsigned int maxage_int = atoi(m);
+    free(m);
+
+    free(cachecontrol_lc);
+
+    return maxage_int;
+}
+
+static size_t parse_contentlength(char *header, size_t header_l)
+{
+    if (header == NULL) {
+        return 0;
+    }
+
+    char *header_lc = get_buffer_lc(header, header + header_l);
+
+    char *contentlength = strstr(header_lc, CONTENTLENGTH);
+    if (contentlength == NULL) {
+        return 0;
+    }
+
+    /* skip field name and any whitespace after the colon */
+    contentlength += CONTENTLENGTH_L; // Skip "Content-Length:"
+    while (isspace(*contentlength)) {
+        contentlength++;
+    }
+
+    /* find the end of the Content-Length field */
+    char *end = strchr(contentlength, '\r');
+    if (end == NULL) {
+        return 0;
+    }
+
+    size_t contentlength_len = end - contentlength;
+
+    char *c = calloc(contentlength_len + 1, sizeof(char));
+    if (c == NULL) {
+        return 0;
+    }
+
+    memcpy(c, contentlength, contentlength_len);
+    size_t contentlength_int = strtoul(c, NULL, 10);
+
+    free(c);
+    free(header_lc);
+
+    return contentlength_int;
+}
+
+static char *parse_body(char *buffer, size_t buffer_l, size_t *body_l)
+{
+    if (buffer == NULL) {
+        return NULL;
+    }
+
+    char *b;
+    char *body = strstr(buffer, HEADER_END); // case insensitive, GNU extension // TODO (check if ok)
+    if (body == NULL) {
+        return NULL;
+    }
+
+    body += HEADER_END_L;   // Skip "\r\n\r\n"
+
+    size_t body_len = buffer_l - (body - buffer);
+    if (body_l != NULL) {
+        *body_l = body_len;
+    }
+
+    if (body_len == 0) {    // No body
+        return NULL;
+    } else {                // Body
+        b = calloc(body_len + 1, sizeof(char));
+        if (b == NULL) {
+            return NULL;
+        }
+
+        memcpy(b, body, body_len);
+    }
+
+    return b;
 }

@@ -51,14 +51,15 @@ int Proxy_init(Proxy *proxy, short port, size_t cache_size);
 void Proxy_free(void *proxy);
 void Proxy_print(Proxy *proxy);
 ssize_t Proxy_recv(Proxy *proxy, int socket);
-ssize_t Proxy_send(Proxy *proxy, int socket);
+ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket);
 int Proxy_handle(Proxy *proxy);
 int Proxy_accept(Proxy *proxy);
 int Proxy_handleListener(Proxy *proxy);
+int Proxy_handleQuery(Proxy *proxy, Query *query);
 int Proxy_handleClient(Proxy *proxy, Client *client);
 int Proxy_handleTimeout(Proxy *proxy);
 int Proxy_errorHandle(Proxy *proxy, int error_code);
 void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client);
-ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request, int request_len);
+ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 
 #endif /* _PROXY_H_ */

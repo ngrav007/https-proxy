@@ -147,3 +147,4 @@ char *remove_whitespace(char *str, int size)
     str[strIdx] = '\0';
     return str;
 }
+

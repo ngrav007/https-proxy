@@ -28,10 +28,12 @@
 #define HTTP_GET_L 3
 #define HTTP_CONNECT "connect"
 #define HTTP_CONNECT_L 7
+#define FIELD_SEP ": "
+#define FIELD_SEP_L 2
 
 /* HTTP Header Fields */
-#define CONTENT_LEN "content-length:"
-#define CONTENT_LEN_L 15
+#define CONTENTLENGTH "content-length:"
+#define CONTENTLENGTH_L 15
 #define HOST "host:" /* "host:" appears in localhost:9010 in first line */
 #define HOST_L 5
 #define CACHECONTROL "cache-control:"

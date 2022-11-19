@@ -5,6 +5,7 @@
 #include "http.h"
 #include "utility.h"
 #include "list.h"
+#include "query.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -16,29 +17,15 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-typedef struct Client_request {
-    char *method;
-    char *path;
-    char *host;
-    char *body;
-
-    Response *response;
-    struct sockaddr_in server_addr;
-    socklen_t server_addr_l;
-    int server_fd;
-    struct timeval *timeout;
-} Client_request;
-
 typedef struct Client {
-    List *request_list;
+    Query *query;
     struct sockaddr_in addr;  // Client address
     struct timeval last_recv; // Time of last activity
     socklen_t addr_l;         // Length of client address
     size_t buffer_l;          // Length of buffer
-    char *key;                // Key for cache // TODO - Store this elsewhere
     char *buffer;             // Buffer for outgoing messages
     int socket;               // Client socket
-    bool slowMofo;            // True if sends partial messages
+    bool isSlow;              // True if sends partial messages
 } Client;
 
 Client *Client_new();
@@ -55,6 +42,5 @@ const char *Client_getId(Client *client);
 bool Client_isLoggedIn(Client *client);
 bool Client_isSlowMofo(Client *client);
 int Client_timestamp(Client *client);
-int Client_setKey(Client *client, HTTP_Header *header);
 
 #endif /* _CLIENT_H_ */

@@ -11,51 +11,61 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct HTTP_Header {
+typedef struct Request {
     char *method;
     char *path;
+    char *version;
     char *host;
     char *port;
+    char *body;
+    char *raw;
 
+    size_t method_l;
     size_t path_l;
+    size_t version_l;
     size_t host_l;
     size_t port_l;
-    size_t method_l;
-} HTTP_Header;
+    size_t body_l;
+    size_t raw_l;
+
+} Request;
 
 typedef struct Response {
-    unsigned long size;     /* size of entire message in bytes */
-    char *raw;              /* original "raw" response message. */
+    char *version;
+    char *status;
+    char *cache_ctrl;  /* Cache-Control header field. */
+    char *body;        /* body of the response message. */
+    char *raw;         /* original "raw" response message. */
+
+    unsigned int max_age; /* max-age value from Cache-Control header. */
+    size_t content_length;  /* Content-Length value from header. */
+
+    size_t version_l;
+    size_t status_l;
+    size_t cache_ctrl_l;
+    size_t body_l;
+    size_t raw_l;
 } Response;
 
-/* Header related functions */
-bool HTTP_got_header (char *buffer);
-int HTTP_parse(HTTP_Header *header, char *buffer);
-void HTTP_free_header(void *header);
-void HTTP_free_request(void *request);
-void HTTP_print_request(void *request);
-short HTTP_get_port(HTTP_Header *request);
-long HTTP_get_max_age(char *httpstr);
-ssize_t HTTP_get_content_length(char *httpstr);
-ssize_t HTTP_body_len(char *httpstr, size_t len);
-ssize_t HTTP_header_len(char *httpstr);
+/* HTTP Functions */
+bool HTTP_got_header(char *buffer);
+int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l);
 
-/* Parsing related functions */
-char *parse_path(char *header, size_t *len);
-char *parse_method(char *header, size_t *len);
-char *parse_host(char *header, size_t *host_len, char **port, size_t *port_len);
-char *parse_header_raw   (char *message, size_t *len);
-char *parse_header_lower (char *message, size_t *len);
-long parse_content_length(char *header);
-char *removeSpaces      (char *str, int size);
-unsigned int parse_maxAge(char *header);
-char *make_ageField(unsigned int age);
+/* HTTP Request Functions */
+Request *Request_new(char *buffer, size_t buffer_l);
+Request *Request_create(char *method, char *path, char *version, char *host, char *port, char *body);
+void Request_free(Request *req);
+void Request_print(void *req);
+int Request_compare(Request *req1, Request *req2);
 
-/* Response related functions */
+/* HTTP Response Functions */
 Response *Response_new(char *message, size_t message_l);
 void Response_free(void *response);
 unsigned long Response_size(Response *response);
 char *Response_get(Response *response);
 void Response_print(void *response);
+int Response_compare(void *response1, void *response2);
+
+
 
 #endif /* _HTTP_H_ */
