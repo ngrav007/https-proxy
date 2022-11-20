@@ -7,13 +7,13 @@
 
 int main(int argc, char **argv)
 {
-    char incomplete_request[48] = "GET http://www.example.com/some/path HTTP/1.1\r\n\0";
-    char request0[80] =  "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu\r\n\r\n\0"; // 79 bytes
-    char request1[80] = "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu:666\r\n\r\n\0"; // 79 bytes
-    char request2[80] = "GET http://www.example.com/some/path:888 HTTP/1.1\r\nHost: www.someschool.edu\r\n\r\n\0"; // 79 bytes
-    char request3[84] = "GET http://www.example.com/some/path:888 HTTP/1.1\r\nHost: www.someschool.edu:999\r\n\r\n\0"; // 82 bytes
-    char response0[111] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 47\r\n\r\n<html><body><h1>HelloWorld!</h1></body></html>\0"; // 109 bytes
-    char response1[111] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 48\r\n\r\n<html><body><h1>HelloWorld!</h1></body></html>\0"; // 109 bytes
+    // char incomplete_request[48] = "GET http://www.example.com/some/path HTTP/1.1\r\n\0";
+    // char request0[80] =  "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu\r\n\r\n\0"; // 79 bytes
+    // char request1[80] = "GET http://www.example.com/some/path HTTP/1.1\r\nHost: www.someschool.edu:666\r\n\r\n\0"; // 79 bytes
+    // char request2[80] = "GET http://www.example.com/some/path:888 HTTP/1.1\r\nHost: www.someschool.edu\r\n\r\n\0"; // 79 bytes
+    // char request3[84] = "GET http://www.example.com/some/path:888 HTTP/1.1\r\nHost: www.someschool.edu:999\r\n\r\n\0"; // 82 bytes
+    // char response0[111] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 47\r\n\r\n<html><body><h1>HelloWorld!</h1></body></html>\0"; // 109 bytes
+    // char response1[111] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 48\r\n\r\n<html><body><h1>HelloWorld!</h1></body></html>\0"; // 109 bytes
     // fprintf(stderr, "[request0] (%lu bytes)\n%s\n", sizeof(request0), request0);
     // fprintf(stderr, "[request1] (%lu bytes)\n%s\n", sizeof(request1), request1);
     // fprintf(stderr, "[request2] (%lu bytes)\n%s\n", sizeof(request2), request2);
@@ -98,18 +98,5 @@ int main(int argc, char **argv)
 
     Proxy_run(port, 10);
 
-    
-
-
-
     return EXIT_SUCCESS;
-    
-
-
-    // /* --- Testing Proxy --- */
-    // int port = atoi(argv[1]);
-    // fprintf(stderr, "Port: %d\n\n", port);
-    // Proxy_run(atoi(argv[1]), CACHE_SZ);
-
-    return 0;
 }

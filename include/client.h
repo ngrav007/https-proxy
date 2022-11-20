@@ -3,9 +3,9 @@
 
 #include "config.h"
 #include "http.h"
-#include "utility.h"
 #include "list.h"
 #include "query.h"
+#include "utility.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>

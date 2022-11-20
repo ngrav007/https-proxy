@@ -13,15 +13,13 @@ Query *Query_new(char *buffer, size_t buffer_l)
         return NULL;
     }
 
-    
-
-    q->buffer = calloc(BUFFER_SZ, sizeof(char));
+    q->buffer = calloc(QUERY_BUFFER_SZ, sizeof(char));
     if (q->buffer == NULL) {
         Query_free(q);
         return NULL;
     }
     q->buffer_l = 0;
-    q->buffer_sz = BUFFER_SZ;
+    q->buffer_sz = QUERY_BUFFER_SZ;
 
     q->socket = socket(PF_INET, SOCK_STREAM, 0);
     if (q->socket < 0) {
@@ -32,7 +30,7 @@ Query *Query_new(char *buffer, size_t buffer_l)
     q->host_info = gethostbyname(q->req->host);
     if (q->host_info == NULL) {
         fprintf(stderr, "[!] proxy: unknown host\n");
-        return -1;
+        return NULL;
     }
 
     bzero(&q->server_addr, sizeof(q->server_addr));
@@ -69,6 +67,9 @@ void Query_print(Query *query)
     printf("Query:\n");
     Request_print(query->req);
     Response_print(query->res);
+    fprintf(stderr, "Buffer Length: %zu\n", query->buffer_l);
+    fprintf(stderr, "Buffer Size: %zu\n", query->buffer_sz);
+    fprintf(stderr, "Socket: %d\n", query->socket);
     print_ascii(query->buffer, query->buffer_l);
 }
 

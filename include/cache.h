@@ -26,7 +26,8 @@ typedef struct Cache {
     void (*print_foo)(void *);
 } Cache;
 
-Cache *Cache_new(size_t cap, void (*foo)(void *), void (*print_foo)(void *));
+Cache *Cache_new(size_t cap, void (*free_foo)(void *),
+                 void (*print_foo)(void *), int (*cmp_foo)(void *, void *));
 void Cache_free(Cache **cache);
 void Cache_print(Cache *cache);
 int Cache_put(Cache *cache, char *key, void *value, long max_age);

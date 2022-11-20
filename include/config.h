@@ -4,12 +4,17 @@
 #include <limits.h>
 
 #define DEBUG 1
+#define TRUE  1
+#define FALSE 0
 
 /* Proxy */
 #define DEFAULT_MAX_AGE 3600
-#define LISTEN_BACKLOG 5
-#define TIMEOUT        60 // 60 seconds
-#define HALT 666 // Halt message
+#define LISTEN_BACKLOG  5
+#define TIMEOUT         60  // 60 seconds
+#define HALT            666 // Halt message
+
+/* Query */
+#define QUERY_BUFFER_SZ 4096 // 4KB = 4096 bytes
 
 /* Utility */
 #define BUFFER_SZ 1024 // default buffer size
@@ -18,28 +23,28 @@
 #define CACHE_SZ 10
 
 /* HTTP */
-#define HTTP_PORT "80"
-#define HTTP_PORT_L 2
-#define HEADER_END "\r\n\r\n"
-#define HEADER_END_L 4
-#define CRLF  "\r\n"
-#define CRLF_L 2
-#define HTTP_GET "get"
-#define HTTP_GET_L 3
-#define HTTP_CONNECT "connect"
+#define HTTP_PORT      "80"
+#define HTTP_PORT_L    2
+#define HEADER_END     "\r\n\r\n"
+#define HEADER_END_L   4
+#define CRLF           "\r\n"
+#define CRLF_L         2
+#define HTTP_GET       "get"
+#define HTTP_GET_L     3
+#define HTTP_CONNECT   "connect"
 #define HTTP_CONNECT_L 7
-#define FIELD_SEP ": "
-#define FIELD_SEP_L 2
+#define FIELD_SEP      ": "
+#define FIELD_SEP_L    2
 
 /* HTTP Header Fields */
-#define CONTENTLENGTH "content-length:"
+#define CONTENTLENGTH   "content-length:"
 #define CONTENTLENGTH_L 15
-#define HOST "host:" /* "host:" appears in localhost:9010 in first line */
-#define HOST_L 5
-#define CACHECONTROL "cache-control:"
-#define CACHECONTROL_L 14
-#define MAXAGE "max-age="
-#define MAXAGE_L 8
+#define HOST            "host:" /* "host:" appears in localhost:9010 in first line */
+#define HOST_L          5
+#define CACHECONTROL    "cache-control:"
+#define CACHECONTROL_L  14
+#define MAXAGE          "max-age="
+#define MAXAGE_L        8
 
 /* Indicators */
 #define RECVD_BODY       2

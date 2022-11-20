@@ -48,7 +48,7 @@ void Entry_free(Entry **entry, void (*foo)(void *))
         foo = free;
     }
 
-    foo((*entry)->value);
+    // foo((*entry)->value);
     (*entry)->value = NULL;
     memset((*entry)->key, 0, PATH_MAX);
     (*entry)->key_l   = 0;

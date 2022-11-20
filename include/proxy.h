@@ -59,7 +59,8 @@ int Proxy_handleQuery(Proxy *proxy, Query *query);
 int Proxy_handleClient(Proxy *proxy, Client *client);
 int Proxy_handleTimeout(Proxy *proxy);
 int Proxy_errorHandle(Proxy *proxy, int error_code);
-void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client);
+void Proxy_close(int socket, fd_set *master_set, List *client_list,
+                 Client *client);
 ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 
 #endif /* _PROXY_H_ */

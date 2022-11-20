@@ -86,6 +86,9 @@ void Client_free(void *client)
         c->socket = -1;
     }
 
+    Query_free(c->query);
+    free(c->buffer);
+
     free(c);
 }
 
@@ -108,11 +111,6 @@ void Client_print(void *client)
                 c->last_recv.tv_usec);
         fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
         Query_print(c->query);
-        if (c->buffer_l > 0) {
-            print_ascii(c->buffer, c->buffer_l);
-        } else {
-            fprintf(stderr, "  buffer = \"\"\n");
-        }
     }
 }
 

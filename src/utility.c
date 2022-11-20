@@ -148,3 +148,68 @@ char *remove_whitespace(char *str, int size)
     return str;
 }
 
+void clear_buffer(char *buffer, size_t *buffer_l)
+{
+    if (buffer == NULL || buffer_l == 0) {
+        return;
+    }
+
+    /* clear the buffer */
+    zero(buffer, *buffer_l);
+    *buffer_l = 0;
+}
+
+int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz)
+{
+    if (buffer == NULL || *buffer == NULL || buffer_l == NULL || buffer_sz == NULL) {
+        return -1;
+    }
+
+    /* expand the buffer */
+   *buffer_sz *= 2 + 1;
+    char *new_buffer = calloc(*buffer_sz, sizeof(char));
+    if (new_buffer == NULL) {
+        return -1;
+    }
+
+    /* copy the old buffer to the new buffer */
+    memcpy(new_buffer, *buffer, *buffer_l);
+
+    /* free the old buffer */
+    free(*buffer);
+
+    /* set the new buffer */
+    *buffer = new_buffer;
+
+    return 0;
+}
+
+void free_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz)
+{
+    if (buffer == NULL || *buffer == NULL) {
+        return;
+    }
+
+    /* free the buffer */
+    free(*buffer);
+
+    /* set the buffer to NULL */
+    *buffer = NULL;
+
+    if (buffer_l != NULL) {
+        *buffer_l = 0;
+    }
+
+    if (buffer_sz != NULL) {
+        *buffer_sz = 0;
+    }
+}
+
+void zero(void *p, size_t n)
+{
+    if (p == NULL) {
+        return;
+    }
+
+    memset(p, 0, n);
+}
