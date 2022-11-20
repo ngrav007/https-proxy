@@ -17,7 +17,7 @@ Cache *Cache_new(size_t cap, void (*free_foo)(void *),
         return NULL;
     }
 
-    cache->lru = List_new(free_foo, print_foo, cmp_foo);
+    cache->lru = List_new(NULL, print_foo, cmp_foo);
     if (cache->lru == NULL) {
         free(cache->table);
         free(cache);
@@ -83,9 +83,9 @@ void *Cache_get(Cache *cache, char *key)
             continue;
         } else if (strncmp(e->key, key, strlen(key)) == 0) { // Key Found
             if (e->stale) { // TODO - check if this is correct
+                fprintf(stderr, "%s[DEBUG] cache: entry is stale%s\n", BLU, reset);
                 List_remove(cache->lru, e->value);
-                Entry_delete(
-                    e, cache->free_foo); // clear entry and set as 'deleted' for
+                Entry_delete(e, cache->free_foo); // clear entry and set as 'deleted' for
                                          // cache linear probing
                 return NULL;
             } else {

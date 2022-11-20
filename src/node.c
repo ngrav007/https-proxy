@@ -35,6 +35,7 @@ void Node_free(Node *node, void (*free_data)(void *))
     if (free_data != NULL) {
         free_data(node->data);
     }
+    
     node->data = NULL;
     node->next = NULL;
     node->prev = NULL;

@@ -69,4 +69,7 @@ void Response_print(void *response);
 int Response_compare(void *response1, void *response2);
 Response *Response_copy(Response *response);
 
+/* HTTP Raw String Functions */
+char *Raw_request(char *method, char *url, char *host, char *port, char *body, size_t *raw_l);
+
 #endif /* _HTTP_H_ */

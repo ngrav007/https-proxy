@@ -13,6 +13,10 @@ Query *Query_new(char *buffer, size_t buffer_l)
         return NULL;
     }
 
+    if (strncmp(q->req->method, PROXY_HALT, q->req->method_l) == 0) {
+        return q;
+    }
+
     q->buffer = calloc(QUERY_BUFFER_SZ, sizeof(char));
     if (q->buffer == NULL) {
         Query_free(q);

@@ -112,6 +112,10 @@ void print_ascii(char *buf, size_t len)
     for (i = 0; i < len; i++) {
         if (isprint(buf[i])) {
             fprintf(stderr, "%c", buf[i]);
+        } else if (buf[i] == '\r') {
+            fprintf(stderr, "<CR>");
+        } else if (buf[i] == '\n') {
+            fprintf(stderr, "<LF>");
         } else {
             fprintf(stderr, ".");
         }

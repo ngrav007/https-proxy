@@ -298,6 +298,8 @@ int Request_compare(void *req1, void *req2)
         return ERROR_FAILURE;
     }
 
+    fprintf(stderr, "%sIN REQUEST COMPARE%s\n", CYN, reset);
+
     Request *r1 = (Request *)req1;
     Request *r2 = (Request *)req2;
 
@@ -510,6 +512,14 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
         return -1;
     }
 
+    fprintf(stderr, "method (%ld): %s\n", req->method_l, req->method);
+    fprintf(stderr, "HALT (%d) = %s\n", PROXY_HALT_L, PROXY_HALT);
+    if (strncmp(req->method, PROXY_HALT, req->method_l) == 0) {
+        fprintf(stderr, "HALTing...\n");
+        free(buffer_lc);
+        return HALT;
+    }
+
     if (parse_request_fields(req, buffer_lc, buffer_l) != 0) {
         return -1;
     }
@@ -585,6 +595,8 @@ static int parse_response_fields(Response *res, char *buffer, size_t buffer_l)
     res->cache_ctrl = parse_cachecontrol(buffer, &res->cache_ctrl_l);
     if (res->cache_ctrl != NULL) {
         res->max_age = parse_maxage(res->cache_ctrl, res->cache_ctrl_l);
+    } else {
+        res->max_age = DEFAULT_MAX_AGE;
     }
     res->content_length = parse_contentlength(buffer);
     res->body           = parse_body(buffer, buffer_l, &res->body_l);
@@ -688,6 +700,21 @@ static int parse_request_fields(Request *req, char *buffer, size_t buffer_l)
     }
 
     req->host = parse_host(buffer, buffer_l, &req->host_l);
+    if (req->host == NULL) {
+        /* populate host with path uri */
+        char *path = req->path;
+        char *host_start = strchr(path, '/') + 2; // skip the "//"
+        char *host_end = strchr(host_start, '/');
+        if (host_end == NULL) {
+            host_end = path + buffer_l;
+        }
+        req->host_l = host_end - host_start;
+        req->host = calloc(req->host_l + 1, sizeof(char));
+        if (req->host == NULL) {
+            return -1;
+        }
+        memcpy(req->host, host_start, req->host_l);
+    }
     req->port = parse_port(&req->host, &req->host_l, req->path, &req->port_l);
     req->body = parse_body(buffer, buffer_l, &req->body_l);
 
@@ -1284,4 +1311,119 @@ static char *parse_body(char *message, size_t message_l, size_t *body_l)
     }
 
     return b;
+}
+
+char *Raw_request(char *method, char *url, char *host, char *port, char *body, 
+                  size_t *raw_l)
+{
+    if (method == NULL || url == NULL) {
+        fprintf(stderr, "[!] http: Method and URL must be specified");
+        return NULL;
+    }
+
+    size_t method_l = 0, url_l = 0, host_l = 0, port_l = 0, body_l = 0;
+
+    method_l = strlen(method);  // Method (required)
+
+    url_l = strlen(url);        // URL (required)
+
+    if (host != NULL) {
+        host_l = strlen(host);  // Host (optional)
+    }
+
+    if (port != NULL) {
+        port_l = strlen(port);  // Port (optional)
+    }
+
+    if (body != NULL) {
+        body_l = strlen(body);  // Body (optional)
+    }
+
+    /* Calculate the raw string length */
+
+    size_t raw_len = 0;
+    /* Startline of HTTP Request */
+    raw_len += method_l;        // Method
+    raw_len += SPACE_L;         // Space
+    raw_len += url_l;           // URL
+    raw_len += SPACE_L;         // Space
+    raw_len += HTTP_VERSION_L;  // HTTP version
+    raw_len += CRLF_L;          // CRLF
+
+    /* Host Field : Host: <host>\r\n */
+    if (host_l > 0) {
+        raw_len += HOST_L;      // Host
+        raw_len += SPACE_L;     // Space
+        raw_len += host_l;      // Host
+        raw_len += CRLF_L;      // CRLF
+    }
+
+    if (port_l > 0) {
+        raw_len += port_l;      // Port
+        raw_len += COLON_L;     // Colon
+    }
+
+    raw_len += CRLF_L;         // CRLF
+
+    if (body_l > 0) {
+        raw_len += body_l;      // Body
+    }
+
+    /* allocate heap memory to store the raw string - null terminated */
+    char *raw_request = calloc(raw_len + 1, sizeof(char));
+    if (raw_request == NULL) {
+        return NULL;
+    }
+
+    /* copy the method, url, and http version to the raw string */
+    size_t offset = 0;
+    memcpy(raw_request, method, method_l);
+    offset += method_l;
+    memcpy(raw_request + offset, SPACE, SPACE_L);
+    offset += SPACE_L;
+    memcpy(raw_request + offset, url, url_l);
+    offset += url_l;
+    memcpy(raw_request + offset, SPACE, SPACE_L);
+    offset += SPACE_L;
+    memcpy(raw_request + offset, HTTP_VERSION, HTTP_VERSION_L);
+    offset += HTTP_VERSION_L;
+    memcpy(raw_request + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
+
+    /* add host field if supplied */
+    if (host_l > 0) {
+        memcpy(raw_request + offset, HTTP_HOST, HOST_L);
+        offset += HOST_L;
+        memcpy(raw_request + offset, SPACE, SPACE_L);
+        offset += SPACE_L;
+        memcpy(raw_request + offset, host, host_l);
+        offset += host_l;
+
+        /* add port if supplied */
+        if (port_l > 0) {
+            memcpy(raw_request + offset, COLON, COLON_L);
+            offset += COLON_L;
+            memcpy(raw_request + offset, port, port_l);
+            offset += port_l;
+        }
+        memcpy(raw_request + offset, CRLF, CRLF_L);
+        offset += CRLF_L;
+    }
+
+    /* add blank line */
+    memcpy(raw_request + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
+
+    /* add body if supplied */
+    if (body_l > 0) {
+        memcpy(raw_request + offset, body, body_l);
+        offset += body_l;
+    }
+
+    *raw_l = raw_len;
+
+    fprintf(stderr, "[*] http: Raw request:\n");
+    print_ascii(raw_request, raw_len);
+
+    return raw_request;
 }
