@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Test 01: Test the http-proxy with a simple CONNECT request and response
+
+# Start timer for test
+echo "+ ---------- Test 06: CONNECT request and response --------- +"
+
+echo "[*] Sending initial request to https://www.google.com..."
+fetch=$(/usr/bin/time -f "%e" curl -o tests01-f.out -p -x localhost:9056 https://www.cs.tufts.edu/comp/112/index.html 2>&1)
+echo "[*] Sleeping for 5 seconds..."
+for i in {1..5}; do
+    echo -n "."
+    sleep 1
+done
+echo ""
+
+echo "[*] Sending second request to https://www.google.com..."
+cache=$(/usr/bin/time -f "%e" curl -o test01-c.out -p -x localhost:9056 https://www.cs.tufts.edu/comp/112/index.html 2>&1)
+
+echo "[+] Results ----------------------------------------------- +"
+echo ""
+echo "    [*] Time Elapsed w/ Fetch: $fetch"
+echo "    [*] Time Elapsed w/ Cache: $cache"
+echo ""
+echo "+ --------------------------------------------------------- +"

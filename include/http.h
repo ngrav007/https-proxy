@@ -63,7 +63,7 @@ void Request_print(void *req);
 int Request_compare(void *req1, void *req2);
 
 /* HTTP Response Functions */
-Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l);
+Response *Response_new(char *method, size_t method_l, char *uri, size_t uri_l, char *msg, size_t msg_l);
 void Response_free(void *response);
 unsigned long Response_size(Response *response);
 char *Response_get(Response *response);

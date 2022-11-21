@@ -332,12 +332,13 @@ int Request_compare(void *req1, void *req2)
  *             @msg_l - The length of the buffer
  *   Returns: Pointer to a new Response, or NULL if memory allocation fails.
  */
-Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l)
+Response *Response_new(char *method, size_t method_l, char *uri, size_t uri_l, char *msg, size_t msg_l)
 {
     Response *response = calloc(1, sizeof(struct Response));
     if (response == NULL) {
         return NULL;
     }
+
     response->uri_l = uri_l;
     response->uri   = calloc(uri_l + 1, sizeof(char));
     if (response->uri == NULL) {
@@ -353,13 +354,14 @@ Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l)
         return NULL;
     }
     memcpy(response->raw, msg, msg_l);
-
-    int ret = parse_response(response, msg, msg_l);
-    if (ret != 0) {
-        Response_free(response);
-        return NULL;
+    if (memcmp(method, CONNECT, method_l) != 0) {
+        int ret = parse_response(response, msg, msg_l);
+        if (ret != 0) {
+            Response_free(response);
+            return NULL;
+        }
     }
-
+    
     return response;
 }
 
@@ -642,10 +644,7 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
         return -1;
     }
 
-    fprintf(stderr, "method (%ld): %s\n", req->method_l, req->method);
-    fprintf(stderr, "HALT (%d) = %s\n", PROXY_HALT_L, PROXY_HALT);
-    if (memcmp(req->method, PROXY_HALT, req->method_l) == 0) {
-        fprintf(stderr, "HALTing...\n");
+    if (memcmp(req->method, PROXY_HALT, req->method_l) == 0) {;
         free(buffer_lc);
         return HALT;
     }
@@ -822,19 +821,21 @@ static int parse_request_fields(Request *req, char *buffer, size_t buffer_l)
 
     req->host = parse_host(buffer, buffer_l, &req->host_l);
     if (req->host == NULL) {
+        char *path = req->path;
         /* populate host with path uri */
-        char *path       = req->path;
-        char *host_start = strchr(path, '/') + 2; // skip the "//"
-        char *host_end   = strchr(host_start, '/');
+        char *host_start = strchr(path, '/'); // skip the "//"
+        if (host_start == NULL) {
+            host_start = path;
+        }
+        char *host_end = strchr(host_start, '/');
         if (host_end == NULL) {
-            host_end = path + buffer_l;
+            host_end = path + strlen(path);
         }
-        req->host_l = host_end - host_start;
-        req->host   = calloc(req->host_l + 1, sizeof(char));
+        size_t host_len = host_end - host_start;
+        set_field(&req->host, &req->host_l, host_start, host_len);
         if (req->host == NULL) {
-            return -1;
+            return INVALID_REQUEST;
         }
-        memcpy(req->host, host_start, req->host_l);
     }
     req->port = parse_port(&req->host, &req->host_l, req->path, &req->port_l);
     req->body = parse_body(buffer, buffer_l, &req->body_l);

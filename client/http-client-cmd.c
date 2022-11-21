@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
     /* check command line arguments */
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s <proxy-host> <proxy-port>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <host> <port> \n", argv[0]);
         exit(0);
     }
 

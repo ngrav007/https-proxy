@@ -31,6 +31,7 @@ Query *Query_new(char *buffer, size_t buffer_l)
         exit(1);
     }
 
+    fprintf(stderr, "%sHOST = %s%s\n", BYEL, q->req->host, reset);
     q->host_info = gethostbyname(q->req->host);
     if (q->host_info == NULL) {
         fprintf(stderr, "[!] proxy: unknown host\n");
