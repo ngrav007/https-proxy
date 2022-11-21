@@ -18,7 +18,7 @@ static char *parse_port(char **host, size_t *host_l, char *path,
 static char *parse_version_req(char *header, size_t *version_l, char **saveptr);
 static char *parse_body(char *buffer, size_t buffer_l, size_t *body_l);
 static char *parse_version_res(char *header, size_t *version_l, char **saveptr);
-static void set_field(char **field, size_t *field_l, char *value, size_t value_l);
+static void set_field(char **f, size_t *f_l, char *v, size_t v_l);
 /* HTTP Functions ----------------------------------------------------------- */
 
 /* HTTP_add_field
@@ -339,7 +339,7 @@ Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l)
         return NULL;
     }
     response->uri_l = uri_l;
-    response->uri = calloc(uri_l + 1, sizeof(char));
+    response->uri   = calloc(uri_l + 1, sizeof(char));
     if (response->uri == NULL) {
         Response_free(response);
         return NULL;
@@ -347,13 +347,13 @@ Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l)
     memcpy(response->uri, uri, uri_l);
 
     response->raw_l = msg_l;
-    response->raw = calloc(msg_l + 1, sizeof(char));
+    response->raw   = calloc(msg_l + 1, sizeof(char));
     if (response->raw == NULL) {
         Response_free(response);
         return NULL;
     }
     memcpy(response->raw, msg, msg_l);
-    
+
     int ret = parse_response(response, msg, msg_l);
     if (ret != 0) {
         Response_free(response);
@@ -401,9 +401,11 @@ Response *Response_copy(Response *response)
     }
 
     set_field(&r->uri, &r->uri_l, response->uri, response->uri_l);
-    set_field(&r->version, &r->version_l, response->version, response->version_l);
+    set_field(&r->version, &r->version_l, response->version,
+              response->version_l);
     set_field(&r->status, &r->status_l, response->status, response->status_l);
-    set_field(&r->cache_ctrl, &r->cache_ctrl_l, response->cache_ctrl, response->cache_ctrl_l);
+    set_field(&r->cache_ctrl, &r->cache_ctrl_l, response->cache_ctrl,
+              response->cache_ctrl_l);
     set_field(&r->body, &r->body_l, response->body, response->body_l);
     set_field(&r->raw, &r->raw_l, response->raw, response->raw_l);
 
@@ -479,6 +481,143 @@ int Response_compare(void *response1, void *response2)
     Response *r2 = (Response *)response2;
 
     return (memcmp(r1->uri, r2->raw, r1->uri_l) == 0);
+}
+
+/* Raw Functions ------------------------------------------------------------ */
+
+/* Raw_request
+ *    Purpose: Returns a raw HTTP request as a null terminated string. The
+ *             request is formatted as follows:
+ *               <method> <path> HTTP/1.1\r\n
+ *               <host>:<port>\r\n | <host>\r\n
+ *               \r\n
+ *               <body>: <body>\r\n
+ * Parameters: @method - Pointer to a buffer containing the HTTP method
+ *             @uri - Pointer to a buffer containing the path
+ *             @host - Pointer to a buffer containing the host
+ *             @port - Port number
+ *             @body - Pointer to a buffer containing the body, can be NULL
+ *             @raw_l - Pointer to a size_t to store the length of the raw
+ *                      request, can be NULL if the length is not needed
+ *  Returns: Pointer to a buffer containing the raw HTTP request, or NULL if
+ *          an error occurs.
+ *
+ * NOTE: The caller is responsible for freeing the memory allocated for the
+ *       raw request string.
+ */
+char *Raw_request(char *method, char *uri, char *host, char *port, char *body,
+                  size_t *raw_l)
+{
+    if (method == NULL || uri == NULL) {
+        fprintf(stderr, "[!] http: Method and uri must be specified");
+        return NULL;
+    }
+
+    size_t method_l = 0, uri_l = 0, host_l = 0, port_l = 0, body_l = 0;
+
+    method_l = strlen(method); // Method (required)
+
+    uri_l = strlen(uri); // uri (required)
+
+    if (host != NULL) {
+        host_l = strlen(host); // Host (optional)
+    }
+
+    if (port != NULL) {
+        port_l = strlen(port); // Port (optional)
+    }
+
+    if (body != NULL) {
+        body_l = strlen(body); // Body (optional)
+    }
+
+    /* Calculate the raw string length */
+
+    size_t raw_len = 0;
+    /* Startline of HTTP Request */
+    raw_len += method_l;       // Method
+    raw_len += SPACE_L;        // Space
+    raw_len += uri_l;          // uri
+    raw_len += SPACE_L;        // Space
+    raw_len += HTTP_VERSION_L; // HTTP version
+    raw_len += CRLF_L;         // CRLF
+
+    /* Host Field : Host: <host>\r\n */
+    if (host_l > 0) {
+        raw_len += HOST_L;  // Host
+        raw_len += SPACE_L; // Space
+        raw_len += host_l;  // Host
+        raw_len += CRLF_L;  // CRLF
+    }
+
+    if (port_l > 0) {
+        raw_len += port_l;  // Port
+        raw_len += COLON_L; // Colon
+    }
+
+    raw_len += CRLF_L; // CRLF
+
+    if (body_l > 0) {
+        raw_len += body_l; // Body
+    }
+
+    /* allocate heap memory to store the raw string - null terminated */
+    char *raw_request = calloc(raw_len + 1, sizeof(char));
+    if (raw_request == NULL) {
+        return NULL;
+    }
+
+    /* copy the method, uri, and http version to the raw string */
+    size_t offset = 0;
+    memcpy(raw_request, method, method_l);
+    offset += method_l;
+    memcpy(raw_request + offset, SPACE, SPACE_L);
+    offset += SPACE_L;
+    memcpy(raw_request + offset, uri, uri_l);
+    offset += uri_l;
+    memcpy(raw_request + offset, SPACE, SPACE_L);
+    offset += SPACE_L;
+    memcpy(raw_request + offset, HTTP_VERSION, HTTP_VERSION_L);
+    offset += HTTP_VERSION_L;
+    memcpy(raw_request + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
+
+    /* add host field if supplied */
+    if (host_l > 0) {
+        memcpy(raw_request + offset, HTTP_HOST, HOST_L);
+        offset += HOST_L;
+        memcpy(raw_request + offset, SPACE, SPACE_L);
+        offset += SPACE_L;
+        memcpy(raw_request + offset, host, host_l);
+        offset += host_l;
+
+        /* add port if supplied */
+        if (port_l > 0) {
+            memcpy(raw_request + offset, COLON, COLON_L);
+            offset += COLON_L;
+            memcpy(raw_request + offset, port, port_l);
+            offset += port_l;
+        }
+        memcpy(raw_request + offset, CRLF, CRLF_L);
+        offset += CRLF_L;
+    }
+
+    /* add blank line */
+    memcpy(raw_request + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
+
+    /* add body if supplied */
+    if (body_l > 0) {
+        memcpy(raw_request + offset, body, body_l);
+        offset += body_l;
+    }
+
+    *raw_l = raw_len;
+
+    fprintf(stderr, "[*] http: Raw request:\n");
+    print_ascii(raw_request, raw_len);
+
+    return raw_request;
 }
 
 /* Static Functions --------------------------------------------------------- */
@@ -635,7 +774,7 @@ static char *parse_status(char *response, size_t *status_l, char **saveptr)
             return NULL;
         }
     }
-    
+
     char *end = strchr(status, '\r');
     if (end == NULL) {
         return NULL;
@@ -684,14 +823,14 @@ static int parse_request_fields(Request *req, char *buffer, size_t buffer_l)
     req->host = parse_host(buffer, buffer_l, &req->host_l);
     if (req->host == NULL) {
         /* populate host with path uri */
-        char *path = req->path;
+        char *path       = req->path;
         char *host_start = strchr(path, '/') + 2; // skip the "//"
-        char *host_end = strchr(host_start, '/');
+        char *host_end   = strchr(host_start, '/');
         if (host_end == NULL) {
             host_end = path + buffer_l;
         }
         req->host_l = host_end - host_start;
-        req->host = calloc(req->host_l + 1, sizeof(char));
+        req->host   = calloc(req->host_l + 1, sizeof(char));
         if (req->host == NULL) {
             return -1;
         }
@@ -1295,137 +1434,35 @@ static char *parse_body(char *message, size_t message_l, size_t *body_l)
     return b;
 }
 
-char *Raw_request(char *method, char *url, char *host, char *port, char *body, 
-                  size_t *raw_l)
+/* set_field
+ *    Purpose: Sets the value of a field in a HTTP request or response header.
+ *             If the field already exists, the value is updated. If the field
+ *             does not exist, it is copied to the header.
+ * Parameters: @f - Pointer to a buffer to store the field
+ *             @f - Pointer to a size_t to store the length of the field
+ *             @v - Pointer to a buffer containing the value
+ *             @v - Length of the value
+ * Returns: None
+ *
+ * Note: The caller is responsible for freeing the memory allocated for the
+ *       field. If the length of the field is 0, the field is not allocated and
+ *       set to NULL.
+ */
+static void set_field(char **f, size_t *f_l, char *v, size_t v_l)
 {
-    if (method == NULL || url == NULL) {
-        fprintf(stderr, "[!] http: Method and URL must be specified");
-        return NULL;
-    }
-
-    size_t method_l = 0, url_l = 0, host_l = 0, port_l = 0, body_l = 0;
-
-    method_l = strlen(method);  // Method (required)
-
-    url_l = strlen(url);        // URL (required)
-
-    if (host != NULL) {
-        host_l = strlen(host);  // Host (optional)
-    }
-
-    if (port != NULL) {
-        port_l = strlen(port);  // Port (optional)
-    }
-
-    if (body != NULL) {
-        body_l = strlen(body);  // Body (optional)
-    }
-
-    /* Calculate the raw string length */
-
-    size_t raw_len = 0;
-    /* Startline of HTTP Request */
-    raw_len += method_l;        // Method
-    raw_len += SPACE_L;         // Space
-    raw_len += url_l;           // URL
-    raw_len += SPACE_L;         // Space
-    raw_len += HTTP_VERSION_L;  // HTTP version
-    raw_len += CRLF_L;          // CRLF
-
-    /* Host Field : Host: <host>\r\n */
-    if (host_l > 0) {
-        raw_len += HOST_L;      // Host
-        raw_len += SPACE_L;     // Space
-        raw_len += host_l;      // Host
-        raw_len += CRLF_L;      // CRLF
-    }
-
-    if (port_l > 0) {
-        raw_len += port_l;      // Port
-        raw_len += COLON_L;     // Colon
-    }
-
-    raw_len += CRLF_L;         // CRLF
-
-    if (body_l > 0) {
-        raw_len += body_l;      // Body
-    }
-
-    /* allocate heap memory to store the raw string - null terminated */
-    char *raw_request = calloc(raw_len + 1, sizeof(char));
-    if (raw_request == NULL) {
-        return NULL;
-    }
-
-    /* copy the method, url, and http version to the raw string */
-    size_t offset = 0;
-    memcpy(raw_request, method, method_l);
-    offset += method_l;
-    memcpy(raw_request + offset, SPACE, SPACE_L);
-    offset += SPACE_L;
-    memcpy(raw_request + offset, url, url_l);
-    offset += url_l;
-    memcpy(raw_request + offset, SPACE, SPACE_L);
-    offset += SPACE_L;
-    memcpy(raw_request + offset, HTTP_VERSION, HTTP_VERSION_L);
-    offset += HTTP_VERSION_L;
-    memcpy(raw_request + offset, CRLF, CRLF_L);
-    offset += CRLF_L;
-
-    /* add host field if supplied */
-    if (host_l > 0) {
-        memcpy(raw_request + offset, HTTP_HOST, HOST_L);
-        offset += HOST_L;
-        memcpy(raw_request + offset, SPACE, SPACE_L);
-        offset += SPACE_L;
-        memcpy(raw_request + offset, host, host_l);
-        offset += host_l;
-
-        /* add port if supplied */
-        if (port_l > 0) {
-            memcpy(raw_request + offset, COLON, COLON_L);
-            offset += COLON_L;
-            memcpy(raw_request + offset, port, port_l);
-            offset += port_l;
-        }
-        memcpy(raw_request + offset, CRLF, CRLF_L);
-        offset += CRLF_L;
-    }
-
-    /* add blank line */
-    memcpy(raw_request + offset, CRLF, CRLF_L);
-    offset += CRLF_L;
-
-    /* add body if supplied */
-    if (body_l > 0) {
-        memcpy(raw_request + offset, body, body_l);
-        offset += body_l;
-    }
-
-    *raw_l = raw_len;
-
-    fprintf(stderr, "[*] http: Raw request:\n");
-    print_ascii(raw_request, raw_len);
-
-    return raw_request;
-}
-
-static void set_field(char **field, size_t *field_l, char *value, size_t value_l)
-{
-    if (value == NULL) {
+    if (v == NULL) {
         return;
     }
 
-    if (*field != NULL) {
-        free(*field);
+    if (*f != NULL) {
+        free(*f);
     }
 
-    *field_l = value_l;
+    *f_l = v_l;
 
-    *field = (value_l > 0) ? calloc(value_l + 1, sizeof(char)) : NULL;
-    if (*field == NULL) {
+    *f = (v_l > 0) ? calloc(v_l + 1, sizeof(char)) : NULL;
+    if (*f == NULL) {
         return;
     }
-    memcpy(*field, value, value_l);
+    memcpy(*f, v, v_l);
 }
-
