@@ -582,6 +582,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 return CLOSE_CLIENT;    // non-persistent
             } else {
                 fprintf(stderr, "[DEBUG] Entry NOT in cache\n");
+                Query_print(client->query);
                 ssize_t n = Proxy_fetch(proxy, client->query);
                 if (n < 0) {
                     fprintf(stderr, "[!] proxy: fetch failed\n");

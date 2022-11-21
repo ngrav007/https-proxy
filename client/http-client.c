@@ -220,6 +220,16 @@ query:
             fprintf(stderr, "[+] Received full response:\n");
             print_ascii(response, response_len);
         }
+        /* write to file */
+        FILE *fp = fopen("client-out.html", "w");
+        if (fp == NULL) {
+            error("[!] client: failed to open file.");
+            free(response);
+            close(sockfd);
+            return EXIT_FAILURE;
+        }
+        fwrite(response, sizeof(char), response_len, fp);
+        fclose(fp);
         free(response);
     }
 
