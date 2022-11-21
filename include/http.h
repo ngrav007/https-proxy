@@ -31,6 +31,7 @@ typedef struct Request {
 } Request;
 
 typedef struct Response {
+    char *uri;
     char *version;
     char *status;
     char *cache_ctrl; /* Cache-Control header field. */
@@ -40,6 +41,7 @@ typedef struct Response {
     long max_age;          /* max-age value from Cache-Control header. */
     size_t content_length; /* Content-Length value from header. */
 
+    size_t uri_l;
     size_t version_l;
     size_t status_l;
     size_t cache_ctrl_l;
@@ -61,7 +63,7 @@ void Request_print(void *req);
 int Request_compare(void *req1, void *req2);
 
 /* HTTP Response Functions */
-Response *Response_new(char *message, size_t message_l);
+Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l);
 void Response_free(void *response);
 unsigned long Response_size(Response *response);
 char *Response_get(Response *response);

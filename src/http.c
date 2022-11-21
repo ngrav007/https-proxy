@@ -18,7 +18,7 @@ static char *parse_port(char **host, size_t *host_l, char *path,
 static char *parse_version_req(char *header, size_t *version_l, char **saveptr);
 static char *parse_body(char *buffer, size_t buffer_l, size_t *body_l);
 static char *parse_version_res(char *header, size_t *version_l, char **saveptr);
-
+static void set_field(char **field, size_t *field_l, char *value, size_t value_l);
 /* HTTP Functions ----------------------------------------------------------- */
 
 /* HTTP_add_field
@@ -175,8 +175,7 @@ Request *Request_new(char *buffer, size_t buffer_l)
  *             @body - Pointer to a buffer containing the HTTP body, can be NULL
  *   Returns: Pointer to a new Request, or NULL if memory allocation fails.
  *
- * Note: All parameters must be null terminated.
- *
+ * Note: All parameters must be null terminated strings.
  */
 Request *Request_create(char *method, char *path, char *version, char *host,
                         char *port, char *body)
@@ -223,20 +222,14 @@ Request *Request_copy(Request *request)
     if (r == NULL) {
         return NULL;
     }
-    r->method    = strndup(request->method, request->method_l);
-    r->method_l  = request->method_l;
-    r->path      = strndup(request->path, request->path_l);
-    r->path_l    = request->path_l;
-    r->version   = strndup(request->version, request->version_l);
-    r->version_l = request->version_l;
-    r->host      = strndup(request->host, request->host_l);
-    r->host_l    = request->host_l;
-    r->port      = strndup(request->port, request->port_l);
-    r->port_l    = request->port_l;
-    r->body      = strndup(request->body, request->body_l);
-    r->body_l    = request->body_l;
-    r->raw       = strndup(request->raw, request->raw_l);
-    r->raw_l     = request->raw_l;
+
+    set_field(&r->method, &r->method_l, request->method, request->method_l);
+    set_field(&r->path, &r->path_l, request->path, request->path_l);
+    set_field(&r->version, &r->version_l, request->version, request->version_l);
+    set_field(&r->host, &r->host_l, request->host, request->host_l);
+    set_field(&r->port, &r->port_l, request->port, request->port_l);
+    set_field(&r->body, &r->body_l, request->body, request->body_l);
+    set_field(&r->raw, &r->raw_l, request->raw, request->raw_l);
 
     return r;
 }
@@ -335,18 +328,37 @@ int Request_compare(void *req1, void *req2)
 /* Response_new
  *    Purpose: Creates a new Response initialized with values parsed from a
  *             buffer containing a valid HTTP response.
- * Parameters: @message - A buffer containing the response
- *             @message_l - The length of the buffer
+ * Parameters: @msg - A buffer containing the response
+ *             @msg_l - The length of the buffer
  *   Returns: Pointer to a new Response, or NULL if memory allocation fails.
  */
-Response *Response_new(char *message, size_t message_l)
+Response *Response_new(char *uri, size_t uri_l, char *msg, size_t msg_l)
 {
     Response *response = calloc(1, sizeof(struct Response));
     if (response == NULL) {
         return NULL;
     }
+    response->uri_l = uri_l;
+    response->uri = calloc(uri_l + 1, sizeof(char));
+    if (response->uri == NULL) {
+        Response_free(response);
+        return NULL;
+    }
+    memcpy(response->uri, uri, uri_l);
 
-    parse_response(response, message, message_l);
+    response->raw_l = msg_l;
+    response->raw = calloc(msg_l + 1, sizeof(char));
+    if (response->raw == NULL) {
+        Response_free(response);
+        return NULL;
+    }
+    memcpy(response->raw, msg, msg_l);
+    
+    int ret = parse_response(response, msg, msg_l);
+    if (ret != 0) {
+        Response_free(response);
+        return NULL;
+    }
 
     return response;
 }
@@ -363,7 +375,7 @@ void Response_free(void *response)
     }
 
     Response *r = (Response *)response;
-
+    free(r->uri);
     free(r->version);
     free(r->status);
     free(r->cache_ctrl);
@@ -387,16 +399,14 @@ Response *Response_copy(Response *response)
     if (r == NULL) {
         return NULL;
     }
-    r->version        = strndup(response->version, response->version_l);
-    r->version_l      = response->version_l;
-    r->status         = strndup(response->status, response->status_l);
-    r->status_l       = response->status_l;
-    r->cache_ctrl     = strndup(response->cache_ctrl, response->cache_ctrl_l);
-    r->cache_ctrl_l   = response->cache_ctrl_l;
-    r->body           = strndup(response->body, response->body_l);
-    r->body_l         = response->body_l;
-    r->raw            = strndup(response->raw, response->raw_l);
-    r->raw_l          = response->raw_l;
+
+    set_field(&r->uri, &r->uri_l, response->uri, response->uri_l);
+    set_field(&r->version, &r->version_l, response->version, response->version_l);
+    set_field(&r->status, &r->status_l, response->status, response->status_l);
+    set_field(&r->cache_ctrl, &r->cache_ctrl_l, response->cache_ctrl, response->cache_ctrl_l);
+    set_field(&r->body, &r->body_l, response->body, response->body_l);
+    set_field(&r->raw, &r->raw_l, response->raw, response->raw_l);
+
     r->max_age        = response->max_age;
     r->content_length = response->content_length;
 
@@ -445,6 +455,7 @@ void Response_print(void *response)
     Response *r = (Response *)response;
 
     fprintf(stderr, "[Response]\n");
+    fprintf(stderr, "  URI (%ld): %s\n", r->uri_l, r->uri);
     fprintf(stderr, "  Version (%ld): %s\n", r->version_l, r->version);
     fprintf(stderr, "  Status (%ld): %s\n", r->status_l, r->status);
     fprintf(stderr, "  CCtrl (%ld): %s\n", r->cache_ctrl_l, r->cache_ctrl);
@@ -467,27 +478,7 @@ int Response_compare(void *response1, void *response2)
     Response *r1 = (Response *)response1;
     Response *r2 = (Response *)response2;
 
-    if (memcmp(r1->version, r2->version, r1->version_l) != 0) {
-        return FALSE;
-    }
-
-    if (memcmp(r1->status, r2->status, r1->status_l) != 0) {
-        return FALSE;
-    }
-
-    if (memcmp(r1->cache_ctrl, r2->cache_ctrl, r1->cache_ctrl_l) != 0) {
-        return FALSE;
-    }
-
-    if (r1->content_length != r2->content_length) {
-        return FALSE;
-    }
-
-    if (memcmp(r1->body, r2->body, r1->body_l) != 0) {
-        return FALSE;
-    }
-
-    return TRUE;
+    return (memcmp(r1->uri, r2->raw, r1->uri_l) == 0);
 }
 
 /* Static Functions --------------------------------------------------------- */
@@ -514,7 +505,7 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
 
     fprintf(stderr, "method (%ld): %s\n", req->method_l, req->method);
     fprintf(stderr, "HALT (%d) = %s\n", PROXY_HALT_L, PROXY_HALT);
-    if (strncmp(req->method, PROXY_HALT, req->method_l) == 0) {
+    if (memcmp(req->method, PROXY_HALT, req->method_l) == 0) {
         fprintf(stderr, "HALTing...\n");
         free(buffer_lc);
         return HALT;
@@ -560,15 +551,6 @@ static int parse_response(Response *res, char *buffer, size_t buffer_l)
         return -1;
     }
     free(buffer_lc);
-
-    /* store the raw response */
-    res->raw = calloc(buffer_l + 1, sizeof(char));
-    if (res->raw == NULL) {
-        return -1;
-    }
-
-    memcpy(res->raw, buffer, buffer_l);
-    res->raw_l = buffer_l;
 
     return 0;
 }
@@ -1427,3 +1409,23 @@ char *Raw_request(char *method, char *url, char *host, char *port, char *body,
 
     return raw_request;
 }
+
+static void set_field(char **field, size_t *field_l, char *value, size_t value_l)
+{
+    if (value == NULL) {
+        return;
+    }
+
+    if (*field != NULL) {
+        free(*field);
+    }
+
+    *field_l = value_l;
+
+    *field = (value_l > 0) ? calloc(value_l + 1, sizeof(char)) : NULL;
+    if (*field == NULL) {
+        return;
+    }
+    memcpy(*field, value, value_l);
+}
+

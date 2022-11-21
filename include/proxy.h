@@ -34,11 +34,8 @@ typedef struct Proxy {
     struct timeval *timeout; // ? do we need timeouts
     fd_set master_set;
     fd_set readfds;
-    size_t buffer_l;
-    size_t buffer_sz;
     char *client_ip;
     char *server_ip;
-    char *buffer;
     int fdmax;
     int listen_fd;
     int client_fd;
