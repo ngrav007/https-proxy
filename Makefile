@@ -9,6 +9,7 @@ INCDIR = ./include
 BINDIR = ./bin
 CLIDIR = ./client
 SERDIR = ./server
+OUTDIR = ./output
 
 PROXY_MAIN = $(BLDDIR)/http-proxy.o
 CLIENT_MAIN = $(BLDDIR)/http-client.o
@@ -47,4 +48,4 @@ $(BLDDIR)/$(SERVER).o: $(SERDIR)/$(SERVER).c $(INCS) ./build/http.o
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.*
+	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.* $(OUTDIR)/*

@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     /* socket: create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        error("[!]] socket: failed\n");
+        error("[!]] socket: failed");
     }
         
 
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
     /* connect: create a connection with the server */
     if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-        error("[!] connect: failed\n");
+        error("[!] connect: failed");
     }
 
     char method[BUFSIZE + 1];
@@ -198,8 +198,6 @@ query:
                 break;
             }
 
-            
-
             if (response_len >= response_size) {
                 response_size *= 2 + 1;
                 response = realloc(response, response_size);
@@ -214,21 +212,35 @@ query:
         } else if (n == 0) {
             fprintf(stderr, "[!] client: server closed connection.\n");
             print_ascii(response, response_len);
-            fprintf(stderr, "[DEBUG] response_len: %ld\n", response_len);
             sentinel = false;
         } else {
             fprintf(stderr, "[+] Received full response:\n");
             print_ascii(response, response_len);
         }
         /* write to file */
-        FILE *fp = fopen("client-out.html", "w");
+        FILE *fp = fopen("./output/client-out.html", "w");
         if (fp == NULL) {
             error("[!] client: failed to open file.");
             free(response);
             close(sockfd);
             return EXIT_FAILURE;
         }
-        fwrite(response, sizeof(char), response_len, fp);
+        
+        char *body = strstr(response, "\r\n\r\n");
+        if (body == NULL) {
+            error("[!] client: failed to find body.");
+            free(response);
+            close(sockfd);
+            return EXIT_FAILURE;
+        }
+        body += 4;
+        size_t body_len = response_len - (body - response);
+        if (fwrite(body, sizeof(char), body_len, fp) != body_len) {
+            error("[!] client: failed to write to file.");
+            free(response);
+            close(sockfd);
+            return EXIT_FAILURE;
+        }
         fclose(fp);
         free(response);
     }
