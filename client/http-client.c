@@ -21,15 +21,7 @@
 #define BUFSIZE 1024
 
 static int sendall(int s, char *buf, size_t len);
-
-/*
- * error - wrapper for perror
- */
-void error(char *msg)
-{
-    perror(msg);
-    exit(0);
-}
+static void error(char *msg);
 
 int main(int argc, char **argv)
 {
@@ -93,11 +85,11 @@ query:
         raw_len = 0;
         command = ' ';
         n       = 0;
-        zero(method, BUFSIZE);
-        zero(url, BUFSIZE);
-        zero(host, BUFSIZE);
-        zero(port, BUFSIZE);
-        zero(body, BUFSIZE);
+        zero(method, BUFSIZE + 1);
+        zero(url, BUFSIZE + 1);
+        zero(host, BUFSIZE + 1);
+        zero(port, BUFSIZE + 1);
+        zero(body, BUFSIZE + 1);
 
         /* Command Prompt */
         printf("[COMMANDS]\n");
@@ -107,6 +99,7 @@ query:
 
         printf("Command: ");
         scanf(" %c", &command);
+        fflush(stdin);
 
         /* Execute Command */
         switch (command) {
@@ -117,15 +110,25 @@ query:
             scanf(" %s", url);
             printf("Add Host field? (y/n): ");
             scanf(" %c", &query);
+            fflush(stdin);
             if (query == 'y') {
                 /* populate host with path uri */
-                char *host_start = strchr(url, '/') + 2; // skip the "//"
+                char *host_start = strstr(url, "//");
+                if (host_start == NULL) {
+                    fprintf(stderr, "%s[!]%s invalid url: %s\n", RED, reset,
+                            url);
+                    goto query;
+                }
+                host_start += 2;
                 char *host_end = strchr(host_start, '/');
                 if (host_end == NULL) {
                     host_end = url + strlen(url);
                 }
+
+                
                 
                 memcpy(host, host_start, host_end - host_start);
+                fprintf(stderr, "%s[!]%s host: %s\n", RED, reset, host);
             }
 
             raw = Raw_request(method, url, host, port, body, &raw_len);
@@ -144,6 +147,7 @@ query:
             scanf(" %s", host);
             printf("Add Port field? (y/n): ");
             scanf(" %c", &query);
+            fflush(stdin);
             if (query == 'y') {
                 printf("Port: ");
                 scanf(" %s", port);
@@ -239,4 +243,13 @@ static int sendall(int s, char *buf, size_t len)
     }
 
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+
+/*
+ * error - wrapper for perror
+ */
+static void error(char *msg)
+{
+    perror(msg);
+    exit(0);
 }

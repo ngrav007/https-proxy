@@ -1010,6 +1010,7 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
 
     char *host = strstr(request_lc, HOST);
     if (host == NULL) {
+        free(request_lc);
         return NULL;
     }
 
@@ -1022,6 +1023,7 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
     /* find the end of the Host field */
     char *end = strchr(host, '\r');
     if (end == NULL) {
+        free(request_lc);
         return NULL;
     }
 
@@ -1032,6 +1034,7 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
 
     char *h = calloc(host_len + 1, sizeof(char));
     if (h == NULL) {
+        free(request_lc);
         return NULL;
     }
 

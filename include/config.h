@@ -50,7 +50,6 @@
 #define HTTP_404       "404 Not Found"
 #define HTTP_404_L     12
 
-
 /* HTTP Header Fields */
 #define CONTENTLENGTH   "content-length:"
 #define CONTENTLENGTH_L 15
@@ -63,14 +62,23 @@
 #define MAXAGE_L        8
 
 /* Indicators */
-#define CLOSE_CLIENT     111
-#define RECVD_BODY       2
-#define RECVD_HEAD       1
-#define CLIENT_TIMEDOUT  6
-#define ERROR_FAILURE    -1
-#define ERROR_CLOSE      -2
-#define INVALID_CLIENT   -3
-#define INVALID_MESSAGE  -4
+
+#define CLOSE_CLIENT       111
+#define CLIENT_TIMEDOUT    6
+#define ERROR_FAILURE      -1
+#define ERROR_CLOSE        -2
+#define INVALID_REQUEST    -3
+#define INVALID_RESPONSE   -4
+#define ERROR_CONNECT -5
+
+#define ERROR_BAD_URL     -5
+#define ERROR_BAD_HOST    -6
+#define ERROR_BAD_PORT    -7
+#define ERROR_BAD_METHOD  -8
+#define ERROR_BAD_VERSION -9
+#define ERROR_BAD_PATH    -10
+
+#define INVALID_RESPONSE -4
 #define CLIENT_EXISTS    -5
 #define CLIENT_NOT_FOUND -6
 #define CANT_DELIVER     -7
