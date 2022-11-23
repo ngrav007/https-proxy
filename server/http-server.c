@@ -48,18 +48,19 @@ int main(int argc, char **argv)
     }
 
     /* build the server's Internet address */
-    bzero((char *) &servaddr, sizeof(servaddr));
+    bzero((char *)&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr, server->h_length);
+    bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr,
+          server->h_length);
     servaddr.sin_port = htons(portno);
 
     /* bind: associate the parent socket with a port */
-    if (bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+    if (bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
         fprintf(stderr, "[!] bind: failed\n");
         close(sockfd);
         return EXIT_FAILURE;
     }
-    
+
     /* listen: make this socket ready to accept connection requests */
     if (listen(sockfd, 5) < 0) {
         fprintf(stderr, "[!] listen: failed\n");
@@ -67,9 +68,9 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    /* main loop: wait for a connection request, echo input line, 
+    /* main loop: wait for a connection request, echo input line,
        then close connection. */
-    
+
     while (true) {
         int clientfd;
         struct sockaddr_in clientaddr;
@@ -82,7 +83,7 @@ int main(int argc, char **argv)
         int status;
 
         /* accept: wait for a connection request */
-        clientfd = accept(sockfd, (struct sockaddr *) &clientaddr, &clientlen);
+        clientfd = accept(sockfd, (struct sockaddr *)&clientaddr, &clientlen);
         if (clientfd < 0) {
             fprintf(stderr, "[!] accept: failed\n");
             close(sockfd);
@@ -122,7 +123,8 @@ int main(int argc, char **argv)
         /* parse uri */
         Request_print(request);
 
-        response = Raw_request(request->method, request->path, request->host, request->port, request->body, &response_len);
+        response = Raw_request(request->method, request->path, request->host,
+                               request->port, request->body, &response_len);
         if (response == NULL) {
             fprintf(stderr, "[!] invalid response\n");
             close(clientfd);
@@ -147,7 +149,6 @@ int main(int argc, char **argv)
     }
 
     close(sockfd);
-
 
     return 0;
 }

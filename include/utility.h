@@ -28,5 +28,6 @@ void zero(void *p, size_t n);
 void clear_buffer(char *buffer, size_t *buffer_l);
 int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz);
 void free_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz);
+void print_error(char *msg);
 
 #endif

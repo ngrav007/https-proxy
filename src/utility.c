@@ -217,3 +217,8 @@ void zero(void *p, size_t n)
 
     memset(p, 0, n);
 }
+
+void print_error(char *msg)
+{
+    fprintf(stderr, "%s[!]%s %s", RED, reset, msg);
+}
