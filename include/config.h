@@ -25,8 +25,8 @@
 #define CACHE_SZ 10
 
 /* HTTP */
-#define HTTP_PORT      "80"
-#define HTTP_PORT_L    2
+#define DEFAULT_PORT      "80"
+#define DEFAULT_PORT_L    2
 #define HEADER_END     "\r\n\r\n"
 #define HEADER_END_L   4
 #define CRLF           "\r\n"
@@ -69,6 +69,7 @@
 #define ERROR_CLOSE        -2
 #define INVALID_REQUEST    -3
 #define INVALID_RESPONSE   -4
+#define INVALID_HEADER     -5
 #define ERROR_CONNECT -5
 
 #define ERROR_BAD_URL     -5

@@ -45,7 +45,6 @@ int main(int argc, char **argv)
         error("[!]] socket: failed");
     }
         
-
     /* gethostbyname: get the server's DNS entry */
     server = gethostbyname(hostname);
     if (server == NULL) {
@@ -143,14 +142,29 @@ query:
         case '2':
             printf("[HTTP CONNECT]\n");
             memcpy(method, HTTP_CONNECT, CONNECT_L);
-            printf("Host: ");
-            scanf(" %s", host);
-            printf("Add Port field? (y/n): ");
+            printf("URL: ");
+            scanf(" %s", url);
+            printf("Add Host field? (y/n): ");
             scanf(" %c", &query);
             fflush(stdin);
             if (query == 'y') {
-                printf("Port: ");
-                scanf(" %s", port);
+                /* populate host with path uri */
+                char *host_start = strstr(url, "//");
+                if (host_start == NULL) {
+                    fprintf(stderr, "%s[!]%s invalid url: %s\n", RED, reset,
+                            url);
+                    goto query;
+                }
+                host_start += 2;
+                char *host_end = strchr(host_start, '/');
+                if (host_end == NULL) {
+                    host_end = url + strlen(url);
+                }
+
+                /* add port */
+                memcpy(host, host_start, host_end - host_start);
+                memcpy(port, "443", 3);
+                fprintf(stderr, "%s[!]%s host: %s\n", RED, reset, host);
             }
 
             raw = Raw_request(method, url, host, port, body, &raw_len);
@@ -190,13 +204,13 @@ query:
                          response_size - response_len, 0)) > 0)
         {
             fprintf(stderr, "[*] Received %d bytes.\r", n);
-            response_len += n;
             if ((size_t)n < (response_size - response_len)) {
                 response_len += n;
                 fprintf(stderr, "[+] Received %d bytes of %ld bytes.\r", n,
                         (response_size - response_len));
                 break;
             }
+            response_len += n;
 
             if (response_len >= response_size) {
                 response_size *= 2 + 1;
@@ -223,8 +237,12 @@ query:
         printf("Save response to file? (y/n): ");
         scanf(" %c", &query);
         fflush(stdin);
+        
 
         if (query == 'y') {
+            printf("Filename: ");
+            scanf(" %s", filename);
+            fflush(stdin);
             FILE *fp = fopen(filename, "w");
             if (fp == NULL) {
                 error("[!] client: failed to open file.");

@@ -41,11 +41,12 @@ int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l)
         return -1;
     }
 
-    /* convert buffer to lowercase */
-    char *buffer_lc = get_buffer_lc(*buffer, *buffer + *buffer_l);
+    char *header_start, *header_end, *buffer_lc;
 
-    char *header_start = buffer_lc;
-    char *header_end   = strstr(buffer_lc, "\r\n\r\n");
+    /* convert buffer to lowercase and find header start and end*/
+    buffer_lc = get_buffer_lc(*buffer, *buffer + *buffer_l);
+    header_start = buffer_lc;
+    header_end   = strstr(buffer_lc, "\r\n\r\n");
     if (header_end == NULL) {
         fprintf(stderr, "[!] http: invalid header passed to add field\n");
         return -1; // TODO - error-handling: invalid header
@@ -196,8 +197,8 @@ Request *Request_create(char *method, char *path, char *version, char *host,
         request->port_l = strlen(port);
         request->port   = strndup(port, request->port_l);
     } else {
-        request->port_l = HTTP_PORT_L;
-        request->port   = strndup(HTTP_PORT, request->port_l);
+        request->port_l = DEFAULT_PORT_L;
+        request->port   = strndup(DEFAULT_PORT, request->port_l);
     }
     if (body != NULL) {
         request->body_l = strlen(body);
@@ -1135,11 +1136,15 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
         return NULL;
     }
 
+    fprintf(stderr, "[parse_host] host: %s\n", host);
+
     /* skip field name and any whitespace after the colon */
     host += 6; // Skip "host:"
     while (isspace(*host)) {
         host++;
     }
+
+    fprintf(stderr, "[parse_host] host: %s\n", host);
 
     /* find the end of the Host field */
     char *end = strchr(host, '\r');
@@ -1147,17 +1152,22 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
         return NULL;
     }
 
+    fprintf(stderr, "[parse_host] host: %s\n", host);
+
     size_t host_len = end - host;
     if (host_l != NULL) {
         *host_l = host_len;
     }
 
+    fprintf(stderr, "parse_host] host_l = %ld\n", host_len);
+
     char *h = calloc(host_len + 1, sizeof(char));
     if (h == NULL) {
         return NULL;
     }
-
     memcpy(h, host, host_len);
+
+    fprintf(stderr, "[parse_host] h = %s\n", h);
 
     free(request_lc);
 
@@ -1222,8 +1232,8 @@ static char *parse_port(char **host, size_t *host_l, char *path, size_t *port_l)
 
     /* Default port */
     if (port == NULL) {
-        port     = HTTP_PORT;
-        port_len = HTTP_PORT_L;
+        port     = DEFAULT_PORT;
+        port_len = DEFAULT_PORT_L;
         if (port_l != NULL) {
             *port_l = port_len;
         }

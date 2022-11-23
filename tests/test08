@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Test 01: Test the http-proxy with a https GET request and response
+
+# Start timer for test
+echo "+ ---------- Test 08: GET HTTPS request and response --------- +"
+
+echo "[*] Sending initial request to http://www.google.com/..."
+fetch=$(time curl -v -x localhost:9056 http://www.google.com/ 2>&1)
+echo "[*] Sleeping for 5 seconds..."
+for i in {1..5}; do
+    echo -n "."
+    sleep 1
+done
+echo ""
+
+echo "[*] Sending second request to http://www.google.com/..."
+cache=$(time curl -v -x localhost:9056 http://www.google.com/ 2>&1)
+
+echo "[+] Results ----------------------------------------------- +"
+echo ""
+echo "    [*] Time Elapsed w/ Fetch: $fetch"
+echo "    [*] Time Elapsed w/ Cache: $cache"
+echo ""
+echo "+ --------------------------------------------------------- +"
