@@ -20,6 +20,7 @@ Client *Client_new()
     client->buffer_l          = 0;
     client->last_recv.tv_sec  = 0;
     client->last_recv.tv_usec = 0;
+    client->state             = 0;
 
     return client;
 }

@@ -73,16 +73,6 @@ int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l)
             return ERROR_FAILURE;
         }
 
-        // TODO - Remove Debug Prints
-        fprintf(stderr, "buffer = %s\n", *buffer);
-        fprintf(stderr, "field = %s\n", field);
-        fprintf(stderr, "value = %s\n", value);
-        fprintf(stderr, "buffer_l = %zu\n", *buffer_l);
-        fprintf(stderr, "field_l = %zu\n", field_l);
-        fprintf(stderr, "value_l = %zu\n", value_l);
-        fprintf(stderr, "header_l = %zu\n", header_l);
-        fprintf(stderr, "new_buffer_l = %zu\n", new_buffer_l);
-
         memcpy(new_buffer, *buffer, header_l); // copy header
         offset += header_l;
         memcpy(new_buffer + offset, CRLF, CRLF_L); // add CRLF
@@ -542,7 +532,7 @@ char *Raw_request(char *method, char *uri, char *host, char *port, char *body,
     raw_len += SPACE_L;        // Space
     raw_len += uri_l;          // uri
     raw_len += SPACE_L;        // Space
-    raw_len += HTTP_VERSION_L; // HTTP version
+    raw_len += HTTP_VERSION_1_1_L; // HTTP version
     raw_len += CRLF_L;         // CRLF
 
     /* Host Field : Host: <host>\r\n */
@@ -580,8 +570,8 @@ char *Raw_request(char *method, char *uri, char *host, char *port, char *body,
     offset += uri_l;
     memcpy(raw_request + offset, SPACE, SPACE_L);
     offset += SPACE_L;
-    memcpy(raw_request + offset, HTTP_VERSION, HTTP_VERSION_L);
-    offset += HTTP_VERSION_L;
+    memcpy(raw_request + offset, HTTP_VERSION_1_1, HTTP_VERSION_1_1_L);
+    offset += HTTP_VERSION_1_1_L;
     memcpy(raw_request + offset, CRLF, CRLF_L);
     offset += CRLF_L;
 
@@ -1212,21 +1202,20 @@ static char *parse_port(char **host, size_t *host_l, char *path, size_t *port_l)
 
     if (path != NULL && port == NULL) {
         port = strrchr(path, ':');
-        port++;
-
-        /* check if the port is a number */
-        if (isdigit(*port)) {
-            end = port;
-            while (isdigit(*end)) {
-                end++;
+        if (port != NULL) {
+            port++;
+            if (isdigit(*port)) {
+                end = port;
+                while (isdigit(*end)) {
+                    end++;
+                }
+                port_len = end - port;
+                if (port_l != NULL) {
+                    *port_l = port_len;
+                }
+            } else {
+                port = NULL;
             }
-
-            port_len = end - port;
-            if (port_l != NULL) {
-                *port_l = port_len;
-            }
-        } else {
-            port = NULL;
         }
     }
 
@@ -1328,21 +1317,22 @@ static long parse_maxage(char *cachecontrol, size_t cc_l)
         return DEFAULT_MAX_AGE;
     }
 
+    fprintf(stderr, "cachecontrol = %s\n", cachecontrol);
+
     char *maxage = strstr(cachecontrol, "max-age=");
     if (maxage == NULL) {
         return DEFAULT_MAX_AGE;
     }
 
     /* skip field name and any whitespace after the colon */
-    maxage += 8; // Skip "max-age="
-    while (isspace(*maxage)) {
+    while (!isdigit(*maxage)) {
         maxage++;
     }
 
     /* find the end of the Cache-Control field */
-    char *end = strchr(maxage, ',');
-    if (end == NULL) {
-        end = maxage + cc_l; // end of string
+    char *end = maxage;
+    while (isdigit(*end)) {
+        end++;
     }
 
     size_t maxage_len = end - maxage;

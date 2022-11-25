@@ -16,7 +16,7 @@
 #define PROXY_HALT_L    8
 
 /* Query */
-#define QUERY_BUFFER_SZ 4096 // 4KB = 4096 bytes
+#define QUERY_BUFFER_SZ 1024 // 1KB = 4096 bytes
 
 /* Utility */
 #define BUFFER_SZ 1024 // default buffer size
@@ -25,30 +25,34 @@
 #define CACHE_SZ 10
 
 /* HTTP */
-#define DEFAULT_PORT      "80"
-#define DEFAULT_PORT_L    2
-#define HEADER_END     "\r\n\r\n"
-#define HEADER_END_L   4
-#define CRLF           "\r\n"
-#define CRLF_L         2
-#define HTTP_GET       "GET"
-#define GET            "get"
-#define GET_L          3
-#define HTTP_CONNECT   "CONNECT"
-#define CONNECT        "connect"
-#define CONNECT_L      7
-#define FIELD_SEP      ": "
-#define FIELD_SEP_L    2
-#define SPACE          " "
-#define SPACE_L        1
-#define COLON          ":"
-#define COLON_L        1
-#define HTTP_VERSION   "HTTP/1.1"
-#define HTTP_VERSION_L 8
-#define HTTP_200       "200 OK"
-#define HTTP_200_L     6
-#define HTTP_404       "404 Not Found"
-#define HTTP_404_L     12
+#define DEFAULT_PORT       "80"
+#define DEFAULT_PORT_L     2
+#define HEADER_END         "\r\n\r\n"
+#define HEADER_END_L       4
+#define CRLF               "\r\n"
+#define CRLF_L             2
+#define HTTP_GET           "GET"
+#define GET                "get"
+#define GET_L              3
+#define HTTP_CONNECT       "CONNECT"
+#define CONNECT            "connect"
+#define CONNECT_L          7
+#define FIELD_SEP          ": "
+#define FIELD_SEP_L        2
+#define SPACE              " "
+#define SPACE_L            1
+#define COLON              ":"
+#define COLON_L            1
+#define HTTP_VERSION_1_1   "HTTP/1.1"
+#define HTTP_VERSION_1_1_L 8
+#define CONNECTION_ESTABLISHED "Connection established"
+#define CONNECTION_ESTABLISHED_L 22
+#define STATUS_200   "200"
+#define STATUS_200_L 3
+#define OK        "OK"
+#define OK_L      2
+#define HTTP_404           "404 Not Found"
+#define HTTP_404_L         12
 
 /* HTTP Header Fields */
 #define CONTENTLENGTH   "content-length:"
@@ -63,14 +67,14 @@
 
 /* Indicators */
 
-#define CLOSE_CLIENT       111
-#define CLIENT_TIMEDOUT    6
-#define ERROR_FAILURE      -1
-#define ERROR_CLOSE        -2
-#define INVALID_REQUEST    -3
-#define INVALID_RESPONSE   -4
-#define INVALID_HEADER     -5
-#define ERROR_CONNECT -5
+#define CLOSE_CLIENT     111
+#define CLIENT_TIMEDOUT  6
+#define ERROR_FAILURE    -1
+#define ERROR_CLOSE      -2
+#define INVALID_REQUEST  -3
+#define INVALID_RESPONSE -4
+#define INVALID_HEADER   -5
+#define ERROR_CONNECT    -5
 
 #define ERROR_BAD_URL     -5
 #define ERROR_BAD_HOST    -6
@@ -90,5 +94,10 @@
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 64
 #endif
+
+/* */
+#define CLI_QUERY 0
+#define CLI_GET 1
+#define CLI_CONNECT 2
 
 #endif /* __PROXYCONFIG_H__ */

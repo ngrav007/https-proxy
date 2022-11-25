@@ -26,6 +26,7 @@ typedef struct Client {
     char *buffer;             // Buffer for outgoing messages
     int socket;               // Client socket
     bool isSlow;              // True if sends partial messages
+    int state;                // State of client
 } Client;
 
 Client *Client_new();

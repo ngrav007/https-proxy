@@ -45,6 +45,7 @@ typedef struct Proxy {
 
 int Proxy_run(short port, size_t cache_size);
 int Proxy_init(Proxy *proxy, short port, size_t cache_size);
+int Proxy_listen(Proxy *proxy);
 void Proxy_free(void *proxy);
 void Proxy_print(Proxy *proxy);
 ssize_t Proxy_recv(Proxy *proxy, int socket);

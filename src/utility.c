@@ -1,5 +1,6 @@
 #include "utility.h"
 
+
 int get_char(int fd)
 {
     char c;
@@ -154,7 +155,7 @@ char *remove_whitespace(char *str, int size)
 
 void clear_buffer(char *buffer, size_t *buffer_l)
 {
-    if (buffer == NULL || buffer_l == 0) {
+    if (buffer == NULL || buffer_l == NULL || *buffer_l == 0) {
         return;
     }
 
@@ -170,7 +171,7 @@ int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz)
     }
 
     /* expand the buffer */
-   *buffer_sz *= 2 + 1;
+   *buffer_sz += BUFFER_SZ + 1;
     char *new_buffer = calloc(*buffer_sz, sizeof(char));
     if (new_buffer == NULL) {
         return -1;

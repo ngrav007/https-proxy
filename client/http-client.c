@@ -19,262 +19,105 @@
 #include <unistd.h>
 
 #define BUFSIZE 1024
+#define OUTPUT_DIR "output"
+#define OUTPUT_FILE "response"
 
 static int sendall(int s, char *buf, size_t len);
 static void error(char *msg);
+static int connect_to_proxy(char *host, int port);
 
 int main(int argc, char **argv)
 {
-    int sockfd, portno, n;
-    struct sockaddr_in servaddr;
-    struct hostent *server;
-    char *hostname;
-
     /* check command line arguments */
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <proxy-host> <proxy-port>\n", argv[0]);
+    if (argc < 4 ) {
+        fprintf(stderr, "Usage: %s <proxy-host> <proxy-port> <method> <host> [port]\n", argv[0]);
         exit(0);
     }
 
-    hostname = argv[1];
-    portno   = atoi(argv[2]);
-
-    /* socket: create the socket */
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        error("[!]] socket: failed");
-    }
-        
-    /* gethostbyname: get the server's DNS entry */
-    server = gethostbyname(hostname);
-    if (server == NULL) {
-        fprintf(stderr, "%s[!]%s unknown host: %s\n", RED, reset, hostname);
-        exit(0);
+    /* connect to proxy */
+    char *proxy_host = argv[1];
+    int proxy_port = atoi(argv[2]);
+    int proxyfd = connect_to_proxy(proxy_host, proxy_port);
+    if (proxyfd < 0) {
+        error("connect_to_proxy: failed\n");
     }
 
-    /* build the server's Internet address */
-    bzero((char *)&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr,
-          server->h_length);
-    servaddr.sin_port = htons(portno);
-
-    /* connect: create a connection with the server */
-    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-        error("[!] connect: failed");
+    /* create raw request */
+    size_t raw_len = 0;
+    char *raw = NULL;
+    char *method = argv[3];
+    char *host = argv[4];
+    char *body = "";
+    char *port;
+    if (argc == 6) {
+        port = argv[5];
+    } else {
+        port = (strncmp(method, GET, GET_L) == 0 || strncmp(method, "GET", GET_L) == 0) ? "80" : "443";
     }
-
-    char method[BUFSIZE + 1];
     char url[BUFSIZE + 1];
-    char host[BUFSIZE + 1];
-    char port[BUFSIZE + 1];
-    char body[BUFSIZE + 1];
-    char query;
-    char command;
+    zero(url, BUFSIZE + 1);
+    snprintf(url, BUFSIZE, "%s:%s", host, port);
+    raw = Raw_request(method, url, host, port, body, &raw_len);
+    if (raw == NULL) {
+        error("Raw_request: failed\n");
+    }
 
-    char *raw;
-    size_t raw_len;
+    /* add connection closed field */
+    HTTP_add_field(&raw, "Connection", "close", &raw_len);
 
-    bool sentinel = true;
-query:
-    while (sentinel) {
-        /* reset */
-        query   = '\0';
-        raw     = NULL;
-        raw_len = 0;
-        command = ' ';
-        n       = 0;
-        zero(method, BUFSIZE + 1);
-        zero(url, BUFSIZE + 1);
-        zero(host, BUFSIZE + 1);
-        zero(port, BUFSIZE + 1);
-        zero(body, BUFSIZE + 1);
+    /* send request */
+    int n = sendall(proxyfd, raw, raw_len);
+    if (n < 0) {
+        error("sendall: failed\n");
+    }
+    free(raw);
 
-        /* Command Prompt */
-        printf("[COMMANDS]\n");
-        printf("  (1) GET\n");
-        printf("  (2) CONNECT\n");
-        printf("  (3) HALT\n");
-
-        printf("Command: ");
-        scanf(" %c", &command);
-        fflush(stdin);
-
-        /* Execute Command */
-        switch (command) {
-        case '1':
-            printf("[HTTP GET]\n");
-            memcpy(method, HTTP_GET, GET_L);
-            printf("URL: ");
-            scanf(" %s", url);
-            printf("Add Host field? (y/n): ");
-            scanf(" %c", &query);
-            fflush(stdin);
-            if (query == 'y') {
-                /* populate host with path uri */
-                char *host_start = strstr(url, "//");
-                if (host_start == NULL) {
-                    fprintf(stderr, "%s[!]%s invalid url: %s\n", RED, reset,
-                            url);
-                    goto query;
-                }
-                host_start += 2;
-                char *host_end = strchr(host_start, '/');
-                if (host_end == NULL) {
-                    host_end = url + strlen(url);
-                }
-
-                
-                
-                memcpy(host, host_start, host_end - host_start);
-                fprintf(stderr, "%s[!]%s host: %s\n", RED, reset, host);
-            }
-
-            raw = Raw_request(method, url, host, port, body, &raw_len);
-            n   = sendall(sockfd, raw, raw_len);
-            if (n < 0) {
-                error("[!] client: error occurred when sending.");
-                free(raw);
-                return EXIT_FAILURE;
-            }
-            free(raw);
-            break;
-        case '2':
-            printf("[HTTP CONNECT]\n");
-            memcpy(method, HTTP_CONNECT, CONNECT_L);
-            printf("URL: ");
-            scanf(" %s", url);
-            printf("Add Host field? (y/n): ");
-            scanf(" %c", &query);
-            fflush(stdin);
-            if (query == 'y') {
-                /* populate host with path uri */
-                char *host_start = strstr(url, "//");
-                if (host_start == NULL) {
-                    fprintf(stderr, "%s[!]%s invalid url: %s\n", RED, reset,
-                            url);
-                    goto query;
-                }
-                host_start += 2;
-                char *host_end = strchr(host_start, '/');
-                if (host_end == NULL) {
-                    host_end = url + strlen(url);
-                }
-
-                /* add port */
-                memcpy(host, host_start, host_end - host_start);
-                memcpy(port, "443", 3);
-                fprintf(stderr, "%s[!]%s host: %s\n", RED, reset, host);
-            }
-
-            raw = Raw_request(method, url, host, port, body, &raw_len);
-            n   = sendall(sockfd, raw, raw_len);
-            if (n < 0) {
-                error("[!] client: error occurred when sending.");
-                free(raw);
-                return EXIT_FAILURE;
-            }
-            free(raw);
-            break;
-        case '3':
-            printf("[HALT]\n");
-            memcpy(method, PROXY_HALT, PROXY_HALT_L);
-            memcpy(url, PROXY_HALT, PROXY_HALT_L);
-            raw = Raw_request(method, url, host, port, body, &raw_len);
-            n   = sendall(sockfd, raw, raw_len);
-            if (n < 0) {
-                error("[!] client: error occurred when sending.");
-                free(raw);
-                return EXIT_FAILURE;
-            }
-            free(raw);
-            sentinel = false;
-            break;
-        default:
-            printf("[!] Invalid command! Please try again.\n");
-            goto query;
-        }
-
-        /* receive reply */
-        char *response       = calloc(BUFSIZE + 1, sizeof(char));
-        size_t response_len  = 0;
-        size_t response_size = BUFSIZE;
-
-        while ((n = recv(sockfd, response + response_len,
-                         response_size - response_len, 0)) > 0)
-        {
-            fprintf(stderr, "[*] Received %d bytes.\r", n);
-            if ((size_t)n < (response_size - response_len)) {
-                response_len += n;
-                fprintf(stderr, "[+] Received %d bytes of %ld bytes.\r", n,
-                        (response_size - response_len));
-                break;
-            }
-            response_len += n;
-
-            if (response_len >= response_size) {
-                response_size *= 2 + 1;
-                response = realloc(response, response_size);
-            }
-        }
-
+    /* receive response */
+    char *response       = calloc(BUFSIZE + 1, sizeof(char));
+    size_t response_len  = 0;
+    size_t response_size = BUFSIZE;
+    while (1) {
+        n = recv(proxyfd, response + response_len, response_size - response_len, 0);
         if (n < 0) {
             error("[!] client: error occurred when receiving.");
             free(response);
-            close(sockfd);
             return EXIT_FAILURE;
-        } else if (n == 0) {
-            fprintf(stderr, "[!] client: server closed connection.\n");
-            print_ascii(response, response_len);
-            sentinel = false;
-        } else {
-            fprintf(stderr, "[+] Received full response:\n");
-            print_ascii(response, response_len);
+        } else if (n == 0 || (size_t)n < (response_size - response_len)) {
+            response[response_len] = '\0';
+            break;
         }
-        /* write to file */
-        char filename[BUFSIZE + 1];
-        zero(filename, BUFSIZE + 1);
-        printf("Save response to file? (y/n): ");
-        scanf(" %c", &query);
-        fflush(stdin);
-        
-
-        if (query == 'y') {
-            printf("Filename: ");
-            scanf(" %s", filename);
-            fflush(stdin);
-            FILE *fp = fopen(filename, "w");
-            if (fp == NULL) {
-                error("[!] client: failed to open file.");
-                free(response);
-                close(sockfd);
-                return EXIT_FAILURE;
-            }
-            
-            char *body = strstr(response, "\r\n\r\n");
-            if (body == NULL) {
-                error("[!] client: failed to find body.");
-                free(response);
-                close(sockfd);
-                return EXIT_FAILURE;
-            }
-            body += 4;
-            size_t body_len = response_len - (body - response);
-            if (fwrite(body, sizeof(char), body_len, fp) != body_len) {
-                error("[!] client: failed to write to file.");
-                free(response);
-                close(sockfd);
-                return EXIT_FAILURE;
-            }
-            fclose(fp);
+        response_len += n;
+        if (response_len >= response_size) {
+            response_size *= 2;
+            response = realloc(response, response_size);
         }
-        
-        free(response);
     }
 
-    close(sockfd);
-    return 0;
+    fprintf(stderr, "[+] Received full response (%ld):\n", response_len);
+    print_ascii(response, response_len);
+        
+    /* write to file to output directory */
+    char filename[BUFSIZE + 1]; 
+    zero(filename, BUFSIZE + 1);
+    sprintf(filename, "%s/%s-%s-%ld.txt", OUTPUT_DIR, OUTPUT_FILE, host, time(NULL));
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL) {
+        error("[!] client: failed to open file.");
+        free(response);
+        close(proxyfd);
+        return EXIT_FAILURE;
+    }
+
+    /* write full response to file */
+    fprintf(fp, "%s", response);
+    fclose(fp);
+        
+    free(response);
+    close(proxyfd);
+
+    return EXIT_SUCCESS;
 }
+
 
 static int sendall(int s, char *buf, size_t len)
 {
@@ -301,4 +144,35 @@ static void error(char *msg)
 {
     perror(msg);
     exit(0);
+}
+
+static int connect_to_proxy(char *host, int port)
+{
+    struct sockaddr_in servaddr;
+    struct hostent *server;
+
+    /* socket: create the socket */
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        error("[!] socket: failed");
+    }
+        
+    /* gethostbyname: get the server's DNS entry */
+    server = gethostbyname(host);
+    if (server == NULL) {
+        error("[!] gethostbyname: failed");
+    }
+
+    /* build the server's Internet address */
+    bzero((char *)&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr, server->h_length);
+    servaddr.sin_port = htons(port);
+
+    /* connect: create a connection with the server */
+    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        error("[!] connect: failed");
+    }
+
+    return sockfd;
 }

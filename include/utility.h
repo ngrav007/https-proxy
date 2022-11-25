@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#define BUFFER_SZ 1024
 #define NS_PER_S 1000000000.0
 #define MAX_SIZE_DIGITS 20
 
