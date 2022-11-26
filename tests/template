@@ -1,15 +1,15 @@
-#!/bin/bash
+# TEST TEMPLATE --------------------------------------------------------------
 
-# Test 03: GET Request, Binary File, HTTP
+#!/bin/bash
 
 # Import test config
 . $(dirname $0)/config.sh
 
 # Test Setup
-METHOD="GET"
-URL="http://www.cs.cmu.edu/~dga/dga-headshot.jpg"
-HOST="www.cs.cmu.edu"
-SLEEPTIME="5"
+METHOD= # TODO - Set this
+URL= # TODO - Set this
+HOST= # TODO - Set this
+SLEEPTIME=# TODO - Set this
 
 # File and Directory Setup
 TESTNAME=$(basename $0)
@@ -18,11 +18,11 @@ CACHE_OUT="$REPORT_DIR/$TESTNAME-$CACHE-$OUTPUT_EXT"
 FETCH_REPORT="$REPORT_DIR/$TESTNAME-$FETCH-$REPORT_EXT"
 CACHE_REPORT="$REPORT_DIR/$TESTNAME-$CACHE-$REPORT_EXT"
 
-echo "+ ---------- $TESTNAME: $METHOD Request, Binary File, HTTP --------- +"
+echo "+ ---------- $TESTNAME: Simple $METHOD request and response --------- +"
 
 echo "[*] Sending Request:"
-echo " |    $METHOD $URL HTTP/1.1"
-echo " |    Host: $HOST"
+echo "$METHOD $URL HTTP/1.1"
+echo "Host: $HOST"
 
 echo "[*] Sending initial request to $URL..."
 fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $FETCH_OUT)

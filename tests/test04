@@ -1,26 +1,52 @@
 #!/bin/bash
 
-# Test 04: Test the http-proxy with a non-Tufts URL GET request and response
+# Test 04: GET Request, Root Directory (host as URL), HTTP
 
-# Start timer for test
-echo "+ ------ Test 04: Non-Tufts URL GET request and response ------ +"
+# Import test config
+. $(dirname $0)/config.sh
 
-echo "[*] Sending initial request to http://neverssl.com..."
-fetch=$(time curl -v -x localhost:9056 http://neverssl.com 2>&1)
+# Test Setup
+METHOD="GET"
+URL="http://neverssl.com"
+HOST="www.neverssl.com"
+SLEEPTIME="5"
 
-echo "[*] Sleeping for 5 seconds..."
-for i in {1..5}; do
+# File and Directory Setup
+TESTNAME=$(basename $0)
+FETCH_OUT="$REPORT_DIR/$TESTNAME-$FETCH-$OUTPUT_EXT"
+CACHE_OUT="$REPORT_DIR/$TESTNAME-$CACHE-$OUTPUT_EXT"
+FETCH_REPORT="$REPORT_DIR/$TESTNAME-$FETCH-$REPORT_EXT"
+CACHE_REPORT="$REPORT_DIR/$TESTNAME-$CACHE-$REPORT_EXT"
+
+echo "+ ---------- $TESTNAME: $METHOD Request, Root Directory (), HTTP --------- +"
+
+echo "[*] Sending Request:"
+echo " |    $METHOD $URL HTTP/1.1"
+echo " |    Host: $HOST"
+
+echo "[*] Sending initial request to $URL..."
+fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $FETCH_OUT)
+echo "[*] Sleeping for $SLEEPTIME seconds..."
+for i in {1..$SLEEPTIME}; do
     echo -n "."
     sleep 1
 done
-echo ""
 
-echo "[*] Sending second request to http://neverssl.com..."
-cache=$(time curl -v -x localhost:9056 http://neverssl.com 2>&1)
-
-echo "[+] Results ----------------------------------------------- +"
 echo ""
-echo "    [*] Time Elapsed w/ Fetch: $fetch"
-echo "    [*] Time Elapsed w/ Cache: $cache"
+echo "[*] Sending second request to $URL..."
+cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $CACHE_OUT)
+
+FETCH_RESULTS=$(cat $FETCH_REPORT)
+CACHE_RESULTS=$(cat $CACHE_REPORT)
+
+echo "[+] $TESTNAME Results ----------------------------------------------- +"
+echo ""
+echo "[*] Time Elapsed w/ Fetch: "
+echo ""
+echo "$FETCH_RESULTS"
+echo ""
+echo "[*] Time Elapsed w/ Cache: "
+echo ""
+echo "$CACHE_RESULTS"
 echo ""
 echo "+ --------------------------------------------------------- +"

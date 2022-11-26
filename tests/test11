@@ -1,44 +1,45 @@
-# Test 10: Test the http-proxy with a simple GET request and response
-
 #!/bin/bash
+
+# Test 10: GET Request, File Server, Small Text File (scroll.txt)
 
 # Import test config
 . $(dirname $0)/config.sh
 
-# Test Configuration
+# Test Setup
 METHOD="GET"
-URL="http://www.cs.tufts.edu/comp/112/index.html"
-HOST="www.cs.tufts.edu"
+URL="http://localhost:$SERVER_PORT/card.jpeg"
+HOST="localhost:$SERVER_PORT"
+SLEEPTIME="5"
 
-# Setup
+# File and Directory Setup
 TESTNAME=$(basename $0)
 FETCH_OUT="$REPORT_DIR/$TESTNAME-$FETCH-$OUTPUT_EXT"
 CACHE_OUT="$REPORT_DIR/$TESTNAME-$CACHE-$OUTPUT_EXT"
 FETCH_REPORT="$REPORT_DIR/$TESTNAME-$FETCH-$REPORT_EXT"
 CACHE_REPORT="$REPORT_DIR/$TESTNAME-$CACHE-$REPORT_EXT"
 
-echo "+ ---------- Test 10: Simple GET request and response --------- +"
+echo "+ ---------- $TESTNAME: $METHOD Request, File Server, Small Text File --------- +"
 
 echo "[*] Sending Request:"
-echo "GET http://www.cs.tufts.edu/comp/112/index.html HTTP/1.1"
-echo "Host: www.cs.tufts.edu"
+echo " |    $METHOD $URL HTTP/1.1"
+echo " |    Host: $HOST"
 
-echo "[*] Sending initial request to http://www.cs.tufts.edu/comp/112/index.html..."
+echo "[*] Sending initial request to $URL..."
 fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $FETCH_OUT)
-echo "[*] Sleeping for 5 seconds..."
-for i in {1..5}; do
+echo "[*] Sleeping for $SLEEPTIME seconds..."
+for i in {1..$SLEEPTIME}; do
     echo -n "."
     sleep 1
 done
 
 echo ""
-echo "[*] Sending second request to http://www.cs.tufts.edu/comp/112/index.html..."
+echo "[*] Sending second request to $URL..."
 cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $CACHE_OUT)
 
 FETCH_RESULTS=$(cat $FETCH_REPORT)
 CACHE_RESULTS=$(cat $CACHE_REPORT)
 
-echo "[+] Results ----------------------------------------------- +"
+echo "[+] $TESTNAME Results ----------------------------------------------- +"
 echo ""
 echo "[*] Time Elapsed w/ Fetch: "
 echo ""

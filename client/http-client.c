@@ -51,6 +51,21 @@ int main(int argc, char **argv)
     } else {
         uri = "/";
     }
+    char port[MAX_DIGITS_LONG];
+    zero(port, MAX_DIGITS_LONG);
+    char *port_start = strchr(method, ':');
+    if (port_start == NULL) {
+        port_start = NULL;
+    } else {
+        *port_start = '\0';
+        port_start++;
+        char *port_end = port_start;
+        while(isdigit(port_end)) {
+            port_end++;
+        }        
+        memcpy(port, port_start, port_end-port_start);
+    }
+    
 
     /* connect to proxy */
     int proxy_fd = connect_to_proxy(proxy_host, proxy_port);
@@ -60,7 +75,7 @@ int main(int argc, char **argv)
 
     /* build raw request */
     size_t raw_l = 0;
-    char *raw_request = Raw_request(method, uri, host, NULL, NULL, &raw_l);
+    char *raw_request = Raw_request(method, uri, host, port, NULL, &raw_l);
     if (raw_request == NULL) {
         close(proxy_fd);
         error("[!] Failed to build raw request");

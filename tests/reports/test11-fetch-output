@@ -1,0 +1,10 @@
+[+] Connecting to proxy localhost:9055
+[*] http: Raw request:
+GET http://localhost:9066/card.jpeg HTTP/1.1
+Host: localhost:9066
+
+
+[*] client: received 0 bytes
+[*] HTTP Response Header --------------------- +
+
+[!] Failed to find header end: Success

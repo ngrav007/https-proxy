@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Test 03: GET Request, Binary File, HTTP
+# Test 10: GET Request, File Server, Small Text File (scroll.txt)
 
 # Import test config
 . $(dirname $0)/config.sh
 
 # Test Setup
 METHOD="GET"
-URL="http://www.cs.cmu.edu/~dga/dga-headshot.jpg"
-HOST="www.cs.cmu.edu"
+URL="http://localhost:$SERVER_PORT/scroll.txt"
+HOST="localhost:$SERVER_PORT"
 SLEEPTIME="5"
 
 # File and Directory Setup
@@ -18,7 +18,7 @@ CACHE_OUT="$REPORT_DIR/$TESTNAME-$CACHE-$OUTPUT_EXT"
 FETCH_REPORT="$REPORT_DIR/$TESTNAME-$FETCH-$REPORT_EXT"
 CACHE_REPORT="$REPORT_DIR/$TESTNAME-$CACHE-$REPORT_EXT"
 
-echo "+ ---------- $TESTNAME: $METHOD Request, Binary File, HTTP --------- +"
+echo "+ ---------- $TESTNAME: $METHOD Request, File Server, Small Text File --------- +"
 
 echo "[*] Sending Request:"
 echo " |    $METHOD $URL HTTP/1.1"

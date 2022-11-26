@@ -80,7 +80,7 @@
 #define INVALID_REQUEST  -3
 #define INVALID_RESPONSE -4
 #define INVALID_HEADER   -5
-#define ERROR_CONNECT    -5
+#define ERROR_CONNECT    -6
 
 #define ERROR_BAD_URL     -5
 #define ERROR_BAD_HOST    -6
