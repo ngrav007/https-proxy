@@ -114,9 +114,9 @@ void print_ascii(char *buf, size_t len)
         if (isprint(buf[i])) {
             fprintf(stderr, "%c", buf[i]);
         } else if (buf[i] == '\r') {
-            fprintf(stderr, "<CR>");
+            fprintf(stderr, "\r");
         } else if (buf[i] == '\n') {
-            fprintf(stderr, "<LF>");
+            fprintf(stderr, "\n");
         } else {
             fprintf(stderr, ".");
         }

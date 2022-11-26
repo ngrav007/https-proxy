@@ -158,7 +158,7 @@ Request *Request_new(char *buffer, size_t buffer_l)
 /* Request_create
  *    Purpose: Creates a new Request populated with the given values.
  * Parameters: @method - Pointer to a buffer containing the HTTP method
- *             @path - Pointer to a buffer containing the HTTP URI
+ *             @path - Pointer to a buffer containing the HTTP uri
  *             @version - Pointer to a buffer containing the HTTP version
  *             @host - Pointer to a buffer containing the HTTP host
  *             @port - Pointer to a buffer containing the HTTP port, can be NULL
@@ -498,19 +498,19 @@ int Response_compare(void *response1, void *response2)
  * NOTE: The caller is responsible for freeing the memory allocated for the
  *       raw request string.
  */
-char *Raw_request(char *method, char *uri, char *host, char *port, char *body,
+char *Raw_request(char *method, char *url, char *host, char *port, char *body,
                   size_t *raw_l)
 {
-    if (method == NULL || uri == NULL) {
-        fprintf(stderr, "[!] http: Method and uri must be specified");
+    if (method == NULL || url == NULL) {
+        fprintf(stderr, "[!] http: Method and url must be specified");
         return NULL;
     }
 
-    size_t method_l = 0, uri_l = 0, host_l = 0, port_l = 0, body_l = 0;
+    size_t method_l = 0, url_l = 0, host_l = 0, port_l = 0, body_l = 0;
 
     method_l = strlen(method); // Method (required)
 
-    uri_l = strlen(uri); // uri (required)
+    url_l = strlen(url); // url (required)
 
     if (host != NULL) {
         host_l = strlen(host); // Host (optional)
@@ -530,7 +530,7 @@ char *Raw_request(char *method, char *uri, char *host, char *port, char *body,
     /* Startline of HTTP Request */
     raw_len += method_l;       // Method
     raw_len += SPACE_L;        // Space
-    raw_len += uri_l;          // uri
+    raw_len += url_l;          // url
     raw_len += SPACE_L;        // Space
     raw_len += HTTP_VERSION_1_1_L; // HTTP version
     raw_len += CRLF_L;         // CRLF
@@ -560,14 +560,14 @@ char *Raw_request(char *method, char *uri, char *host, char *port, char *body,
         return NULL;
     }
 
-    /* copy the method, uri, and http version to the raw string */
+    /* copy the method, url, and http version to the raw string */
     size_t offset = 0;
     memcpy(raw_request, method, method_l);
     offset += method_l;
     memcpy(raw_request + offset, SPACE, SPACE_L);
     offset += SPACE_L;
-    memcpy(raw_request + offset, uri, uri_l);
-    offset += uri_l;
+    memcpy(raw_request + offset, url, url_l);
+    offset += url_l;
     memcpy(raw_request + offset, SPACE, SPACE_L);
     offset += SPACE_L;
     memcpy(raw_request + offset, HTTP_VERSION_1_1, HTTP_VERSION_1_1_L);
@@ -813,7 +813,7 @@ static int parse_request_fields(Request *req, char *buffer, size_t buffer_l)
     req->host = parse_host(buffer, buffer_l, &req->host_l);
     if (req->host == NULL) {
         char *path = req->path;
-        /* populate host with path uri */
+        /* populate host with path url */
         char *host_start = strchr(path, '/'); // skip the "//"
         if (host_start == NULL) {
             host_start = path;
@@ -1317,8 +1317,7 @@ static long parse_maxage(char *cachecontrol, size_t cc_l)
         return DEFAULT_MAX_AGE;
     }
 
-    fprintf(stderr, "cachecontrol = %s\n", cachecontrol);
-
+    char m[MAX_DIGITS_LONG + 1] = {0};
     char *maxage = strstr(cachecontrol, "max-age=");
     if (maxage == NULL) {
         return DEFAULT_MAX_AGE;
@@ -1327,25 +1326,28 @@ static long parse_maxage(char *cachecontrol, size_t cc_l)
     /* skip field name and any whitespace after the colon */
     while (!isdigit(*maxage)) {
         maxage++;
+        if ((maxage - cachecontrol) >= (ssize_t)cc_l) {
+            return DEFAULT_MAX_AGE;
+        }
     }
 
     /* find the end of the Cache-Control field */
     char *end = maxage;
     while (isdigit(*end)) {
         end++;
+        if ((end - cachecontrol) >= (ssize_t)cc_l) {
+            break;
+        }
     }
 
     size_t maxage_len = end - maxage;
-
-    char *m = calloc(maxage_len + 1, sizeof(char));
-    if (m == NULL) {
-        return EXIT_FAILURE;
+    if (maxage_len > MAX_DIGITS_LONG) {
+        return DEFAULT_MAX_AGE; // TODO handle this error
     }
-
     memcpy(m, maxage, maxage_len);
 
     unsigned int maxage_int = atoi(m);
-    free(m);
+    
 
     return maxage_int;
 }
@@ -1365,8 +1367,8 @@ static size_t parse_contentlength(char *header)
         return 0;
     }
 
-    char c[MAX_SIZE_DIGITS + 1];
-    zero(c, MAX_SIZE_DIGITS + 1);
+    char c[MAX_DIGITS_LONG + 1];
+    zero(c, MAX_DIGITS_LONG + 1);
     char *contentlength = strstr(header, CONTENTLENGTH);
     if (contentlength == NULL) {
         return 0;

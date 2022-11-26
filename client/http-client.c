@@ -23,97 +23,124 @@
 #define OUTPUT_FILE "response"
 
 static int sendall(int s, char *buf, size_t len);
+static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz);
 static void error(char *msg);
 static int connect_to_proxy(char *host, int port);
 
 int main(int argc, char **argv)
 {
     /* check command line arguments */
-    if (argc < 4 ) {
-        fprintf(stderr, "Usage: %s <proxy-host> <proxy-port> <method> <host> [port]\n", argv[0]);
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <proxy-host> <proxy-port> <method> <host> [uri]\n", argv[0]);
         exit(0);
     }
 
-    /* connect to proxy */
+    /* get proxy host and port */
     char *proxy_host = argv[1];
     int proxy_port = atoi(argv[2]);
-    int proxyfd = connect_to_proxy(proxy_host, proxy_port);
-    if (proxyfd < 0) {
-        error("connect_to_proxy: failed\n");
-    }
 
-    /* create raw request */
-    size_t raw_len = 0;
-    char *raw = NULL;
+    /* get method, uri, and host */
     char *method = argv[3];
     char *host = argv[4];
-    char *body = "";
-    char *port;
+    char *uri = NULL;
     if (argc == 6) {
-        port = argv[5];
+        uri = argv[5];
     } else {
-        port = (strncmp(method, GET, GET_L) == 0 || strncmp(method, "GET", GET_L) == 0) ? "80" : "443";
-    }
-    char url[BUFSIZE + 1];
-    zero(url, BUFSIZE + 1);
-    snprintf(url, BUFSIZE, "%s:%s", host, port);
-    raw = Raw_request(method, url, host, port, body, &raw_len);
-    if (raw == NULL) {
-        error("Raw_request: failed\n");
+        uri = "/";
     }
 
-    /* add connection closed field */
-    HTTP_add_field(&raw, "Connection", "close", &raw_len);
+    // char *port = NULL;
+    // if ((port = strchr(host, ':')) != NULL) {
+    //     *port = '\0';
+    //     port++;
+    // } else {
+    //     port = DEFAULT_PORT;
+    // }
 
-    /* send request */
-    int n = sendall(proxyfd, raw, raw_len);
-    if (n < 0) {
-        error("sendall: failed\n");
-    }
-    free(raw);
-
-    /* receive response */
-    char *response       = calloc(BUFSIZE + 1, sizeof(char));
-    size_t response_len  = 0;
-    size_t response_size = BUFSIZE;
-    while (1) {
-        n = recv(proxyfd, response + response_len, response_size - response_len, 0);
-        if (n < 0) {
-            error("[!] client: error occurred when receiving.");
-            free(response);
-            return EXIT_FAILURE;
-        } else if (n == 0 || (size_t)n < (response_size - response_len)) {
-            response[response_len] = '\0';
-            break;
-        }
-        response_len += n;
-        if (response_len >= response_size) {
-            response_size *= 2;
-            response = realloc(response, response_size);
-        }
+    /* connect to proxy */
+    int proxy_fd = connect_to_proxy(proxy_host, proxy_port);
+    if (proxy_fd < 0) {
+        error("[-] http: Failed to connect to proxy");
     }
 
-    fprintf(stderr, "[+] Received full response (%ld):\n", response_len);
-    print_ascii(response, response_len);
-        
-    /* write to file to output directory */
-    char filename[BUFSIZE + 1]; 
-    zero(filename, BUFSIZE + 1);
-    sprintf(filename, "%s/%s-%s-%ld.txt", OUTPUT_DIR, OUTPUT_FILE, host, time(NULL));
-    FILE *fp = fopen(filename, "w");
-    if (fp == NULL) {
-        error("[!] client: failed to open file.");
-        free(response);
-        close(proxyfd);
+    /* build raw request */
+    size_t raw_l = 0;
+    char *raw_request = Raw_request(method, uri, host, NULL, NULL, &raw_l);
+    if (raw_request == NULL) {
+        error("[-] http: Failed to build raw request");
+    }
+
+    /* send raw request */
+    if (sendall(proxy_fd, raw_request, raw_l) < 0) {
+        error("[-] http: Failed to send raw request");
+    }
+
+    /* receive raw response */
+    size_t raw_response_l = 0;
+    size_t raw_response_sz = 0;
+    char *raw_response = NULL;
+    if (recvall(proxy_fd, &raw_response, &raw_response_l, &raw_response_sz) < 0) {
+        error("[-] http: Failed to receive raw response");
+    }
+
+    fprintf(stderr, "[*] http: Raw response:\n");
+
+    print_ascii(raw_response, raw_response_l);
+
+    free(raw_request);
+    free(raw_response);
+    close(proxy_fd);
+
+    return 0;
+}
+
+
+static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz)
+{
+    if (buf == NULL || buf_l == NULL || buf_sz == NULL) {
         return EXIT_FAILURE;
     }
-
-    /* write full response to file */
-    fprintf(fp, "%s", response);
-    fclose(fp);
-        
-    free(response);
-    close(proxyfd);
+    
+    /* create buffer if it doesn't exist */
+    if (*buf == NULL) {
+        *buf = calloc(BUFSIZE + 1, sizeof(char));
+        if (*buf == NULL) {
+            return EXIT_FAILURE;
+        }
+        *buf_sz = BUFSIZE;
+        *buf_l = 0;
+    } else {
+        /* if buffer exists, make sure it's big enough */
+        if (*buf_sz < BUFSIZE) {
+            *buf = realloc(*buf, BUFSIZE + 1);
+            if (*buf == NULL) {
+                return EXIT_FAILURE;
+            }
+            *buf_sz = BUFSIZE;
+        }
+    }
+ 
+    /* receive data */
+    fprintf(stderr, "*buf_l: %ld, *buf_sz: %ld\n", *buf_l, *buf_sz);
+    ssize_t n = 0, ret = 0;
+    while (1) {
+        n = recv(s, *buf + *buf_l, *buf_sz - *buf_l, 0);
+        if (n < 0) {
+            error("[!] client: error occurred when receiving.");
+            return EXIT_FAILURE;
+        } else if (n == 0 || (size_t)n < (*buf_sz - *buf_l)) {
+            *buf_l += n;
+            (*buf)[*buf_l] = '\0';
+            break;
+        }
+        *buf_l += n;
+        if (*buf_l >= *buf_sz) {
+            ret = expand_buffer(buf, buf_l, buf_sz);
+            if (ret < 0) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
 
     return EXIT_SUCCESS;
 }
@@ -122,16 +149,16 @@ int main(int argc, char **argv)
 static int sendall(int s, char *buf, size_t len)
 {
     size_t total     = 0;   // how many bytes we've sent
-    size_t bytesleft = len; // how many we have left to send
+    size_t bytes_left = len; // how many we have left to send
     int n;
 
     while (total < len) {
-        n = send(s, buf + total, bytesleft, 0);
+        n = send(s, buf + total, bytes_left, 0);
         if (n == -1) {
             break;
         }
         total += n;
-        bytesleft -= n;
+        bytes_left -= n;
     }
 
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
@@ -154,13 +181,15 @@ static int connect_to_proxy(char *host, int port)
     /* socket: create the socket */
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        error("[!] socket: failed");
+        error("[!] socket: ");
     }
+
+    fprintf(stderr, "[+] Connecting to proxy %s:%d\n", host, port);
         
     /* gethostbyname: get the server's DNS entry */
     server = gethostbyname(host);
     if (server == NULL) {
-        error("[!] gethostbyname: failed");
+        error("[!] gethostbyname: ");
     }
 
     /* build the server's Internet address */
@@ -171,7 +200,7 @@ static int connect_to_proxy(char *host, int port)
 
     /* connect: create a connection with the server */
     if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-        error("[!] connect: failed");
+        error("[!] connect: ");
     }
 
     return sockfd;

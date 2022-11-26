@@ -20,17 +20,14 @@ int main(int argc, char **argv)
 {
     int sockfd, portno, n;
     struct sockaddr_in servaddr;
-    struct hostent *server;
-    char *hostname;
 
     /* check command line arguments */
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]);
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    hostname = argv[1];
-    portno   = atoi(argv[2]);
+    portno   = atoi(argv[1]);
 
     /* socket: create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -39,24 +36,26 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    /* gethostbyname: get the server's DNS entry */
-    server = gethostbyname(hostname);
-    if (server == NULL) {
-        fprintf(stderr, "[!] unknown host: %s\n", hostname);
+    int optval = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval,
+                   sizeof(optval)) == -1)
+    {
+        fprintf(stderr, "[!] setsockopt: failed\n");
         close(sockfd);
-        return EXIT_FAILURE;
+        return ERROR_FAILURE;
     }
 
     /* build the server's Internet address */
-    bzero((char *)&servaddr, sizeof(servaddr));
+    bzero((char *) &servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr,
-          server->h_length);
-    servaddr.sin_port = htons(portno);
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons((unsigned short)portno);
+
 
     /* bind: associate the parent socket with a port */
     if (bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
         fprintf(stderr, "[!] bind: failed\n");
+        perror("bind");
         close(sockfd);
         return EXIT_FAILURE;
     }
