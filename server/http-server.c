@@ -2,6 +2,7 @@
 #include "http.h"
 #include "utility.h"
 
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdbool.h>
@@ -13,9 +14,11 @@
 #include <unistd.h>
 
 #define BUFSIZE 4096
+#define FILE_DIR "files/"
+#define FILE_DIR_L sizeof(FILE_DIR) - 1
 
-static int sendall(int s, char *buffer, size_t len);
-char *get_response(char *version, char *status, char *body, size_t *len);
+static long sendall(int s, char *request, size_t len);
+char *get_response(char *version, char *status, char *body, size_t body_l, size_t *len);
 
 int main(int argc, char **argv)
 {
@@ -75,12 +78,12 @@ int main(int argc, char **argv)
         int clientfd;
         struct sockaddr_in clientaddr;
         socklen_t clientlen = sizeof(clientaddr);
-        char buffer[BUFSIZE];
-        Request *request;
+        char request[BUFSIZE];
+        Request *reqinfo;
         char *response;
         size_t request_len;
         size_t response_len;
-        int status;
+        int sendall_ret;
 
         /* accept: wait for a connection request */
         clientfd = accept(sockfd, (struct sockaddr *)&clientaddr, &clientlen);
@@ -91,9 +94,9 @@ int main(int argc, char **argv)
         }
 
         /* read: read input string from the client */
-        bzero(buffer, BUFSIZE);
+        bzero(request, BUFSIZE);
         request_len = 0;
-        while ((n = read(clientfd, buffer, BUFSIZE)) > 0) {
+        while ((n = read(clientfd, request, BUFSIZE)) > 0) {
             if (n < 0) {
                 fprintf(stderr, "[!] read: failed\n");
                 close(clientfd);
@@ -103,43 +106,53 @@ int main(int argc, char **argv)
             request_len += n;
             if (request_len >= BUFSIZE) {
                 fprintf(stderr, "[!] request too long\n");
+                response = get_response(HTTP_VERSION_1_1, STATUS_400, NULL, 0, &response_len);
+                sendall_ret = sendall(clientfd, response, response_len);
+                free(response);
                 close(clientfd);
                 break;
             }
 
-            if (strstr(buffer, "\r\n\r\n") != NULL) {
+            if (n < BUFSIZE) {
                 break;
             }
         }
 
         /* parse request */
-        request = Request_new(buffer, request_len);
-        if (request == NULL) {
+        reqinfo = Request_new(request, request_len);
+        if (reqinfo == NULL) {
             fprintf(stderr, "[!] invalid request\n");
             close(clientfd);
             continue;
         }
 
         /* parse uri */
-        Request_print(request);
+        Request_print(reqinfo);
 
         /* identify the file to be sent */
-        if (strncmp(request->method, GET, GET_L) == 0) {
-            char *filename = strrchr(request->path, '/');
-            if (filename == NULL) {
-                filename = request->path;
+        if (strncmp(reqinfo->method, GET, GET_L) == 0) {
+            char *basename = strrchr(reqinfo->path, '/');
+            if (basename == NULL) {
+                basename = reqinfo->path;
             } else {
-                filename++;
+                basename++;
             }
 
-            if (filename[0] == '\0') {
-                filename = "index.html";
+            if (basename[0] == '\0') {
+                basename = "index.html";
             }
 
-            FILE *fp = fopen(filename, "r");
-            if (fp == NULL) {
-                fprintf(stderr, "[!] fopen: failed\n");
-                response = get_response(HTTP_VERSION_1_1, STATUS_404, NULL, &response_len);
+            char filename[BUFSIZE];
+            bzero(filename, BUFSIZE);
+            memcpy(filename, FILE_DIR, FILE_DIR_L);
+            memcpy(filename + FILE_DIR_L, basename, strlen(basename));
+
+            fprintf(stderr, "[+] Filename: %s\n", filename);
+            
+            int fp = open(filename, O_RDONLY);
+            if (fp == -1) {
+                fprintf(stderr, "[*] %s not found\n", filename);
+                response = get_response(HTTP_VERSION_1_1, STATUS_404, NULL, 0, &response_len);
                 if (response == NULL) {
                     fprintf(stderr, "[!] get_response: failed\n");
                     close(clientfd);
@@ -148,34 +161,30 @@ int main(int argc, char **argv)
             } else {
                 char *body = malloc(BUFSIZE * sizeof(char) + 1);
                 size_t body_len = 0;
-                size_t body_sz = 0;
-                char buf[BUFSIZE];
-                while ((n = fread(buf, 1, BUFSIZE, fp)) > 0) {
+                size_t body_sz = BUFSIZE;
+                while ((n = read(fp, body + body_len, (body_sz - body_len))) > 0) {
                     if (n < 0) {
-                        fprintf(stderr, "[!] fread: failed\n");
-                        fclose(fp);
+                        fprintf(stderr, "[!] read: failed\n");
+                        free(body);
+                        close(fp);
                         close(clientfd);
-                        continue;
+                        close(sockfd);
+                        return EXIT_FAILURE;
                     }
-
-                    if (body_len + n >= body_sz) {
-                        body_sz += BUFSIZE;
-                        body = realloc(body, body_sz + 1);
-                        if (body == NULL) {
-                            fprintf(stderr, "[!] realloc: failed\n");
-                            fclose(fp);
+                    body_len += n;
+                    if (body_len >= body_sz) {
+                        if (expand_buffer(&body, &body_len, &body_sz) < 0) {
+                            fprintf(stderr, "[!] expand_buffer: failed\n");
+                            free(body);
+                            close(fp);
                             close(clientfd);
-                            continue;
+                            close(sockfd);
+                            return EXIT_FAILURE;
                         }
                     }
-
-                    memcpy(body + body_len, buf, n);
-                    body_len += n;
-                    body[body_len] = '\0';
                 }
-                fclose(fp);
-
-                response = get_response(HTTP_VERSION_1_1, STATUS_200, body, &response_len);
+                body[body_len] = '\0';
+                response = get_response(HTTP_VERSION_1_1, STATUS_200, body, body_len, &response_len);
                 if (response == NULL) {
                     fprintf(stderr, "[!] get_response: failed\n");
                     close(clientfd);
@@ -183,18 +192,20 @@ int main(int argc, char **argv)
                 }
 
                 free(body);
+                close(fp);
             }
             
-            status = sendall(clientfd, response, response_len);
-            if (status == -1) {
+            sendall_ret = sendall(clientfd, response, response_len);
+            fprintf(stderr, "[+] %d bytes sent\n", sendall_ret);
+            if (sendall_ret == -1) {
                 fprintf(stderr, "[!] sendall: failed\n");
+                free(response);
                 close(clientfd);
                 close(sockfd);
                 return EXIT_FAILURE;
             }
         } else {
-             response = Raw_request(request->method, request->path, request->host,
-                               request->port, request->body, &response_len);
+            response = get_response(HTTP_VERSION_1_1, STATUS_501, request, request_len, &response_len);
             if (response == NULL) {
                 fprintf(stderr, "[!] invalid response\n");
                 close(clientfd);
@@ -202,20 +213,20 @@ int main(int argc, char **argv)
                 return EXIT_FAILURE;
             }
             /* write: echo the input string back to the client */
-            status = sendall(clientfd, response, response_len);
-            if (status < 0) {
+            sendall_ret = sendall(clientfd, response, response_len);
+            fprintf(stderr, "[+] %d bytes sent\n", sendall_ret);
+            if (sendall_ret < 0) {
                 fprintf(stderr, "[!] sendall: failed\n");
+                free(response);
                 close(clientfd);
                 close(sockfd);
                 return EXIT_FAILURE;
             }
         }
 
-       
-
         /* close: close the connection */
         close(clientfd);
-        Request_free(request);
+        Request_free(reqinfo);
         free(response);
     }
 
@@ -224,14 +235,14 @@ int main(int argc, char **argv)
     return 0;
 }
 
-static int sendall(int s, char *buffer, size_t len)
+static long sendall(int s, char *request, size_t len)
 {
     size_t total     = 0;   // how many bytes we've sent
     size_t bytesleft = len; // how many we have left to send
     int n;
 
     while (total < len) {
-        n = send(s, buffer + total, bytesleft, 0);
+        n = send(s, request + total, bytesleft, 0);
         if (n == -1) {
             break;
         }
@@ -239,10 +250,10 @@ static int sendall(int s, char *buffer, size_t len)
         bytesleft -= n;
     }
 
-    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+    return n == -1 ? -1 : (long)total; // return -1 on failure, 0 on success
 }
 
-char *get_response(char *version, char *status, char *body, size_t *len)
+char *get_response(char *version, char *status, char *body, size_t body_l, size_t *len)
 {
     if (version == NULL || status == NULL) {
         return NULL;
@@ -252,13 +263,13 @@ char *get_response(char *version, char *status, char *body, size_t *len)
 
     version_len = strlen(version);
     status_len = strlen(status);
-    if (body == NULL) {
-        body_len = 0;
+    if (body != NULL) {
+        body_len = body_l;
     } else {
-        body_len = strlen(body);
+        body_len = 0;
     }
 
-    response_len = version_len + status_len + body_len + CRLF_L + CRLF_L;
+    response_len = version_len + SPACE_L + status_len + CRLF_L + CRLF_L + body_len;
 
     response = calloc(response_len + 1, sizeof(char));
     if (response == NULL) {
@@ -274,13 +285,15 @@ char *get_response(char *version, char *status, char *body, size_t *len)
     offset += status_len;
     memcpy(response + offset, CRLF, CRLF_L);
     offset += CRLF_L;
+
+    /* start of body */
+    memcpy(response + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
     if (body_len > 0) {
         memcpy(response + offset, body, body_len);
         offset += body_len;
     }
-    memcpy(response + offset, CRLF, CRLF_L);
-    offset += CRLF_L;
-
+    
     *len = response_len;
 
     return response;

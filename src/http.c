@@ -1126,15 +1126,11 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
         return NULL;
     }
 
-    fprintf(stderr, "[parse_host] host: %s\n", host);
-
     /* skip field name and any whitespace after the colon */
     host += 6; // Skip "host:"
     while (isspace(*host)) {
         host++;
     }
-
-    fprintf(stderr, "[parse_host] host: %s\n", host);
 
     /* find the end of the Host field */
     char *end = strchr(host, '\r');
@@ -1142,22 +1138,17 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
         return NULL;
     }
 
-    fprintf(stderr, "[parse_host] host: %s\n", host);
-
     size_t host_len = end - host;
     if (host_l != NULL) {
         *host_l = host_len;
     }
 
-    fprintf(stderr, "parse_host] host_l = %ld\n", host_len);
-
     char *h = calloc(host_len + 1, sizeof(char));
     if (h == NULL) {
         return NULL;
     }
+    
     memcpy(h, host, host_len);
-
-    fprintf(stderr, "[parse_host] h = %s\n", h);
 
     free(request_lc);
 

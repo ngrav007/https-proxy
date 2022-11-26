@@ -121,7 +121,7 @@ void print_ascii(char *buf, size_t len)
             fprintf(stderr, ".");
         }
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 }
 
 /* returns a malloc'd string copy of buffer 
@@ -171,7 +171,7 @@ int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz)
     }
 
     /* expand the buffer */
-   *buffer_sz += BUFFER_SZ + 1;
+   *buffer_sz *= 2 + 1;
     char *new_buffer = calloc(*buffer_sz, sizeof(char));
     if (new_buffer == NULL) {
         return -1;

@@ -17,10 +17,13 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define BUFSIZE 1024
 #define OUTPUT_DIR "output"
-#define OUTPUT_FILE "response"
+#define OUTPUT_FILE "resp"
+#define SAVE_FILE 1
+#define PERMS 0644
 
 static int sendall(int s, char *buf, size_t len);
 static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz);
@@ -52,19 +55,19 @@ int main(int argc, char **argv)
     /* connect to proxy */
     int proxy_fd = connect_to_proxy(proxy_host, proxy_port);
     if (proxy_fd < 0) {
-        error("[-] http: Failed to connect to proxy");
+        error("[!] Failed to connect to proxy");
     }
 
     /* build raw request */
     size_t raw_l = 0;
     char *raw_request = Raw_request(method, uri, host, NULL, NULL, &raw_l);
     if (raw_request == NULL) {
-        error("[-] http: Failed to build raw request");
+        error("[!] Failed to build raw request");
     }
 
     /* send raw request */
     if (sendall(proxy_fd, raw_request, raw_l) < 0) {
-        error("[-] http: Failed to send raw request");
+        error("[!] Failed to send raw request");
     }
 
     /* receive raw response */
@@ -72,12 +75,52 @@ int main(int argc, char **argv)
     size_t raw_response_sz = 0;
     char *raw_response = NULL;
     if (recvall(proxy_fd, &raw_response, &raw_response_l, &raw_response_sz) < 0) {
-        error("[-] http: Failed to receive raw response");
+        error("[!] Failed to receive raw response");
     }
 
-    fprintf(stderr, "[*] http: Raw response:\n");
+    fprintf(stderr, "[*] HTTP Response Header --------------------- +\n\n");
+    char *header_end = strstr(raw_response, "\r\n\r\n");
+    print_ascii(raw_response, header_end - raw_response);
+    fprintf(stderr, "\n[*] --------------------------------------------\n");
 
-    print_ascii(raw_response, raw_response_l);
+    if (strstr(raw_response, "200 OK") != NULL) {
+        /* save raw response to file */
+        char output_file[BUFSIZE + 1];
+        char *basename = strrchr(uri, '/');
+        if (basename == NULL) {
+            basename = uri;
+        } else {
+            basename++;
+            if (basename[0] == '\0') {
+                basename = "index.html";
+            }
+        }
+
+        char *body = strstr(raw_response, HEADER_END);
+        if (body == NULL) {
+            error("[!] Failed to find body");
+        }
+        body += HEADER_END_L;
+
+        snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
+        int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
+        if (fp == -1) {
+            error("[!] Failed to open output file");
+        }
+    
+        size_t body_l = raw_response_l - (body - raw_response);
+        if (write(fp, body, body_l) < 0) {
+            free(raw_request);
+            free(raw_response);
+            close(fp);
+            close(proxy_fd);
+            error("[!] Failed to write to output file");
+        }
+        close(fp);
+        fprintf(stderr, "[+] Saved response to %s\n", output_file);
+    }
+
+
 
     free(raw_request);
     free(raw_response);
@@ -109,18 +152,18 @@ static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz)
                 return EXIT_FAILURE;
             }
             *buf_sz = BUFSIZE;
+            (*buf)[*buf_l] = '\0';
         }
     }
  
     /* receive data */
-    fprintf(stderr, "*buf_l: %ld, *buf_sz: %ld\n", *buf_l, *buf_sz);
     ssize_t n = 0, ret = 0;
     while (1) {
         n = recv(s, *buf + *buf_l, *buf_sz - *buf_l, 0);
         if (n < 0) {
             error("[!] client: error occurred when receiving.");
             return EXIT_FAILURE;
-        } else if (n == 0 || (size_t)n < (*buf_sz - *buf_l)) {
+        } else if (n == 0) {
             *buf_l += n;
             (*buf)[*buf_l] = '\0';
             break;
@@ -133,6 +176,8 @@ static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz)
             }
         }
     }
+
+    fprintf(stderr, "[*] client: received %zu bytes\n", *buf_l);
 
     return EXIT_SUCCESS;
 }
