@@ -47,12 +47,10 @@
 #define HTTP_VERSION_1_1_L 8
 #define CONNECTION_ESTABLISHED "Connection established"
 #define CONNECTION_ESTABLISHED_L 22
-#define STATUS_200   "200"
-#define STATUS_200_L 3
-#define OK        "OK"
-#define OK_L      2
-#define HTTP_404           "404 Not Found"
-#define HTTP_404_L         12
+#define STATUS_200   "200 OK"
+#define STATUS_200_L sizeof(STATUS_200) - 1
+#define STATUS_404           "404 Not Found"
+#define STATUS_404_L         sizeof(HTTP_404) - 1
 
 /* HTTP Header Fields */
 #define CONTENTLENGTH   "content-length:"

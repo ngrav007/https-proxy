@@ -49,14 +49,6 @@ int main(int argc, char **argv)
         uri = "/";
     }
 
-    // char *port = NULL;
-    // if ((port = strchr(host, ':')) != NULL) {
-    //     *port = '\0';
-    //     port++;
-    // } else {
-    //     port = DEFAULT_PORT;
-    // }
-
     /* connect to proxy */
     int proxy_fd = connect_to_proxy(proxy_host, proxy_port);
     if (proxy_fd < 0) {

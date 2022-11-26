@@ -15,6 +15,7 @@
 #define BUFSIZE 4096
 
 static int sendall(int s, char *buffer, size_t len);
+char *get_response(char *version, char *status, char *body, size_t *len);
 
 int main(int argc, char **argv)
 {
@@ -122,29 +123,100 @@ int main(int argc, char **argv)
         /* parse uri */
         Request_print(request);
 
-        response = Raw_request(request->method, request->path, request->host,
+        /* identify the file to be sent */
+        if (strncmp(request->method, GET, GET_L) == 0) {
+            char *filename = strrchr(request->path, '/');
+            if (filename == NULL) {
+                filename = request->path;
+            } else {
+                filename++;
+            }
+
+            if (filename[0] == '\0') {
+                filename = "index.html";
+            }
+
+            FILE *fp = fopen(filename, "r");
+            if (fp == NULL) {
+                fprintf(stderr, "[!] fopen: failed\n");
+                response = get_response(HTTP_VERSION_1_1, STATUS_404, NULL, &response_len);
+                if (response == NULL) {
+                    fprintf(stderr, "[!] get_response: failed\n");
+                    close(clientfd);
+                    continue;
+                }
+            } else {
+                char *body = malloc(BUFSIZE * sizeof(char) + 1);
+                size_t body_len = 0;
+                size_t body_sz = 0;
+                char buf[BUFSIZE];
+                while ((n = fread(buf, 1, BUFSIZE, fp)) > 0) {
+                    if (n < 0) {
+                        fprintf(stderr, "[!] fread: failed\n");
+                        fclose(fp);
+                        close(clientfd);
+                        continue;
+                    }
+
+                    if (body_len + n >= body_sz) {
+                        body_sz += BUFSIZE;
+                        body = realloc(body, body_sz + 1);
+                        if (body == NULL) {
+                            fprintf(stderr, "[!] realloc: failed\n");
+                            fclose(fp);
+                            close(clientfd);
+                            continue;
+                        }
+                    }
+
+                    memcpy(body + body_len, buf, n);
+                    body_len += n;
+                    body[body_len] = '\0';
+                }
+                fclose(fp);
+
+                response = get_response(HTTP_VERSION_1_1, STATUS_200, body, &response_len);
+                if (response == NULL) {
+                    fprintf(stderr, "[!] get_response: failed\n");
+                    close(clientfd);
+                    continue;
+                }
+
+                free(body);
+            }
+            
+            status = sendall(clientfd, response, response_len);
+            if (status == -1) {
+                fprintf(stderr, "[!] sendall: failed\n");
+                close(clientfd);
+                close(sockfd);
+                return EXIT_FAILURE;
+            }
+        } else {
+             response = Raw_request(request->method, request->path, request->host,
                                request->port, request->body, &response_len);
-        if (response == NULL) {
-            fprintf(stderr, "[!] invalid response\n");
-            close(clientfd);
-            close(sockfd);
-            return EXIT_FAILURE;
+            if (response == NULL) {
+                fprintf(stderr, "[!] invalid response\n");
+                close(clientfd);
+                close(sockfd);
+                return EXIT_FAILURE;
+            }
+            /* write: echo the input string back to the client */
+            status = sendall(clientfd, response, response_len);
+            if (status < 0) {
+                fprintf(stderr, "[!] sendall: failed\n");
+                close(clientfd);
+                close(sockfd);
+                return EXIT_FAILURE;
+            }
         }
 
-        /* write: echo the input string back to the client */
-        status = sendall(clientfd, response, response_len);
-        if (status < 0) {
-            fprintf(stderr, "[!] sendall: failed\n");
-            close(clientfd);
-            close(sockfd);
-            return EXIT_FAILURE;
-        }
+       
 
         /* close: close the connection */
         close(clientfd);
         Request_free(request);
         free(response);
-        break;
     }
 
     close(sockfd);
@@ -168,4 +240,48 @@ static int sendall(int s, char *buffer, size_t len)
     }
 
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+
+char *get_response(char *version, char *status, char *body, size_t *len)
+{
+    if (version == NULL || status == NULL) {
+        return NULL;
+    }
+    char *response;
+    size_t response_len, version_len, status_len, body_len;
+
+    version_len = strlen(version);
+    status_len = strlen(status);
+    if (body == NULL) {
+        body_len = 0;
+    } else {
+        body_len = strlen(body);
+    }
+
+    response_len = version_len + status_len + body_len + CRLF_L + CRLF_L;
+
+    response = calloc(response_len + 1, sizeof(char));
+    if (response == NULL) {
+        return NULL;
+    }
+
+    int offset = 0;
+    memcpy(response, version, version_len);
+    offset += version_len;
+    memcpy(response + offset, SPACE, SPACE_L);
+    offset += SPACE_L;
+    memcpy(response + offset, status, status_len);
+    offset += status_len;
+    memcpy(response + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
+    if (body_len > 0) {
+        memcpy(response + offset, body, body_len);
+        offset += body_len;
+    }
+    memcpy(response + offset, CRLF, CRLF_L);
+    offset += CRLF_L;
+
+    *len = response_len;
+
+    return response;
 }
