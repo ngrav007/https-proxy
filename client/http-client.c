@@ -62,11 +62,14 @@ int main(int argc, char **argv)
     size_t raw_l = 0;
     char *raw_request = Raw_request(method, uri, host, NULL, NULL, &raw_l);
     if (raw_request == NULL) {
+        close(proxy_fd);
         error("[!] Failed to build raw request");
     }
 
     /* send raw request */
     if (sendall(proxy_fd, raw_request, raw_l) < 0) {
+        free(raw_request);
+        close(proxy_fd);
         error("[!] Failed to send raw request");
     }
 
@@ -75,11 +78,19 @@ int main(int argc, char **argv)
     size_t raw_response_sz = 0;
     char *raw_response = NULL;
     if (recvall(proxy_fd, &raw_response, &raw_response_l, &raw_response_sz) < 0) {
+        free(raw_request);
+        close(proxy_fd);
         error("[!] Failed to receive raw response");
     }
 
     fprintf(stderr, "[*] HTTP Response Header --------------------- +\n\n");
     char *header_end = strstr(raw_response, "\r\n\r\n");
+    if (header_end == NULL) {
+        free(raw_request);
+        free(raw_response);
+        close(proxy_fd);
+        error("[!] Failed to find header end");
+    }   
     print_ascii(raw_response, header_end - raw_response);
     fprintf(stderr, "\n[*] --------------------------------------------\n");
 
@@ -98,6 +109,9 @@ int main(int argc, char **argv)
 
         char *body = strstr(raw_response, HEADER_END);
         if (body == NULL) {
+            free(raw_request);
+            free(raw_response);
+            close(proxy_fd);
             error("[!] Failed to find body");
         }
         body += HEADER_END_L;
@@ -105,6 +119,9 @@ int main(int argc, char **argv)
         snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
         int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
         if (fp == -1) {
+            free(raw_request);
+            free(raw_response);
+            close(proxy_fd);
             error("[!] Failed to open output file");
         }
     
@@ -119,7 +136,6 @@ int main(int argc, char **argv)
         close(fp);
         fprintf(stderr, "[+] Saved response to %s\n", output_file);
     }
-
 
 
     free(raw_request);

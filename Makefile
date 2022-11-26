@@ -10,6 +10,8 @@ BINDIR = ./bin
 CLIDIR = ./client
 SERDIR = ./server
 OUTDIR = ./output
+TESTDIR = ./tests
+REPORTDIR = ./reports
 
 PROXY_MAIN = $(BLDDIR)/http-proxy.o
 CLIENT_MAIN = $(BLDDIR)/http-client.o
@@ -48,4 +50,4 @@ $(BLDDIR)/$(SERVER).o: $(SERDIR)/$(SERVER).c $(INCS) ./build/http.o
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.* $(OUTDIR)/*
+	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.* $(OUTDIR)/* $(TESTDIR)/$(REPORTDIR)/*
