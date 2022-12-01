@@ -28,7 +28,7 @@ typedef struct Query {
     size_t buffer_sz;
 } Query;
 
-Query *Query_new(char *buffer, size_t buffer_l);
+int Query_new(Query **q, char *buffer, size_t buffer_l);
 Query *Query_create(Request *req, Response *res,
                     struct sockaddr_in *server_addr, socklen_t server_addr_l,
                     int server_fd);

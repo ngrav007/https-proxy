@@ -1,2 +1,10 @@
 [+] Connecting to proxy localhost:9055
-[!] connect: : Connection refused
+[*] http: Raw request:
+CONNECT www.google.com:443 HTTP/1.1
+Host: www.google.com
+
+
+[*] client: received 0 bytes
+[*] HTTP Response Header --------------------- +
+
+[!] Failed to find header end: Success

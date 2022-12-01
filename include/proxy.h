@@ -60,6 +60,6 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code);
 void Proxy_close(int socket, fd_set *master_set, List *client_list,
                  Client *client);
 ssize_t Proxy_fetch(Proxy *proxy, Query *request);
-int Proxy_handleConnect(Proxy *proxy, Client *client);
+int Proxy_handleConnect(int sender, int receiver);
 
 #endif /* _PROXY_H_ */

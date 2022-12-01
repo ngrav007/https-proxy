@@ -84,6 +84,7 @@
 
 #define ERROR_BAD_URL     -5
 #define ERROR_BAD_HOST    -6
+#define ERROR_HOST_UNKNOWN -11
 #define ERROR_BAD_PORT    -7
 #define ERROR_BAD_METHOD  -8
 #define ERROR_BAD_VERSION -9

@@ -75,18 +75,18 @@ int Proxy_handle(struct Proxy *proxy)
     for (curr = proxy->client_list->head; curr != NULL; curr = next) {
         next   = curr->next;
         client = (Client *)curr->data;
-        if (FD_ISSET(client->socket, &proxy->readfds)) {
-            switch(client->state) {
-            case CLI_QUERY:
+        
+        switch(client->state) {
+        case CLI_QUERY:
+            if (FD_ISSET(client->socket, &proxy->readfds)) {
                 fprintf(stderr, "[Proxy_handle] matched on CLI_QUERY\n");
                 ret = Proxy_handleClient(proxy, client);
-                if (ret != 0) {
-                    // goto event_handling; // TODo - check if still work
-                }
-                break;
-            case CLI_GET:
-                fprintf(stderr, "[Proxy_handle] matched on CLI_GET\n");
-                // TODO - Check if query socket is read to read from to get GET response (91-->)
+            }
+            break;
+        case CLI_GET:
+            fprintf(stderr, "[Proxy_handle] matched on CLI_GET\n");
+            // TODO - Check if query socket is read to read from to get GET response (91-->)
+            if (FD_ISSET(client->socket, &proxy->readfds)) {
                 if (client != NULL && client->query != NULL && FD_ISSET(client->query->socket, &proxy->readfds)) {
                     fprintf(stderr, "[Proxy_handle] query socket is %d\n", client->query->socket);
                     ret = Proxy_handleQuery(proxy, client->query);
@@ -104,16 +104,17 @@ int Proxy_handle(struct Proxy *proxy)
                         free(key);
                     } 
                 }
-                break;
-            case CLI_CONNECT:
-                fprintf(stderr, "[Proxy_handle] matched on CLI_CONNECT\n");
-                // TODO - Read from client socket and immediately forward to server/dest
-                ret = Proxy_handleConnect(proxy, client);
-                // if (ret != 0) {
-                //     goto event_handling;
-                // }
             }
+            break;
+        case CLI_CONNECT:
+            fprintf(stderr, "[Proxy_handle] matched on CLI_CONNECT\n");
+            if (FD_ISSET(client->socket, &proxy->readfds)) {
+                ret = Proxy_handleConnect(client->socket, client->query->socket);
+            } 
 
+            if (ret == EXIT_SUCCESS && client != NULL && client->query != NULL && FD_ISSET(client->query->socket, &proxy->readfds)) {
+                ret = Proxy_handleConnect(client->query->socket, client->socket);
+            }
         }
 
         if (ret != EXIT_SUCCESS) {
@@ -145,6 +146,10 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
         print_error("proxy: invalid request\n");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
+    case ERROR_HOST_UNKNOWN:
+        print_error("proxy: invalid request\n");
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        break;
     case INVALID_RESPONSE:
         print_error("proxy: invalid response\n");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
@@ -165,31 +170,30 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
     return EXIT_SUCCESS;
 }
 
-int Proxy_handleConnect(Proxy *proxy, Client *client)
+int Proxy_handleConnect(int sender, int receiver)
 {
-    if (proxy == NULL || client == NULL || client->query == NULL) {
+    if (sender == -1 || receiver == -1) {
         return ERROR_FAILURE;
     }
 
-    ssize_t n;
-    size_t buf_l  = client->query->buffer_l;
-    size_t buf_sz = client->query->buffer_sz;
-
-    n = recv(client->query->socket, client->query->buffer + buf_l, buf_sz - buf_l, 0);
-    if (n < 0) {
+    char buffer[BUFFER_SZ + 1];
+    zero(buffer, BUFFER_SZ + 1);
+    ssize_t buf_l = 0;
+    
+    buf_l = recv(sender, buffer, BUFFER_SZ, 0);
+    if (buf_l < 0) {
         print_error("handle connect: recv failed: ");
         perror("recv");
         return ERROR_FAILURE;
-    } else if (n == 0) {
+    } else if (buf_l == 0) {
+        fprintf(stderr, "Client Query Socket Closed Connection.\n");
         // FD_CLR(query->socket, &proxy->master_set);
         return CLOSE_CLIENT;
     } else {
-        if (Proxy_send(client->query->buffer, n, client->socket) != n) {
+        fprintf(stderr, "handle connect: received response from client query socket\n");
+        if (Proxy_send(buffer, buf_l, receiver) != buf_l) {
             return ERROR_FAILURE;
-        }
-        client->query->buffer_l += n;
-        clear_buffer(client->query->buffer, &client->query->buffer_l);
-        
+        }    
     }
 
     return EXIT_SUCCESS;
@@ -401,6 +405,7 @@ int Proxy_handleListener(struct Proxy *proxy)
 // Note:  special handling for HALT
 int Proxy_handleClient(struct Proxy *proxy, Client *client)
 {
+    int ret;
     /* receive data from client */
     char tmp_buffer[BUFFER_SZ];
     memset(tmp_buffer, 0, BUFFER_SZ);
@@ -440,10 +445,10 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
 
     /* check for http header, parse header if we have it */
     else if (HTTP_got_header(client->buffer)) {
-        client->query = Query_new(client->buffer, client->buffer_l);
-        if (client->query == NULL) {
+        ret = Query_new(&client->query, client->buffer, client->buffer_l);
+        if (ret != EXIT_SUCCESS) {
             print_error("proxy: failed to parse query\n");
-            return INVALID_REQUEST;
+            return ret;
         }
         char *key = get_key(client->query->req);
         if (client->query->req == NULL) {
@@ -572,9 +577,10 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *clie
 
     /* remove the client from master fd_set */
     FD_CLR(socket, master_set);
-    FD_CLR(client->query->socket, master_set);
+    if (client->query != NULL && client->query->socket != -1) {
+        FD_CLR(client->query->socket, master_set);
+    }
     
-
     /* mark the node for removal from trackers */
     fprintf(stderr, "%s[?] Remove Socket # from client_list = %d%s\n", YEL, socket, reset);
     List_remove(client_list, (void *)client);
@@ -592,11 +598,13 @@ ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
     }
 
     /* make connection to server */
+    fprintf(stderr, "proxy_fetch: Trying to connect...\n");
     if (connect(qry->socket, (struct sockaddr *)&qry->server_addr, sizeof(qry->server_addr)) < 0) {
         print_error("proxy: failed to connect to server: ");
         perror("connect");
         return ERROR_CONNECT;
     }
+    fprintf(stderr, "proxy fetch: Connected...\n");
 
     /* add server socket to master_set */
     FD_SET(qry->socket, &proxy->master_set);
