@@ -35,6 +35,7 @@ void Node_free(Node *node, void (*free_data)(void *))
     if (free_data != NULL) {
         free_data(node->data);
     }
+    
     node->data = NULL;
     node->next = NULL;
     node->prev = NULL;
@@ -56,10 +57,10 @@ void Node_print(Node *node, void (*print_data)(void *))
         fprintf(stderr, "    next = %p\n", (void *)node->next);
         fprintf(stderr, "    prev = %p\n", (void *)node->prev);
         if (print_data != NULL) {
-            fprintf(stderr, "    data = %p\n", (void *)node->data);
+            fprintf(stderr, "  data = %p\n", (void *)node->data);
             print_data(node->data);
         } else {
-            fprintf(stderr, "    data = %p\n", node->data);
+            fprintf(stderr, "  data = %p\n", node->data);
         }
     }
 }

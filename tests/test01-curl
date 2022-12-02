@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Test 01: Test the http-proxy with a simple GET request and response
+
+# Start timer for test
+echo "+ ---------- Test 01: Simple GET request and response --------- +"
+
+echo "[*] Sending initial request to http://www.cs.tufts.edu/comp/112/index.html..."
+fetch=$(time curl -o tests01-f.out -x localhost:9056 http://www.cs.tufts.edu/comp/112/index.html 2>&1)
+echo "[*] Sleeping for 5 seconds..."
+for i in {1..5}; do
+    echo -n "."
+    sleep 1
+done
+echo ""
+
+echo "[*] Sending second request to http://www.cs.tufts.edu/comp/112/index.html..."
+cache=$(time curl -o test01-c.out -x localhost:9056 http://www.cs.tufts.edu/comp/112/index.html 2>&1)
+
+echo "[+] Results ----------------------------------------------- +"
+echo ""
+echo "    [*] Time Elapsed w/ Fetch: $fetch"
+echo "    [*] Time Elapsed w/ Cache: $cache"
+echo ""
+echo "+ --------------------------------------------------------- +"

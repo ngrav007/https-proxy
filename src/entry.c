@@ -69,6 +69,7 @@ void Entry_delete(Entry *entry, void (*foo)(void *))
     if (foo == NULL) {
         foo = free;
     }
+    
     foo(entry->value);
     entry->value = NULL;
     memset(entry->key, 0, PATH_MAX);

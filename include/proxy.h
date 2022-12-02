@@ -25,28 +25,18 @@
 #include <time.h>
 #include <unistd.h>
 
-typedef struct Connection {
-    struct HTTP_Request *request;
-    struct HTTP_Response *response;
-    bool is_from_cache;
-} Connection;
-
 typedef struct Proxy {
     Cache *cache;
     List *client_list;
     struct sockaddr_in addr;
-    struct hostent *client; // TODO - add to client
-    struct hostent *server;
+    struct hostent *client;  // ? do we need this?
+    struct hostent *server;  // ? do we need this?
     struct timeval *timeout; // ? do we need timeouts
-    /* new members for handling multiple clients */
     fd_set master_set;
     fd_set readfds;
-    int fdmax;
     char *client_ip;
     char *server_ip;
-    char *buffer;
-    size_t buffer_l;
-    size_t buffer_sz;
+    int fdmax;
     int listen_fd;
     int client_fd;
     int server_fd;
@@ -55,18 +45,21 @@ typedef struct Proxy {
 
 int Proxy_run(short port, size_t cache_size);
 int Proxy_init(Proxy *proxy, short port, size_t cache_size);
+int Proxy_listen(Proxy *proxy);
 void Proxy_free(void *proxy);
 void Proxy_print(Proxy *proxy);
 ssize_t Proxy_recv(Proxy *proxy, int socket);
-ssize_t Proxy_send(Proxy *proxy, int socket);
+ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket);
 int Proxy_handle(Proxy *proxy);
 int Proxy_accept(Proxy *proxy);
 int Proxy_handleListener(Proxy *proxy);
+int Proxy_handleQuery(Proxy *proxy, Query *query);
 int Proxy_handleClient(Proxy *proxy, Client *client);
 int Proxy_handleTimeout(Proxy *proxy);
-int Proxy_errorHandle(Proxy *proxy, int error_code);
-void Proxy_close_socket(int socket, fd_set *master_set, List *client_list, Client *client);
-
-ssize_t Proxy_fetch(Proxy *proxy, char *hostname, int port, char *request, int request_len);
+int Proxy_event_handle(Proxy *proxy, Client *client, int error_code);
+void Proxy_close(int socket, fd_set *master_set, List *client_list,
+                 Client *client);
+ssize_t Proxy_fetch(Proxy *proxy, Query *request);
+int Proxy_handleConnect(int sender, int receiver);
 
 #endif /* _PROXY_H_ */

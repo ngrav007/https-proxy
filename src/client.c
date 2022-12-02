@@ -14,13 +14,13 @@ Client *Client_new()
         return NULL;
     }
 
-    client->socket = -1;
-    // client->loggedIn          = false; // TODO - remove
-    client->slowMofo          = false;
+    client->query             = NULL;
+    client->socket            = -1;
+    client->isSlow            = false;
     client->buffer_l          = 0;
     client->last_recv.tv_sec  = 0;
     client->last_recv.tv_usec = 0;
-    client->key               = NULL;
+    client->state             = CLI_QUERY;
 
     return client;
 }
@@ -65,8 +65,6 @@ int Client_init(Client *client, int socket)
     }
 
     Client_setSocket(client, socket);
-    // Client_setId(client, id);    // TODO - remove
-    // client->loggedIn = false;    // TODO - Remove
     client->buffer_l = 0;
 
     return 0;
@@ -89,7 +87,9 @@ void Client_free(void *client)
         c->socket = -1;
     }
 
-    free(c->key);
+    Query_free(c->query);
+    free(c->buffer);
+
     free(c);
 }
 
@@ -107,15 +107,11 @@ void Client_print(void *client)
         fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
         fprintf(stderr, "  socket = %d\n", c->socket);
         fprintf(stderr, "  partialRead = %s\n",
-                (c->slowMofo) ? "true" : "false");
-        fprintf(stderr, "  last_recv = %ld.%d\n", c->last_recv.tv_sec,
+                (c->isSlow) ? "true" : "false");
+        fprintf(stderr, "  last_recv = %ld.%ld\n", c->last_recv.tv_sec,
                 c->last_recv.tv_usec);
         fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
-        if (c->buffer_l > 0) {
-            print_ascii(c->buffer, c->buffer_l);
-        } else {
-            fprintf(stderr, "  buffer = \"\"\n");
-        }
+        Query_print(c->query);
     }
 }
 
@@ -179,78 +175,15 @@ int Client_setSocket(Client *client, int socket)
     return 0;
 }
 
-int Client_setKey(Client *client, HTTP_Header *header)
-{
-    if (client == NULL) {
-        return -1;
-    }
-
-    client->key = calloc(header->host_l + header->path_l + 1, sizeof(char));
-    memcpy(client->key, header->host, header->host_l);
-    memcpy(client->key + header->host_l, header->path, header->path_l);
-
-    return 0;
-}
-
-/* Client_setHeader
- *    Purpose: Sets the header for a Client
- * Parameters: @client - Pointer to a Client
- *             @header - Pointer to a header string
- *    Returns: 0 on success, -1 on failure.
- */
-// int Client_setHeader(Client *client, char *buffer, int length)
-// {
-//     if (client == NULL || buffer == NULL || length < 0) {
-//         return -1;
-//     }
-
-//     int ret = ChatHdr_fromNetString(&client->header, buffer, length);
-
-//     return ret;
-// }
-
-/* Client_setId
- *    Purpose: Sets the client id for a Client, if the client id is too long
- *             it is deemed an error and the client id is not set, and -1 is
- *             returned.
- * Parameters: @client - Pointer to a Client
- *             @id - Client id string, must be null terminated
- *    Returns: 0 on success, -1 on failure.
- */
-// int Client_setId(Client *client, char *id)
-// {
-//     if (client == NULL || id == NULL) {
-//         return -1;
-//     }
-
-//     /* clear the id if it's already set */
-//     if (client->id[0] != '\0') {
-//         memset(client->id, 0, MAX_ID_SZ);
-//     }
-
-//     size_t idLength = strlen(id);
-//     if (idLength > MAX_ID_SZ) {
-//         return -1;
-//     } else {
-//         strncpy(client->id, id, idLength);
-//     }
-
-//     return 0;
-// }
-
-/* Client_setLoggedIn
- *    Purpose: Sets the logged in status for a Client to given value.
- * Parameters: @client - Pointer to a Client
- *             @loggedIn - Logged in status (true or false)
- *    Returns: 0 on success, -1 on failure.
- */
-// int Client_setLoggedIn(Client *client, bool loggedIn)
+// int Client_setKey(Client *client, HTTP_Header *header)
 // {
 //     if (client == NULL) {
 //         return -1;
 //     }
 
-//     client->loggedIn = loggedIn;
+//     client->key = calloc(header->host_l + header->path_l + 1, sizeof(char));
+//     memcpy(client->key, header->host, header->host_l);
+//     memcpy(client->key + header->host_l, header->path, header->path_l);
 
 //     return 0;
 // }
@@ -266,13 +199,13 @@ int Client_setKey(Client *client, HTTP_Header *header)
 int Client_setAddr(Client *client, struct sockaddr_in *addr)
 {
     if (client == NULL || addr == NULL) {
-        return -1;
+        return EXIT_FAILURE;
     }
 
     memcpy(&client->addr, addr, sizeof(struct sockaddr_in));
     client->addr_l = sizeof(*addr);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /* Client_getSocket
@@ -283,7 +216,7 @@ int Client_setAddr(Client *client, struct sockaddr_in *addr)
 int Client_getSocket(Client *client)
 {
     if (client == NULL) {
-        return -1;
+        return EXIT_FAILURE;
     }
 
     return client->socket;
@@ -317,16 +250,16 @@ int Client_getSocket(Client *client)
 //     return client->loggedIn;
 // }
 
-/* Client_isSlowMofo
- *    Purpose: Returns the slowMofo status for a Client
+/* Client_isisSlow
+ *    Purpose: Returns the isSlow status for a Client
  * Parameters: @client - Pointer to a Client
- *    Returns: slowMofo status (true or false)
+ *    Returns: isSlow status (true or false)
  */
-bool Client_isSlowMofo(Client *client)
+bool Client_isisSlow(Client *client)
 {
     if (client == NULL) {
         return false;
     }
 
-    return client->slowMofo;
+    return client->isSlow;
 }
