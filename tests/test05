@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Test 05: GET Request to HTTPS website
+
+# Import test config
+. $(dirname $0)/config.sh
+
+# Test Setup
+METHOD="GET"
+URL="https://www.google.com/"
+HOST="www.google.com"
+SLEEPTIME="5"
+
+# File and Directory Setup
+TESTNAME=$(basename $0)
+FETCH_OUT="$REPORT_DIR/$TESTNAME-$FETCH-$OUTPUT_EXT"
+CACHE_OUT="$REPORT_DIR/$TESTNAME-$CACHE-$OUTPUT_EXT"
+FETCH_REPORT="$REPORT_DIR/$TESTNAME-$FETCH-$REPORT_EXT"
+CACHE_REPORT="$REPORT_DIR/$TESTNAME-$CACHE-$REPORT_EXT"
+
+echo "+ ---------- $TESTNAME: $METHOD Request, Root Directroy (/), HTTPS --------- +"
+
+echo "[*] Sending Request:"
+echo " |    $METHOD $URL HTTP/1.1"
+echo " |    Host: $HOST"
+
+echo "[*] Sending initial request to $URL..."
+fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $FETCH_OUT)
+echo "[*] Sleeping for $SLEEPTIME seconds..."
+for i in {1..$SLEEPTIME}; do
+    echo -n "."
+    sleep 1
+done
+
+echo ""
+echo "[*] Sending second request to $URL..."
+cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $CLIENT $PROXY_HOST $PROXY_PORT $METHOD $HOST $URL 2> $CACHE_OUT)
+
+FETCH_RESULTS=$(cat $FETCH_REPORT)
+CACHE_RESULTS=$(cat $CACHE_REPORT)
+
+echo "[+] $TESTNAME Results ----------------------------------------------- +"
+echo ""
+echo "[*] Time Elapsed w/ Fetch: "
+echo ""
+echo "$FETCH_RESULTS"
+echo ""
+echo "[*] Time Elapsed w/ Cache: "
+echo ""
+echo "$CACHE_RESULTS"
+echo ""
+echo "+ --------------------------------------------------------- +"
