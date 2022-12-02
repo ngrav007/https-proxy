@@ -51,5 +51,11 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-# Output Directory
+# Directories to ignore
 output/
+bin/
+build/
+archive/
+
+# Files to ignore
+.DS_Store
