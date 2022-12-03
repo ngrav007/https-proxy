@@ -24,15 +24,16 @@ INCS = $(wildcard $(INCDIR)/*.h)
 CLIOBJS = $(subst $(PROXY_MAIN), $(CLIENT_MAIN), $(OBJS))
 SEROBJS = $(subst $(CLIENT_MAIN), $(SERVER_MAIN), $(CLIOBJS))
 
-CFLAGS = -g -Wall -Wextra -I$(INCDIR) -fdiagnostics-color=always # -Werror
-LDFLAGS = -g 
+CFLAGS = -g -Wall -Wextra -I$(INCDIR) -fdiagnostics-color=always -I/workspaces/Development/lib/openssl/include/openssl  # -Werror
+LDFLAGS = -g -I/workspaces/Development/lib/openssl/include/openssl -L/workspaces/Development/openssl -L/workspaces/Development/lib/openssl/lib 
+LDLIBS = -lssl -lcrypto
 
 .PHONY: all clean
 
 all: $(BINDIR)/$(PROXY) $(BINDIR)/$(CLIENT) $(BINDIR)/$(SERVER)
 
 $(BINDIR)/$(PROXY): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c $(INCS)
 	$(CC) $(CFLAGS) -o $@ -c $< 

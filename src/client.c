@@ -16,6 +16,7 @@ Client *Client_new()
 
     client->state             = CLI_QUERY;
     client->query             = NULL;
+    client->ssl               = NULL;
     client->buffer            = NULL;
     client->buffer_l          = 0;
     client->socket            = -1;
@@ -66,7 +67,14 @@ int Client_init(Client *client, int socket)
     }
 
     Client_setSocket(client, socket);
-    client->buffer_l = 0;
+    client->query             = NULL;
+    client->ssl               = NULL;
+    client->buffer            = NULL;
+    client->buffer_l          = 0;
+    client->socket            = -1;
+    client->last_recv.tv_sec  = 0;
+    client->last_recv.tv_usec = 0;
+    client->isSlow            = false;
 
     return 0;
 }
@@ -89,6 +97,7 @@ void Client_free(void *client)
     }
 
     Client_clearQuery(c);
+    Client_clearSSL(c);
     free_buffer(&c->buffer, &c->buffer_l, NULL);
     free(c);
 }
@@ -236,6 +245,22 @@ void Client_clearQuery(Client *client)
     Query *q = client->query;
     Query_free(q);
     client->query = NULL;
+}
+
+/* Client_clearSSL
+ *    Purpose: Clears the SSL struct from a Client and sets the pointer to NULL
+ * Parameters: @client - Pointer to a Client to clear SLL from
+ *    Returns: 0 on success, -1 on failure.
+ */
+void Client_clearSSL(Client *client)
+{
+    if (client == NULL || client->ssl == NULL) {
+        return;
+    }
+    
+    SSL_shutdown(client->ssl);
+    SSL_free(client->ssl);
+    client->ssl = NULL;
 }
 
 /* Client_getId

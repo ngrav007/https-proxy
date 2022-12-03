@@ -69,8 +69,8 @@
 #define STATUS_500_L   sizeof(STATUS_500) - 1
 #define STATUS_501     "501 Not Implemented\r\n\r\n"
 #define STATUS_501_L   sizeof(STATUS_501) - 1
-#define STATUS_502_BAD_GATEWAY "502 Bad Gateway\r\n\r\n"
-#define STATUS_502_BAD_GATEWAY_L sizeof(STATUS_502_BAD_GATEWAY) - 1
+#define STATUS_502     "502 Bad Gateway\r\n\r\n"
+#define STATUS_502_L    sizeof(STATUS_502) - 1
 
 /* HTTP Header Fields */
 #define CONTENTLENGTH   "content-length:"
@@ -96,8 +96,12 @@
 #define ERROR_FETCH   -6
 #define ERROR_SEND    -7
 #define ERROR_RECV    -8
+#define ERROR_SSL     -9
+#define INVALID_REQUEST  -10
+#define INVALID_RESPONSE -11
 
-#define INVALID_REQUEST  -20
+
+
 #define INVALID_HEADER   -21
 
 #define ERROR_BAD_URL     -5
@@ -123,5 +127,10 @@
 #define CLI_QUERY   0
 #define CLI_GET     1
 #define CLI_CONNECT 2
+#define CLI_SSL     3
+
+/* SSL */
+#define CERT_FILE "/home/celebrimbor/certs/myCA.pem"
+#define KEY_FILE  "/home/celebrimbor/certs/myCA.key"
 
 #endif /* __PROXYCONFIG_H__ */

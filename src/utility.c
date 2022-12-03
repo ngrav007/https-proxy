@@ -243,3 +243,62 @@ void print_debug(char *msg)
 {
     fprintf(stderr, "%s[DEBUG]%s %s\n", BYEL, reset, msg);
 }
+
+SSL_CTX *init_server_context()
+{
+    SSL_METHOD *method;
+    SSL_CTX *ctx;
+
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+    method = TLS_server_method();
+    ctx = SSL_CTX_new(method);
+    if (ctx == NULL) {
+            ERR_print_errors_fp(stderr);
+            return NULL;
+    }
+    return ctx;
+}
+
+SSL_CTX *init_client_context()
+{
+    SSL_METHOD *method;
+    SSL_CTX *ctx;
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+
+    method = TLS_client_method();
+    ctx = SSL_CTX_new(method);
+    if (ctx == NULL) {
+        fprintf(stderr, "[Proxy_SSL_connect]: failed to create SSL_CTX to connect to destination host\n");
+        ERR_print_errors_fp(stderr);
+        return NULL; /* should close the client since we can't connect to server */
+    }
+
+    return ctx;
+}
+
+int load_ca_certificates(SSL_CTX *ctk, char *ca_cert_file, char *ca_key_file)
+{
+    
+    /* set the key and the certificate */
+    if (SSL_CTX_use_certificate_file(ctk, ca_cert_file, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    /* set the private key from the key file - can be same as CertFile */
+    if (SSL_CTX_use_PrivateKey_file(ctk, ca_key_file, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+    
+    /* verify the private key */
+    if (!SSL_CTX_check_private_key(ctk)) {
+        print_error("Private key does not match the certificate public key");
+        return -1;
+    }
+
+    return 0;
+}
+

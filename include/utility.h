@@ -10,6 +10,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define BUFFER_SZ 1024
 #define NS_PER_S 1000000000.0
@@ -34,5 +36,8 @@ void print_success(char *msg);
 void print_info(char *msg);
 void print_warning(char *msg);
 void print_debug(char *msg);
+int load_ca_certificates(SSL_CTX *ctk, char *ca_cert_file, char *ca_key_file);
+SSL_CTX *init_server_context();
+SSL_CTX *init_client_context();
 
 #endif
