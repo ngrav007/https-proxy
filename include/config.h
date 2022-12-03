@@ -55,21 +55,21 @@
 #define INTERNAL_SERVER_ERROR_500 500
 #define NOT_IMPLEMENTED_501       501
 
-#define STATUS_200     "200 OK"
+#define STATUS_200     "200 OK\r\n\r\n"
 #define STATUS_200_L   sizeof(STATUS_200) - 1
-#define STATUS_200CE   "200 Connection established"
+#define STATUS_200CE   "200 Connection established\r\n\r\n"
 #define STATUS_200CE_L sizeof(STATUS_200CE) - 1
-#define STATUS_400     "400 Bad Request"
+#define STATUS_400     "400 Bad Request\r\n\r\n"
 #define STATUS_400_L   sizeof(STATUS_400) - 1
-#define STATUS_404     "404 Not Found"
+#define STATUS_404     "404 Not Found\r\n\r\n"
 #define STATUS_404_L   sizeof(STATUS_404) - 1
-#define STATUS_418     "418 I'm a teapot"
+#define STATUS_418     "418 I'm a teapot\r\n\r\n"
 #define STATUS_418_L   sizeof(STATUS_418) - 1
-#define STATUS_500     "500 Internal Server Error"
+#define STATUS_500     "500 Internal Server Error\r\n\r\n"
 #define STATUS_500_L   sizeof(STATUS_500) - 1
-#define STATUS_501     "501 Not Implemented"
+#define STATUS_501     "501 Not Implemented\r\n\r\n"
 #define STATUS_501_L   sizeof(STATUS_501) - 1
-#define STATUS_502_BAD_GATEWAY "502 Bad Gateway"
+#define STATUS_502_BAD_GATEWAY "502 Bad Gateway\r\n\r\n"
 #define STATUS_502_BAD_GATEWAY_L sizeof(STATUS_502_BAD_GATEWAY) - 1
 
 /* HTTP Header Fields */
