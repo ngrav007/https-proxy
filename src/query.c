@@ -6,6 +6,7 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
         return ERROR_FAILURE;
     } 
 
+    /* allocate memory for the query */
     if (*q != NULL) {
         Query_free(*q);
     }
@@ -17,38 +18,45 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
 
     (*q)->req = Request_new(buffer, buffer_l);
     if ((*q)->req == NULL) {
+        print_error("query: failed to create request");
         Query_free(*q);
+        *q = NULL;
         return ERROR_FAILURE;
     }
 
     if (strncmp((*q)->req->method, PROXY_HALT, (*q)->req->method_l) == 0) {
+        Query_free(*q);
+        *q = NULL;
         return HALT; // TODO make halt in body of POST request
     }
 
-    (*q)->buffer = calloc(QUERY_BUFFER_SZ, sizeof(char));
+    (*q)->buffer = calloc(QUERY_BUFFER_SZ + 1, sizeof(char));
     if ((*q)->buffer == NULL) {
         Query_free(*q);
+        *q = NULL;
         return ERROR_FAILURE;
     }
     (*q)->buffer_l = 0;
     (*q)->buffer_sz = QUERY_BUFFER_SZ;
 
-    (*q)->socket = socket(PF_INET, SOCK_STREAM, 0);
+    (*q)->socket = socket(AF_INET, SOCK_STREAM, 0);
     if ((*q)->socket < 0) {
-        fprintf(stderr, "[!] proxy: client socket call failed\n");
+        print_error("client socket call failed");
+        Query_free(*q);
+        *q = NULL;
         return ERROR_FAILURE;
     }
 
-    fprintf(stderr, "%sHOST = %s%s\n", BYEL, (*q)->req->host, reset);
+    fprintf(stderr, "%s[DEBUG]%s query_new: host: %s\n", BYEL, reset, (*q)->req->host);
     if ((*q)->req->host_l == 0) {
-        fprintf(stderr, "[!] proxy: host is empty\n");
-        return ERROR_BAD_HOST;
+        print_warning("query_new: host is empty");
+        return HOST_INVALID;
     }
     
     (*q)->host_info = gethostbyname((*q)->req->host);
     if ((*q)->host_info == NULL) {
         fprintf(stderr, "[!] proxy: unknown host\n");
-        return ERROR_HOST_UNKNOWN;
+        return HOST_UNKNOWN;
     }
 
     bzero(&(*q)->server_addr, sizeof((*q)->server_addr));

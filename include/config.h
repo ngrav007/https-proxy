@@ -47,18 +47,30 @@
 #define HTTP_VERSION_1_1_L       8
 #define CONNECTION_ESTABLISHED   "Connection established"
 #define CONNECTION_ESTABLISHED_L 22
-#define STATUS_200               "200 OK"
-#define STATUS_200_L             sizeof(STATUS_200) - 1
-#define STATUS_200CE             "200 Connection established"
-#define STATUS_200CE_L           sizeof(STATUS_200CE) - 1
-#define STATUS_400               "400 Bad Request"
-#define STATUS_400_L             sizeof(STATUS_400) - 1
-#define STATUS_404               "404 Not Found"
-#define STATUS_404_L             sizeof(HTTP_404) - 1
-#define STATUS_500               "500 Internal Server Error"
-#define STATUS_500_L             sizeof(HTTP_500) - 1
-#define STATUS_501               "501 Not Implemented"
-#define STATUS_501_L             sizeof(HTTP_501) - 1
+
+/* HTTP ---------------------------------------------------------------------- */
+#define BAD_REQUEST_400           400
+#define NOT_FOUND_404             404
+#define IM_A_TEAPOT_418           418
+#define INTERNAL_SERVER_ERROR_500 500
+#define NOT_IMPLEMENTED_501       501
+
+#define STATUS_200     "200 OK\r\n\r\n"
+#define STATUS_200_L   sizeof(STATUS_200) - 1
+#define STATUS_200CE   "200 Connection established\r\n\r\n"
+#define STATUS_200CE_L sizeof(STATUS_200CE) - 1
+#define STATUS_400     "400 Bad Request\r\n\r\n"
+#define STATUS_400_L   sizeof(STATUS_400) - 1
+#define STATUS_404     "404 Not Found\r\n\r\n"
+#define STATUS_404_L   sizeof(STATUS_404) - 1
+#define STATUS_418     "418 I'm a teapot\r\n\r\n"
+#define STATUS_418_L   sizeof(STATUS_418) - 1
+#define STATUS_500     "500 Internal Server Error\r\n\r\n"
+#define STATUS_500_L   sizeof(STATUS_500) - 1
+#define STATUS_501     "501 Not Implemented\r\n\r\n"
+#define STATUS_501_L   sizeof(STATUS_501) - 1
+#define STATUS_502_BAD_GATEWAY "502 Bad Gateway\r\n\r\n"
+#define STATUS_502_BAD_GATEWAY_L sizeof(STATUS_502_BAD_GATEWAY) - 1
 
 /* HTTP Header Fields */
 #define CONTENTLENGTH   "content-length:"
@@ -71,26 +83,31 @@
 #define MAXAGE          "max-age="
 #define MAXAGE_L        8
 
-/* Indicators */
+/* Error and Event Indicators */
 
-#define CLOSE_CLIENT     111
-#define CLIENT_TIMEDOUT  6
-#define ERROR_FAILURE    -1
-#define ERROR_CLOSE      -2
-#define INVALID_REQUEST  -3
-#define INVALID_RESPONSE -4
-#define INVALID_HEADER   -5
-#define ERROR_CONNECT    -6
+#define CLIENT_CLOSE    100
+#define CLIENT_TIMEDOUT 101
+
+#define ERROR_FAILURE -1
+#define ERROR_CLOSE   -2
+#define ERROR_SELECT  -3
+#define ERROR_ACCEPT  -4
+#define ERROR_CONNECT -5
+#define ERROR_FETCH   -6
+#define ERROR_SEND    -7
+#define ERROR_RECV    -8
+
+#define INVALID_REQUEST  -20
+#define INVALID_HEADER   -21
 
 #define ERROR_BAD_URL     -5
-#define ERROR_BAD_HOST    -6
-#define ERROR_HOST_UNKNOWN -11
+#define HOST_INVALID      -6
+#define HOST_UNKNOWN      -11
 #define ERROR_BAD_PORT    -7
 #define ERROR_BAD_METHOD  -8
 #define ERROR_BAD_VERSION -9
 #define ERROR_BAD_PATH    -10
 
-#define INVALID_RESPONSE -4
 #define CLIENT_EXISTS    -5
 #define CLIENT_NOT_FOUND -6
 #define CANT_DELIVER     -7

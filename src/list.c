@@ -158,7 +158,7 @@ int List_push_back(List *list, void *data)
 {
     Node *node = Node_new(data);
     if (node == NULL) {
-        return 0;
+        return -1;
     }
 
     if (list->head == NULL) {
@@ -215,7 +215,7 @@ int List_push_front(List *list, void *data)
 int List_remove(List *list, void *data)
 {
     if (list == NULL || list->compare == NULL) {
-        return -1;
+        return -1;  // compare function pointer must be set
     }
 
     Node *node = list->head;
@@ -250,7 +250,7 @@ int List_remove(List *list, void *data)
         node = node->next;
     }
 
-    return -1;
+    return 1; // not found
 }
 
 /* List_remove_node

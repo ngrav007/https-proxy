@@ -25,10 +25,14 @@ void print_ascii(char *buffer, size_t length);
 char *get_buffer_lc(char *buf, char *end);
 char *get_buffer(char *start, char *end);
 char *remove_whitespace(char *str, int size);
+int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz);
 void zero(void *p, size_t n);
 void clear_buffer(char *buffer, size_t *buffer_l);
-int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz);
 void free_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz);
 void print_error(char *msg);
+void print_success(char *msg);
+void print_info(char *msg);
+void print_warning(char *msg);
+void print_debug(char *msg);
 
 #endif

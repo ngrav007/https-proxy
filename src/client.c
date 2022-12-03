@@ -14,13 +14,14 @@ Client *Client_new()
         return NULL;
     }
 
+    client->state             = CLI_QUERY;
     client->query             = NULL;
-    client->socket            = -1;
-    client->isSlow            = false;
+    client->buffer            = NULL;
     client->buffer_l          = 0;
+    client->socket            = -1;
     client->last_recv.tv_sec  = 0;
     client->last_recv.tv_usec = 0;
-    client->state             = CLI_QUERY;
+    client->isSlow            = false;
 
     return client;
 }
@@ -87,9 +88,8 @@ void Client_free(void *client)
         c->socket = -1;
     }
 
-    Query_free(c->query);
-    free(c->buffer);
-
+    Client_clearQuery(c);
+    free_buffer(&c->buffer, &c->buffer_l, NULL);
     free(c);
 }
 
@@ -220,6 +220,22 @@ int Client_getSocket(Client *client)
     }
 
     return client->socket;
+}
+
+/* Client_clearQuery
+ *    Purpose: Clears the query from a Client
+ * Parameters: @client - Pointer to a Client to clear the query from
+ *    Returns: 0 on success, -1 on failure.
+ */
+void Client_clearQuery(Client *client)
+{
+    if (client == NULL || client->query == NULL) {
+        return;
+    }
+
+    Query *q = client->query;
+    Query_free(q);
+    client->query = NULL;
 }
 
 /* Client_getId

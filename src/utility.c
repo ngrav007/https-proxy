@@ -171,8 +171,8 @@ int expand_buffer(char **buffer, size_t *buffer_l, size_t *buffer_sz)
     }
 
     /* expand the buffer */
-   *buffer_sz *= 2 + 1;
-    char *new_buffer = calloc(*buffer_sz, sizeof(char));
+   *buffer_sz += BUFFER_SZ;
+    char *new_buffer = calloc(*buffer_sz + 1, sizeof(char));
     if (new_buffer == NULL) {
         return -1;
     }
@@ -221,5 +221,25 @@ void zero(void *p, size_t n)
 
 void print_error(char *msg)
 {
-    fprintf(stderr, "%s[!]%s %s", RED, reset, msg);
+    fprintf(stderr, "%s[!]%s %s\n", RED, reset, msg);
+}
+
+void print_success(char *msg)
+{
+    fprintf(stderr, "%s[+]%s %s\n", GRN, reset, msg);
+}
+
+void print_info(char *msg)
+{
+    fprintf(stderr, "%s[*]%s %s\n", BLU, reset, msg);
+}
+
+void print_warning(char *msg)
+{
+    fprintf(stderr, "%s[!]%s %s\n", YEL, reset, msg);
+}
+
+void print_debug(char *msg)
+{
+    fprintf(stderr, "%s[DEBUG]%s %s\n", BYEL, reset, msg);
 }

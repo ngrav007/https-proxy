@@ -33,9 +33,9 @@ static int connect_to_proxy(char *host, int port);
 int main(int argc, char **argv)
 {
     /* check command line arguments */
-    if (argc < 3) {
+    if (argc < 5) {
         fprintf(stderr, "Usage: %s <proxy-host> <proxy-port> <method> <host> [uri]\n", argv[0]);
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 
     /* get proxy host and port */
@@ -80,6 +80,13 @@ int main(int argc, char **argv)
         close(proxy_fd);
         error("[!] Failed to build raw request");
     }
+
+    /* add non-persistent connection field */
+    if (HTTP_add_field(&raw_request, &raw_l, "Connection", "close") < 0) {
+        close(proxy_fd);
+        error("[!] Failed to add connection field");
+    }
+
 
     /* send raw request */
     if (sendall(proxy_fd, raw_request, raw_l) < 0) {
@@ -157,7 +164,7 @@ int main(int argc, char **argv)
     free(raw_response);
     close(proxy_fd);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 
