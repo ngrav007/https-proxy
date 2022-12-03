@@ -13,6 +13,7 @@
 #define BRED "\033[1;31m"
 #define BGRN "\033[1;32m"
 #define BYEL "\033[1;33m"
+#define BORG "\033[38;5;208m"
 #define BBLU "\033[1;34m"
 #define BMAG "\033[1;35m"
 #define BCYN "\033[1;36m"

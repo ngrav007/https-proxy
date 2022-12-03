@@ -13,8 +13,7 @@ static int parse_startline(Request *req, char *request);
 static char *parse_method(char *header, size_t *method_len, char **saveptr);
 static char *parse_path(char *header, size_t *path_l, char **saveptr);
 static char *parse_host(char *header, size_t header_l, size_t *host_l);
-static char *parse_port(char **host, size_t *host_l, char *path,
-                        size_t *port_l);
+static char *parse_port(char **host, size_t *host_l, char *path, size_t *port_l);
 static char *parse_version_req(char *header, size_t *version_l, char **saveptr);
 static char *parse_body(char *buffer, size_t buffer_l, size_t *body_l);
 static char *parse_version_res(char *header, size_t *version_l, char **saveptr);
@@ -34,91 +33,52 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l);
  */
 int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l)
 {
-    if (buffer == NULL || *buffer == NULL || field == NULL || value == NULL ||
-        buffer_l == NULL)
-    {
-        fprintf(stderr, "[!] http: invalid parameter passed to add field\n");
-        return -1;
+    if (buffer == NULL || *buffer == NULL || field == NULL || value == NULL || buffer_l == NULL) {
+        print_error("http_add_field: invalid parameter");
+        return ERROR_FAILURE;
     }
 
-    char *header_start, *header_end, *buffer_lc;
-
-    /* convert buffer to lowercase and find header start and end*/
-    buffer_lc = get_buffer_lc(*buffer, *buffer + *buffer_l);
-    header_start = buffer_lc;
-    header_end   = strstr(buffer_lc, "\r\n\r\n");
+    char *header_start, *header_end;
+    header_start = *buffer;
+    header_end   = strstr(header_start, HEADER_END);
     if (header_end == NULL) {
-        fprintf(stderr, "[!] http: invalid header passed to add field\n");
-        return -1; // TODO - error-handling: invalid header
+        print_error("http_add_field: invalid header");
+        return ERROR_FAILURE; // TODO - error-handling: invalid header passed
     }
 
-    char *field_start;
-    // char *field_end; // TODO - decide whether to keep feature to update field
     char *new_buffer;
     size_t header_l = header_end - header_start;
     size_t field_l  = strlen(field);
     size_t value_l  = strlen(value);
     size_t offset   = 0;
     size_t new_buffer_l;
-    char *field_lc = get_buffer_lc(field, field + field_l);
 
     /* check if field already exists */
-    field_start = strstr(buffer_lc, field_lc);
-    if (field_start == NULL) { // field does not exist
-        new_buffer_l = *buffer_l + field_l + value_l + FIELD_SEP_L + CRLF_L;
-        new_buffer   = calloc(new_buffer_l + 1, sizeof(char));
-        if (new_buffer == NULL) {
-            fprintf(stderr, "[!] http: failed to create field buffer\n");
-            free(buffer_lc);
-            return ERROR_FAILURE;
-        }
-
-        memcpy(new_buffer, *buffer, header_l); // copy header
-        offset += header_l;
-        memcpy(new_buffer + offset, CRLF, CRLF_L); // add CRLF
-        offset += CRLF_L;
-        memcpy(new_buffer + offset, field, field_l); // copy field
-        offset += field_l;
-        memcpy(new_buffer + offset, FIELD_SEP, FIELD_SEP_L); // copy field sep
-        offset += FIELD_SEP_L;
-        memcpy(new_buffer + offset, value, value_l); // copy value
-        offset += value_l;
-        memcpy(new_buffer + offset, header_end,
-               *buffer_l - header_l); // copy rest of header
-        offset += *buffer_l - header_l;
-
-        free(*buffer);
-        *buffer   = new_buffer;
-        *buffer_l = new_buffer_l;
+    new_buffer_l = *buffer_l + field_l + value_l + FIELD_SEP_L + CRLF_L;
+    new_buffer   = calloc(new_buffer_l + 1, sizeof(char));
+    if (new_buffer == NULL) {
+        fprintf(stderr, "[!] http: failed to create field buffer\n");
+        return ERROR_FAILURE;
     }
-    // } else { // field exists // TODO - decide whether to keep feature
-    //     field_end = strstr(field_start, CRLF);
-    //     if (field_end == NULL) {
-    //         fprintf(stderr, "Error: invalid header 1\n");
-    //         return -1;
-    //     }
 
-    //     new_buffer_l = *buffer_l + value_l + field_l - (field_end -
-    //     field_start); new_buffer = calloc(new_buffer_l + 1, sizeof(char)); if
-    //     (new_buffer == NULL) {
-    //         fprintf(stderr, "Error: invalid header 2\n");
-    //         return -1;
-    //     }
+    memcpy(new_buffer, *buffer, header_l); // copy header
+    offset += header_l;
+    memcpy(new_buffer + offset, CRLF, CRLF_L); // add CRLF
+    offset += CRLF_L;
+    memcpy(new_buffer + offset, field, field_l); // copy field
+    offset += field_l;
+    memcpy(new_buffer + offset, FIELD_SEP, FIELD_SEP_L); // copy field sep
+    offset += FIELD_SEP_L;
+    memcpy(new_buffer + offset, value, value_l); // copy value
+    offset += value_l;
+    memcpy(new_buffer + offset, header_end, *buffer_l - header_l); // copy rest of header
+    offset += *buffer_l - header_l;
 
-    //     memcpy(new_buffer, *buffer, field_start - *buffer); // copy header up
-    //     to field offset += field_start - *buffer; memcpy(new_buffer + offset,
-    //     field, field_l); // copy field offset += field_l; memcpy(new_buffer +
-    //     offset, FIELD_SEP, FIELD_SEP_L); // copy field sep offset +=
-    //     FIELD_SEP_L; memcpy(new_buffer + offset, value, value_l); // copy
-    //     value offset += value_l; memcpy(new_buffer + offset, field_end,
-    //     *buffer_l - (field_end - *buffer)); // copy rest of header offset +=
-    //     *buffer_l - (field_end - *buffer);
-    // }
+    free(*buffer);
+    *buffer   = new_buffer;
+    *buffer_l = new_buffer_l;
 
-    free(field_lc);
-    free(buffer_lc);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /* HTTP_got_header
@@ -128,7 +88,7 @@ int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l)
  */
 bool HTTP_got_header(char *buffer)
 {
-    if (strstr(buffer, "\r\n\r\n") != NULL) {
+    if (strstr(buffer, HEADER_END) != NULL) {
         return true;
     } else {
         return false;
@@ -168,8 +128,7 @@ Request *Request_new(char *buffer, size_t buffer_l)
  *
  * Note: All parameters must be null terminated strings.
  */
-Request *Request_create(char *method, char *path, char *version, char *host,
-                        char *port, char *body)
+Request *Request_create(char *method, char *path, char *version, char *host, char *port, char *body)
 {
     Request *request = calloc(1, sizeof(struct Request));
     if (request == NULL) {
@@ -352,7 +311,7 @@ Response *Response_new(char *method, size_t method_l, char *uri, size_t uri_l, c
             return NULL;
         }
     }
-    
+
     return response;
 }
 
@@ -394,11 +353,9 @@ Response *Response_copy(Response *response)
     }
 
     set_field(&r->uri, &r->uri_l, response->uri, response->uri_l);
-    set_field(&r->version, &r->version_l, response->version,
-              response->version_l);
+    set_field(&r->version, &r->version_l, response->version, response->version_l);
     set_field(&r->status, &r->status_l, response->status, response->status_l);
-    set_field(&r->cache_ctrl, &r->cache_ctrl_l, response->cache_ctrl,
-              response->cache_ctrl_l);
+    set_field(&r->cache_ctrl, &r->cache_ctrl_l, response->cache_ctrl, response->cache_ctrl_l);
     set_field(&r->body, &r->body_l, response->body, response->body_l);
     set_field(&r->raw, &r->raw_l, response->raw, response->raw_l);
 
@@ -498,8 +455,7 @@ int Response_compare(void *response1, void *response2)
  * NOTE: The caller is responsible for freeing the memory allocated for the
  *       raw request string.
  */
-char *Raw_request(char *method, char *url, char *host, char *port, char *body,
-                  size_t *raw_l)
+char *Raw_request(char *method, char *url, char *host, char *port, char *body, size_t *raw_l)
 {
     if (method == NULL || url == NULL) {
         fprintf(stderr, "[!] http: Method and url must be specified");
@@ -528,12 +484,12 @@ char *Raw_request(char *method, char *url, char *host, char *port, char *body,
 
     size_t raw_len = 0;
     /* Startline of HTTP Request */
-    raw_len += method_l;       // Method
-    raw_len += SPACE_L;        // Space
-    raw_len += url_l;          // url
-    raw_len += SPACE_L;        // Space
+    raw_len += method_l;           // Method
+    raw_len += SPACE_L;            // Space
+    raw_len += url_l;              // url
+    raw_len += SPACE_L;            // Space
     raw_len += HTTP_VERSION_1_1_L; // HTTP version
-    raw_len += CRLF_L;         // CRLF
+    raw_len += CRLF_L;             // CRLF
 
     /* Host Field : Host: <host>\r\n */
     if (host_l > 0) {
@@ -635,7 +591,8 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
         return -1;
     }
 
-    if (memcmp(req->method, PROXY_HALT, req->method_l) == 0) {;
+    if (memcmp(req->method, PROXY_HALT, req->method_l) == 0) {
+        ;
         free(buffer_lc);
         return HALT;
     }
@@ -1147,7 +1104,7 @@ static char *parse_host(char *request, size_t request_l, size_t *host_l)
     if (h == NULL) {
         return NULL;
     }
-    
+
     memcpy(h, host, host_len);
 
     free(request_lc);
@@ -1309,7 +1266,7 @@ static long parse_maxage(char *cachecontrol, size_t cc_l)
     }
 
     char m[MAX_DIGITS_LONG + 1] = {0};
-    char *maxage = strstr(cachecontrol, "max-age=");
+    char *maxage                = strstr(cachecontrol, "max-age=");
     if (maxage == NULL) {
         return DEFAULT_MAX_AGE;
     }
@@ -1338,7 +1295,6 @@ static long parse_maxage(char *cachecontrol, size_t cc_l)
     memcpy(m, maxage, maxage_len);
 
     unsigned int maxage_int = atoi(m);
-    
 
     return maxage_int;
 }

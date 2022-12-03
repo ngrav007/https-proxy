@@ -14,13 +14,14 @@ Client *Client_new()
         return NULL;
     }
 
+    client->state             = CLI_QUERY;
     client->query             = NULL;
-    client->socket            = -1;
-    client->isSlow            = false;
+    client->buffer            = NULL;
     client->buffer_l          = 0;
+    client->socket            = -1;
     client->last_recv.tv_sec  = 0;
     client->last_recv.tv_usec = 0;
-    client->state             = CLI_QUERY;
+    client->isSlow            = false;
 
     return client;
 }
@@ -87,9 +88,11 @@ void Client_free(void *client)
         c->socket = -1;
     }
 
-    Query_free(c->query);
+    Query *q = c->query;
+    Query_free(q);
+    c->query = NULL;
     free(c->buffer);
-
+    c->buffer = NULL;
     free(c);
 }
 

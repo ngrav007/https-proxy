@@ -15,6 +15,8 @@
 #define PROXY_HALT      "__halt__"
 #define PROXY_HALT_L    8
 
+
+
 /* Query */
 #define QUERY_BUFFER_SZ 1024 // 1KB = 4096 bytes
 
@@ -47,6 +49,8 @@
 #define HTTP_VERSION_1_1_L       8
 #define CONNECTION_ESTABLISHED   "Connection established"
 #define CONNECTION_ESTABLISHED_L 22
+
+/* HTTP */
 #define STATUS_200               "200 OK"
 #define STATUS_200_L             sizeof(STATUS_200) - 1
 #define STATUS_200CE             "200 Connection established"
@@ -71,26 +75,32 @@
 #define MAXAGE          "max-age="
 #define MAXAGE_L        8
 
-/* Indicators */
+/* Error and Event Indicators */
 
-#define CLOSE_CLIENT     111
-#define CLIENT_TIMEDOUT  6
+#define CLIENT_CLOSE     100
+#define CLIENT_TIMEDOUT  101
+
 #define ERROR_FAILURE    -1
 #define ERROR_CLOSE      -2
-#define INVALID_REQUEST  -3
-#define INVALID_RESPONSE -4
-#define INVALID_HEADER   -5
-#define ERROR_CONNECT    -6
+#define ERROR_SELECT     -3
+#define ERROR_ACCEPT     -4
+#define ERROR_CONNECT    -5
+#define ERROR_FETCH      -6
+#define ERROR_SEND       -7
+#define ERROR_RECV       -8
+
+#define INVALID_REQUEST  -20
+#define INVALID_RESPONSE -21
+#define INVALID_HEADER   -22
 
 #define ERROR_BAD_URL     -5
-#define ERROR_BAD_HOST    -6
-#define ERROR_HOST_UNKNOWN -11
+#define HOST_INVALID    -6
+#define HOST_UNKNOWN -11
 #define ERROR_BAD_PORT    -7
 #define ERROR_BAD_METHOD  -8
 #define ERROR_BAD_VERSION -9
 #define ERROR_BAD_PATH    -10
 
-#define INVALID_RESPONSE -4
 #define CLIENT_EXISTS    -5
 #define CLIENT_NOT_FOUND -6
 #define CANT_DELIVER     -7

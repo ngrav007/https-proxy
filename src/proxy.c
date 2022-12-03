@@ -9,13 +9,13 @@ int Proxy_run(short port, size_t cache_size)
 
     /* initialize the proxy */
     Proxy_init(&proxy, port, cache_size);
-    fprintf(stderr, "%s[+] HTTP Proxy -----------------------------------%s\n", BCYN, reset);
+    print_success("[+] HTTP Proxy -----------------------------------");
     fprintf(stderr, "%s[*]%s   Proxy Port = %d\n", YEL, reset, proxy.port);
     fprintf(stderr, "%s[*]%s   Cache Size = %ld\n", YEL, reset, proxy.cache->capacity);
 
     /* bind and listen proxy socket */
     if (Proxy_listen(&proxy) < 0) {
-        print_error("proxy: failed to listen\n");
+        print_error("proxy: failed to listen");
         return ERROR_FAILURE;
     }
 
@@ -23,38 +23,37 @@ int Proxy_run(short port, size_t cache_size)
     short ret;
     while (true) {
         proxy.readfds = proxy.master_set;
-        fprintf(stderr, "[Proxy_run] waiting for select...\n");
+        print_debug("proxy: waiting for connections");
         ret           = select(proxy.fdmax + 1, &(proxy.readfds), NULL, NULL, proxy.timeout);
         fprintf(stderr, "[Proxy_run] select returned: %d\n", ret);
         if (ret < 0) {
-            perror("select");
-            print_error("proxy: select failed\n");
-            Proxy_free(&proxy);
-            return ERROR_FAILURE;
+            print_error("proxy: select failed");
+            perror("select"); // TODO: remove
+            break;
         } else if (ret == 0) {
-            // TODO: TIMEOUT
-            Proxy_handleTimeout(&proxy);
+            // TODO: TIMEOUT HANDLER
+            print_warning("proxy: select timed out");
+            // Proxy_handleTimeout(&proxy);
         } else {
             ret = Proxy_handle(&proxy);
-        }
-
-        /* check for errors and halt signal */
-        if (ret == HALT) {
-            fprintf(stderr, "%s[+] Halt signal received.%s\n", BCYN, reset);
-            break; // HALT signal
-        } else if (ret == ERROR_FAILURE) {
-            print_error("proxy: failure\n");
-            Proxy_free(&proxy);
-            return ERROR_FAILURE;
+            if (ret != EXIT_SUCCESS) {
+                break;
+            }
         }
     }
 
-    Proxy_free(&proxy);
+    if (ret == HALT) {
+        print_info("proxy: shutting down");
+        Proxy_free(&proxy);
+        return EXIT_SUCCESS;
+    } 
 
-    return EXIT_SUCCESS;
+    print_error("proxy: failed and cannot recover");
+    Proxy_free(&proxy);
+    
+    return EXIT_FAILURE;
 }
 
-// TODO
 int Proxy_handle(struct Proxy *proxy)
 {
     int ret = 0;
@@ -62,30 +61,30 @@ int Proxy_handle(struct Proxy *proxy)
     /* check listening socket and accept new clients */
     if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
         ret = Proxy_handleListener(proxy);
-        if (ret < 0) {
-            print_error("proxy: listen failed:\n");
-            return ERROR_FAILURE;
+        if (ret != EXIT_SUCCESS) {
+            print_error("proxy: could not accept new client");
+            // TODO - what to do when accept fails?
         }
     }
 
     /* check client sockets for requests */
-    Node *curr = proxy->client_list->head;
-    Node *next = curr->next;
-    Client *client;
+    char *key = NULL;
+    Client *client = NULL;
+    Response *cached_res = NULL;
+    Node *curr = NULL, *next = NULL;
     for (curr = proxy->client_list->head; curr != NULL; curr = next) {
         next   = curr->next;
         client = (Client *)curr->data;
         
-        switch(client->state) {
+        switch (client->state) {
         case CLI_QUERY:
             if (FD_ISSET(client->socket, &proxy->readfds)) {
-                fprintf(stderr, "[Proxy_handle] matched on CLI_QUERY\n");
+                fprintf(stderr, "[Proxy_handle] socket %d matched on CLI_QUERY\n", client->socket);
                 ret = Proxy_handleClient(proxy, client);
             }
             break;
         case CLI_GET:
             fprintf(stderr, "[Proxy_handle] matched on CLI_GET\n");
-            // TODO - Check if query socket is read to read from to get GET response (91-->)
             if (FD_ISSET(client->socket, &proxy->readfds)) {
                 /* TODO: for persisting connection */
             }
@@ -95,21 +94,26 @@ int Proxy_handle(struct Proxy *proxy)
                 ret = Proxy_handleQuery(proxy, client->query);
                 fprintf(stderr, "[Proxy_handle] Proxy_handleQuery returned: %d\n", ret);
                 if (client->query->res != NULL) { // Non-Persistent
-                    fprintf(stderr, "[Proxy_handle] query response not null\n");
+                    print_debug("proxy_handle: response received, caching response...");
                     Proxy_send(client->query->res->raw, client->query->res->raw_l, client->socket);
-                    char *key = get_key(client->query->req);
-                    Response *cache_res = Response_copy(client->query->res);
-                    fprintf(stderr, "%s[?] Caching response%s\n", YEL, reset);
-                    int debug = Cache_put(proxy->cache, key, cache_res, cache_res->max_age);
-                    fprintf(stderr, "%s[?] Cache_put returned %d%s\n", YEL, debug, reset);
-                    ret = CLOSE_CLIENT; // clear buffer, set buffer length to 0, free query and set to null
+                    key = get_key(client->query->req);
+                    cached_res = Response_copy(client->query->res);
+                    ret = Cache_put(proxy->cache, key, cached_res, cached_res->max_age);
+                    print_debug("proxy_handle: response cached");
+                    fprintf(stderr, "%s[?] Cache_put returned %d%s\n", YEL, ret, reset);
+                    if (ret < 0) {
+                        print_error("proxy: failed to cache response");
+                        ret = ERROR_FAILURE;
+                    } else {
+                        ret = CLIENT_CLOSE; // TODO - check if client is persistent
+                    }
                     free(key);
                 } 
                 
             }
             break;
         case CLI_CONNECT:
-            fprintf(stderr, "[Proxy_handle] matched on CLI_CONNECT\n");
+            print_info("proxy: client is in CONNECT state");
             if (FD_ISSET(client->socket, &proxy->readfds)) {
                 ret = Proxy_handleConnect(client->socket, client->query->socket);
             } 
@@ -119,54 +123,57 @@ int Proxy_handle(struct Proxy *proxy)
             }
         }
 
+        /* checking for events/errors */
         if (ret != EXIT_SUCCESS) {
             ret = Proxy_event_handle(proxy, client, ret);
-            if (ret == HALT) {
-                return HALT;
+            if (ret != EXIT_SUCCESS) {
+                return ret;
             }
         }
     }
 
     /* handling query socket (connection with server) */
-    // refresh(); // TODO - 
+    // refresh(); // TODO - update staleness of cache entries
     return EXIT_SUCCESS;
 }
 
 int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
 {
-    fprintf(stderr, "ERROR_CODE = %d\n", error_code);
+    fprintf(stderr, "[Event_Handle] ErrorCode = %d\n", error_code); // TODO - remove
     if (proxy == NULL || client == NULL) {
         return ERROR_FAILURE;
     }
 
     switch (error_code) {
     case ERROR_FAILURE:
-        fprintf(stderr, "%s[!]%s proxy: error\n", RED, reset);
-        print_error("proxy: failed\n");
+        print_error("proxy: failed");
+        return ERROR_FAILURE;
+    case HALT:
+        fprintf(stderr, "%s[+] proxy: halt signal received%s\n", GRN, reset);
         return HALT;
     case INVALID_REQUEST:
-        print_error("proxy: invalid request\n");
+        print_error("proxy: invalid request");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
-    case ERROR_HOST_UNKNOWN:
-        print_error("proxy: invalid request\n");
+    case HOST_UNKNOWN:
+        print_error("proxy: invalid request");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
     case INVALID_RESPONSE:
-        print_error("proxy: invalid response\n");
+        print_error("proxy: invalid response");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
-    case CLOSE_CLIENT:
-        fprintf(stderr, "%s[*] proxy: closing client %d%s\n", CYN, client->socket, reset);
+    case CLIENT_CLOSE:
+        fprintf(stderr, "%s[+] proxy: closing client %d%s\n", GRN, client->socket, reset);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
     case ERROR_CONNECT:
-        print_error("proxy: connect failed\n");
+        print_error("proxy: connect failed");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
     default:
         fprintf(stderr, "%s[!]%s proxy: unknown error: %d\n", RED, reset, error_code);
-        return HALT;
+        return ERROR_FAILURE;
     }
 
     return EXIT_SUCCESS;
@@ -184,13 +191,13 @@ int Proxy_handleConnect(int sender, int receiver)
     
     buf_l = recv(sender, buffer, BUFFER_SZ, 0);
     if (buf_l < 0) {
-        print_error("handle connect: recv failed: ");
+        print_error("handle connect: recv failed");
         perror("recv");
         return ERROR_FAILURE;
     } else if (buf_l == 0) {
         fprintf(stderr, "Client Query Socket Closed Connection.\n");
         // FD_CLR(query->socket, &proxy->master_set);
-        return CLOSE_CLIENT;
+        return CLIENT_CLOSE;
     } else {
         fprintf(stderr, "handle connect: received response from client query socket\n");
         if (Proxy_send(buffer, buf_l, receiver) != buf_l) {
@@ -218,11 +225,11 @@ int Proxy_handleQuery(Proxy *proxy, Query *query)
     n = recv(query->socket, query->buffer + buffer_l, buffer_sz - buffer_l, 0);
     fprintf(stderr, "n = %ld\n", n);
     if (n == -1) {
-        print_error("prxy: recv failed: ");
+        print_error("prxy: recv failed");
         perror("recv");
-        return ERROR_FAILURE;
-    // } else if (n == 0 || n < (buffer_sz - buffer_l)) {
-    } else if (n == 0) {
+        return ERROR_RECV;
+    } else if (n == 0 || (size_t) n < (buffer_sz - buffer_l)) {
+    // } else if (n == 0) {
         fprintf(stderr, "%s[*] proxy: server finished sending response%s\n", CYN, reset);
         fprintf(stderr, "n: %ld; buffer_sz - buffer_l: %ld\n", n, buffer_sz - buffer_l);
         // ? does this mean we have the full response
@@ -243,7 +250,7 @@ int Proxy_handleQuery(Proxy *proxy, Query *query)
 ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket)
 {
     if (buffer == NULL) {
-        print_error("proxy_send: buffer is null");
+        print_error("proxy_send: buffer is null ");
         return ERROR_FAILURE;
     }
 
@@ -256,7 +263,7 @@ ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket)
     while (written < (ssize_t)buffer_l) {
         n = send(socket, buffer + written, to_write, 0);
         if (n == -1) {
-            print_error("proxy: send failed\n");
+            print_error("proxy: send failed");
             return ERROR_FAILURE;
         }
         written += n;
@@ -274,14 +281,14 @@ ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket)
 int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
 {
     if (proxy == NULL) {
-        print_error("proxy: null parameter passed to init call\n");
+        print_error("proxy: null parameter passed to init call");
         return ERROR_FAILURE;
     }
 
     /* initialize the proxy cache */
     proxy->cache = Cache_new(cache_size, Response_free, Response_print, Response_compare);
     if (proxy->cache == NULL) {
-        print_error("proxy: cache init failed\n");
+        print_error("proxy: cache init failed");
         return ERROR_FAILURE;
     }
 
@@ -309,7 +316,7 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     /* initialize client list */
     proxy->client_list = List_new(Client_free, Client_print, Client_compare);
     if (proxy->client_list == NULL) {
-        print_error("proxy: failed to initialize client list\n");
+        print_error("proxy: failed to initialize client list");
         return ERROR_FAILURE;
     }
 
@@ -371,12 +378,18 @@ int Proxy_accept(struct Proxy *proxy)
     cli->addr_l = sizeof(cli->addr);
     cli->socket = accept(proxy->listen_fd, (struct sockaddr *)&(cli->addr), &(cli->addr_l));
     if (cli->socket == -1) {
-        print_error("proxy: accept failed\n");
-        return ERROR_FAILURE;
+        print_error("proxy: accept failed");
+        Client_free(cli);
+        return ERROR_ACCEPT;
     }
 
     /* add client to the proxy's client list */
-    List_push_back(proxy->client_list, (void *)cli);
+    int ret = List_push_back(proxy->client_list, (void *)cli);
+    if (ret < 0) {
+        Client_free(cli);
+        print_error("proxy: failed to add client to client list");
+        return ERROR_FAILURE;
+    }
 
     /* put new clients's socket in master set */
     FD_SET(cli->socket, &(proxy->master_set));
@@ -394,9 +407,9 @@ int Proxy_accept(struct Proxy *proxy)
  */
 int Proxy_handleListener(struct Proxy *proxy)
 {
-    if (Proxy_accept(proxy) < 0) {
-        /* handle when accept fails */
-        return ERROR_FAILURE;
+    int ret;
+    if ((ret = Proxy_accept(proxy)) < 0) {
+        return ret;
     }
 
     return EXIT_SUCCESS;
@@ -407,17 +420,16 @@ int Proxy_handleListener(struct Proxy *proxy)
 int Proxy_handleClient(struct Proxy *proxy, Client *client)
 {
     int ret;
-    /* receive data from client */
-    char tmp_buffer[BUFFER_SZ];
-    memset(tmp_buffer, 0, BUFFER_SZ);
-    int num_bytes = recv(client->socket, tmp_buffer, BUFFER_SZ, 0);
+    char recv_buffer[BUFFER_SZ + 1];
+    memset(recv_buffer, 0, BUFFER_SZ + 1);
+    int num_bytes = recv(client->socket, recv_buffer, BUFFER_SZ, 0);
     if (num_bytes < 0) {
-        print_error("proxy: recv failed: ");
+        print_error("proxy: recv failed");
         perror("recv");
         return ERROR_FAILURE;
     } else if (num_bytes == 0) {
-        fprintf(stderr, "%s[*] proxy: client closed connection%s\n", YEL, reset);
-        return CLOSE_CLIENT;
+        print_info("proxy: client disconnected");
+        return CLIENT_CLOSE;
     }
 
     /* resize client buffer, include null-terminator for parsing (strstr) */
@@ -427,65 +439,70 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     }
     client->buffer[client->buffer_l + num_bytes] = '\0';
 
-    /* copy data from tmp_buffer to client buffer */
-    memcpy(client->buffer + client->buffer_l, tmp_buffer, num_bytes);
+    /* copy data from recv_buffer to client buffer */
+    memcpy(client->buffer + client->buffer_l, recv_buffer, num_bytes);
     client->buffer_l += num_bytes;
 
     /* update last receive time to now */
     gettimeofday(&client->last_recv, NULL);
 
     if (HTTP_got_header(client->buffer)) {
+        print_debug("proxy: got header");
         ret = Query_new(&client->query, client->buffer, client->buffer_l);
         if (ret != EXIT_SUCCESS) {
-            print_error("proxy: failed to parse query\n");
+            print_error("proxy: failed to parse query");
             return ret;
         }
         char *key = get_key(client->query->req);
         if (client->query->req == NULL) {
-            print_error("proxy: memory allocation failed request\n");
+            print_error("proxy: memory allocation failed request");
             free(key);
             return ERROR_FAILURE;
         }
 
         if (memcmp(client->query->req->method, GET, GET_L) == 0) {
-            fprintf(stderr, "%s[+] GET Request Received%s\n", GRN, reset);
-
+            print_info("proxy: got GET request");
             /* check if we have the file in cache */
             Response *response = Cache_get(proxy->cache, key);
 
             // if Entry Not null & fresh, serve from Cache (add Age field)
             if (response != NULL) {
-                  /* get age of cache item */
+                print_debug("proxy: serving from cache");
+
+                /* get age of cache item */
+                long a = Cache_get_age(proxy->cache, key);
                 char age[MAX_DIGITS_LONG + 1];
                 zero(age, MAX_DIGITS_LONG + 1);
-                long age_int = Cache_get_age(proxy->cache, key);
-                snprintf(age, MAX_DIGITS_LONG, "%ld", age_int);
-                fprintf(stderr, "%s[?] Entry in cache%s\n", YEL, reset);
+                snprintf(age, MAX_DIGITS_LONG, "%ld", a);
+
+                /* add 'Age' field to HTTP header */
                 size_t response_size  = Response_size(response);
                 char *raw_response = Response_get(response);
-                HTTP_add_field(&raw_response, "Age", age, &response_size);
+                if (HTTP_add_field(&raw_response, "Age", age, &response_size) < 0) {
+                    print_error("proxy: failed to add Age field to response");
+                    return ERROR_FAILURE;
+                }
 
                 if (Proxy_send(raw_response, response_size, client->socket) < 0) {
-                    print_error("proxy: send failed\n");
+                    print_error("proxy: send failed");
                     free(key);
                     return ERROR_FAILURE;
                 }
                 free(key);
-                return CLOSE_CLIENT; // non-persistent
+                return CLIENT_CLOSE; // non-persistent
             } else {
-                fprintf(stderr, "%s[?] Entry NOT in cache%s\n", YEL, reset);
+                print_debug("proxy: serving from server");
                 Query_print(client->query);
                 ssize_t n = Proxy_fetch(proxy, client->query);
                 if (n < 0) {
-                    print_error("proxy: fetch failed\n");
+                    print_error("proxy: fetch failed");
                     free(key);
                     return n;
                 }
             }
-            // clear_buffer(client->buffer, &client->buffer_l);
             client->state = CLI_GET;
         } else if (memcmp(client->query->req->method, CONNECT, CONNECT_L) == 0) { // CONNECT
-            fprintf(stderr, "%s[+] CONNECT Request Received%s\n", GRN, reset);
+            print_info("proxy: got CONNECT request");
 
             // 1. establish connection on client-proxy side
             // --> already done when we accepted a client_fd
@@ -497,11 +514,10 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
 
             ssize_t n = Proxy_fetch(proxy, client->query);
             if (n < 0) {
-                print_error("proxy: fetch failed");
+                print_error("proxy: fetch fail");
                 free(key);
                 return n;
             } else {
-                // send status-200 connection established to client
                 size_t response_l = 0;
                 char response[BUFFER_SZ];
                 zero(response, BUFFER_SZ);
@@ -519,24 +535,19 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 response_l += HEADER_END_L;
 
                 if (Proxy_send(response, response_l, client->socket) < 0) {
-                    print_error("proxy: send failed\n");
+                    print_error("proxy: send failed");
                     free(key);
                     return ERROR_FAILURE;
                 }
-                // ssize_t msgsize = send(client->socket, response, response_l, 0);
-                // if ((size_t)msgsize != response_l) {
-                //     print_error("proxy: sending to client connection established failed\n");
-                //     return ERROR_FAILURE;
-                // }
-                fprintf(stderr, "[Proxy_handleClient] Status 200 Connection established sent\n");
-                client->state = CLI_CONNECT;
 
+                print_success("proxy: sent 200 Connection established");
+                client->state = CLI_CONNECT;
             }
 
             clear_buffer(client->buffer, &client->buffer_l);
 
         } else {
-            print_error("Unknown method : unimplemented (halt)");
+            print_error("Unknown method : unimplemented method");
             free(key);
             return HALT;
         }
@@ -553,10 +564,10 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
 }
 
 // TODO
-int Proxy_handleTimeout(struct Proxy *proxy) {
-    (void) proxy; 
-    return 0; 
-}
+// int Proxy_handleTimeout(struct Proxy *proxy) {
+//     (void) proxy; 
+//     return 0; 
+// }
 
 /**
  * Proxy_close
@@ -591,18 +602,18 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *clie
 ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
 {
     if (proxy == NULL || qry == NULL) {
-        print_error("proxy: fetch failed, invalid args\n");
+        print_error("proxy_fetch: fetch: invalid arguments");
         return ERROR_FAILURE;
     }
 
     /* make connection to server */
-    fprintf(stderr, "proxy_fetch: Trying to connect...\n");
+    print_debug("proxy_fetch: making connection to server");
     if (connect(qry->socket, (struct sockaddr *)&qry->server_addr, sizeof(qry->server_addr)) < 0) {
-        print_error("proxy: failed to connect to server: ");
+        print_error("proxy_fetch: failed to connect to server");
         perror("connect");
         return ERROR_CONNECT;
     }
-    fprintf(stderr, "proxy fetch: Connected...\n");
+    print_debug("proxy_fetch: connected to server");
 
     /* add server socket to master_set */
     FD_SET(qry->socket, &proxy->master_set);
@@ -611,29 +622,28 @@ ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
     /* send message to server */
     ssize_t msgsize = 0;
     if (strncmp(qry->req->method, GET, GET_L) == 0) {
+        print_info("proxy_fetch: sending GET request to server");
         print_ascii(qry->req->raw, qry->req->raw_l);
-        msgsize = send(qry->socket, qry->req->raw, qry->req->raw_l, 0);
-        if ((size_t)msgsize != qry->req->raw_l) {
-            print_error("proxy: sending to host failed\n");
-            return ERROR_FAILURE;
+        if (Proxy_send(qry->req->raw, qry->req->raw_l, qry->socket) < 0) {
+            print_error("proxy_fetch: send failed");
+            return ERROR_FETCH;
         }
     }
     
-
     return msgsize; // number of bytes sent
 }
 
 int Proxy_listen(Proxy *proxy)
 {
     if (proxy == NULL) {
-        print_error("proxy: listen failed, invalid args\n");
+        print_error("proxy_listen: listen failed, invalid args");
         return ERROR_FAILURE;
     }
 
     /* open listening socket */
     proxy->listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (proxy->listen_fd == -1) {
-        print_error("proxy: socket failed\n");
+        print_error("proxy_listen: socket failed");
         Proxy_free(&proxy);
         return ERROR_FAILURE;
     }
@@ -643,7 +653,7 @@ int Proxy_listen(Proxy *proxy)
     if (setsockopt(proxy->listen_fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval,
                    sizeof(optval)) == -1)
     {
-        print_error("proxy: setsockopt failed\n");
+        print_error("proxy_listen: setsockopt failed");
         Proxy_free(&proxy);
         return ERROR_FAILURE;
     }
@@ -656,14 +666,14 @@ int Proxy_listen(Proxy *proxy)
 
     /* bind listening socket to proxy address and port */
     if (bind(proxy->listen_fd, (struct sockaddr *)&(proxy->addr), sizeof(proxy->addr)) == -1) {
-        print_error("proxy: bind failed\n");
+        print_error("proxy_listen: bind failed");
         Proxy_free(&proxy);
         return ERROR_FAILURE;
     }
 
     /* listen for connections */
     if (listen(proxy->listen_fd, 10) == -1) {
-        print_error("proxy: listen failed\n");
+        print_error("proxy_listen: listen failed");
         Proxy_free(&proxy);
         return ERROR_FAILURE;
     }
