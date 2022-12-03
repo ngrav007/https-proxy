@@ -43,5 +43,6 @@ const char *Client_getId(Client *client);
 bool Client_isLoggedIn(Client *client);
 bool Client_isSlowMofo(Client *client);
 int Client_timestamp(Client *client);
+void Client_clearQuery(Client *client);
 
 #endif /* _CLIENT_H_ */

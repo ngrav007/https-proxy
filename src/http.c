@@ -26,32 +26,30 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l);
  *             updated. If the field does not exist, it is added. The buffer is
  *             reallocated if necessary. The buffer must be null terminated.
  * Parameters: @buffer - The buffer to add the field to, must be null terminated
+ *             @buffer_l - A pointer to the length of the buffer
  *             @field - The name of the field to add
  *             @value - The value of the field to add
- *             @buffer_l - A pointer to the length of the buffer
  *    Returns: 0 on success, -1 on failure
  */
-int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l)
+int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
 {
     if (buffer == NULL || *buffer == NULL || field == NULL || value == NULL || buffer_l == NULL) {
         print_error("http_add_field: invalid parameter");
         return ERROR_FAILURE;
     }
 
-    char *header_start, *header_end;
+    char *header_start, *header_end, *new_buffer;
+    size_t header_l, field_l, value_l, new_buffer_l, offset = 0;
     header_start = *buffer;
     header_end   = strstr(header_start, HEADER_END);
     if (header_end == NULL) {
         print_error("http_add_field: invalid header");
-        return ERROR_FAILURE; // TODO - error-handling: invalid header passed
+        return INVALID_HEADER; // TODO - error-handling: invalid header passed
     }
 
-    char *new_buffer;
-    size_t header_l = header_end - header_start;
-    size_t field_l  = strlen(field);
-    size_t value_l  = strlen(value);
-    size_t offset   = 0;
-    size_t new_buffer_l;
+    header_l = header_end - header_start;
+    field_l  = strlen(field);
+    value_l  = strlen(value);
 
     /* check if field already exists */
     new_buffer_l = *buffer_l + field_l + value_l + FIELD_SEP_L + CRLF_L;

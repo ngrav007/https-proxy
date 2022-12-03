@@ -51,7 +51,7 @@ typedef struct Response {
 
 /* HTTP Functions */
 bool HTTP_got_header(char *buffer);
-int HTTP_add_field(char **buffer, char *field, char *value, size_t *buffer_l);
+int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value);
 
 /* HTTP Request Functions */
 Request *Request_new(char *buffer, size_t buffer_l);

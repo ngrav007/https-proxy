@@ -88,11 +88,8 @@ void Client_free(void *client)
         c->socket = -1;
     }
 
-    Query *q = c->query;
-    Query_free(q);
-    c->query = NULL;
-    free(c->buffer);
-    c->buffer = NULL;
+    Client_clearQuery(c);
+    free_buffer(&c->buffer, &c->buffer_l, NULL);
     free(c);
 }
 
@@ -223,6 +220,22 @@ int Client_getSocket(Client *client)
     }
 
     return client->socket;
+}
+
+/* Client_clearQuery
+ *    Purpose: Clears the query from a Client
+ * Parameters: @client - Pointer to a Client to clear the query from
+ *    Returns: 0 on success, -1 on failure.
+ */
+void Client_clearQuery(Client *client)
+{
+    if (client == NULL || client->query == NULL) {
+        return;
+    }
+
+    Query *q = client->query;
+    Query_free(q);
+    client->query = NULL;
 }
 
 /* Client_getId

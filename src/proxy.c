@@ -60,10 +60,8 @@ int Proxy_handle(struct Proxy *proxy)
 
     /* check listening socket and accept new clients */
     if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
-        ret = Proxy_handleListener(proxy);
-        if (ret != EXIT_SUCCESS) {
-            print_error("proxy: could not accept new client");
-            // TODO - what to do when accept fails?
+        if (Proxy_handleListener(proxy) == ERROR_FAILURE) {
+            return ERROR_FAILURE;   // out of memory
         }
     }
 
@@ -95,7 +93,10 @@ int Proxy_handle(struct Proxy *proxy)
                 fprintf(stderr, "[Proxy_handle] Proxy_handleQuery returned: %d\n", ret);
                 if (client->query->res != NULL) { // Non-Persistent
                     print_debug("proxy_handle: response received, caching response...");
-                    Proxy_send(client->query->res->raw, client->query->res->raw_l, client->socket);
+                    if (Proxy_send(client->query->res->raw, client->query->res->raw_l, client->socket) < 0) {
+                        print_error("proxy: failed to send response to client");
+                        return ERROR_SEND;
+                    }
                     key = get_key(client->query->req);
                     cached_res = Response_copy(client->query->res);
                     ret = Cache_put(proxy->cache, key, cached_res, cached_res->max_age);
@@ -147,29 +148,32 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
     switch (error_code) {
     case ERROR_FAILURE:
         print_error("proxy: failed");
+        Proxy_sendError(client->socket, INTERNAL_SERVER_ERROR_500);
         return ERROR_FAILURE;
     case HALT:
-        fprintf(stderr, "%s[+] proxy: halt signal received%s\n", GRN, reset);
+        print_info("proxy: halt signal received");
+        Proxy_sendError(client->socket, IM_A_TEAPOT_418);
         return HALT;
+    case ERROR_SEND:
+        print_error("proxy: failed to send message, closing connection");
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        break;
     case INVALID_REQUEST:
         print_error("proxy: invalid request");
-        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        Proxy_sendError(client->socket, BAD_REQUEST_400);
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);    // ? - close for persistent connections?
         break;
     case HOST_UNKNOWN:
         print_error("proxy: invalid request");
-        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
-        break;
-    case INVALID_RESPONSE:
-        print_error("proxy: invalid response");
-        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        Proxy_sendError(client->socket, BAD_REQUEST_400);
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);    // ? - close for persistent connections?
         break;
     case CLIENT_CLOSE:
         fprintf(stderr, "%s[+] proxy: closing client %d%s\n", GRN, client->socket, reset);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
     case ERROR_CONNECT:
-        print_error("proxy: connect failed");
-        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        print_warning("proxy: failed to accept new connection");
         break;
     default:
         fprintf(stderr, "%s[!]%s proxy: unknown error: %d\n", RED, reset, error_code);
@@ -177,6 +181,22 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
     }
 
     return EXIT_SUCCESS;
+}
+
+int Proxy_sendError(int socket, int msg_code)
+{
+    switch (msg_code) {
+        case BAD_REQUEST_400:
+            return Proxy_send(STATUS_400, STATUS_400_L, socket);
+        case NOT_FOUND_404:
+            return Proxy_send(STATUS_404, STATUS_404_L, socket);
+        case INTERNAL_SERVER_ERROR_500:
+            return Proxy_send(STATUS_500, STATUS_500_L, socket);
+        case NOT_IMPLEMENTED_501:
+            return Proxy_send(STATUS_501, STATUS_501_L, socket);
+        default:
+            return ERROR_FAILURE;    
+    }
 }
 
 int Proxy_handleConnect(int sender, int receiver)
@@ -193,7 +213,7 @@ int Proxy_handleConnect(int sender, int receiver)
     if (buf_l < 0) {
         print_error("handle connect: recv failed");
         perror("recv");
-        return ERROR_FAILURE;
+        return ERROR_RECV;
     } else if (buf_l == 0) {
         fprintf(stderr, "Client Query Socket Closed Connection.\n");
         // FD_CLR(query->socket, &proxy->master_set);
@@ -201,8 +221,8 @@ int Proxy_handleConnect(int sender, int receiver)
     } else {
         fprintf(stderr, "handle connect: received response from client query socket\n");
         if (Proxy_send(buffer, buf_l, receiver) != buf_l) {
-            return ERROR_FAILURE;
-        }    
+            return ERROR_SEND;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -213,6 +233,26 @@ int Proxy_handleQuery(Proxy *proxy, Query *query)
     if (proxy == NULL || query == NULL) {
         return ERROR_FAILURE;
     }
+
+    // 1. Check if response so far has a header -- header flag
+
+    // 1a. if yes, switch-case the transfer encoding type (normal, or chunked)
+        // 1a.i. if chunk'd:
+            // Do a recv
+            // Parse the hexidecimal chunk size for next chunk, (ex: 6\r\n)
+            // loop until the chunk following the size is that many bytes. A chunk is \r\n terminated  
+        // 1a.ii. if normal, and has a content-length 
+            // do one recv of BUFFER_SZ (like default)
+            // stop when you have content-length total bytes in the buffer.
+        // 1a.iii. if no transfer type is set (no content-length, no TE)
+            // default to recv'ing BUFFER_SZ bytes
+            // 
+    
+    // 1b. if no, 
+        // default to recv'ing BUFFER_SZ bytes
+        // check if we have a header so far, and set any header flag if yes, and set flag for transfer type, if any (ie. has content length or a transfer-encoding field)
+        // if chunk encoding:
+        //     - check if any bytes after end of header (this is partial chunk)
 
     ssize_t n;
     size_t buffer_l  = query->buffer_l;
@@ -264,7 +304,7 @@ ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket)
         n = send(socket, buffer + written, to_write, 0);
         if (n == -1) {
             print_error("proxy: send failed");
-            return ERROR_FAILURE;
+            return ERROR_SEND;
         }
         written += n;
         to_write -= n;
@@ -426,7 +466,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     if (num_bytes < 0) {
         print_error("proxy: recv failed");
         perror("recv");
-        return ERROR_FAILURE;
+        return ERROR_RECV;  // TODO - if recv fails, just close the socket
     } else if (num_bytes == 0) {
         print_info("proxy: client disconnected");
         return CLIENT_CLOSE;
@@ -465,7 +505,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
             /* check if we have the file in cache */
             Response *response = Cache_get(proxy->cache, key);
 
-            // if Entry Not null & fresh, serve from Cache (add Age field)
+            // if Entry Not null & fresh, serve from Cache (add Age field) // TODO - add 'freshness'
             if (response != NULL) {
                 print_debug("proxy: serving from cache");
 
@@ -478,7 +518,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 /* add 'Age' field to HTTP header */
                 size_t response_size  = Response_size(response);
                 char *raw_response = Response_get(response);
-                if (HTTP_add_field(&raw_response, "Age", age, &response_size) < 0) {
+                if (HTTP_add_field(&raw_response, &response_size, "Age", age) < 0) {
                     print_error("proxy: failed to add Age field to response");
                     return ERROR_FAILURE;
                 }
@@ -486,10 +526,10 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 if (Proxy_send(raw_response, response_size, client->socket) < 0) {
                     print_error("proxy: send failed");
                     free(key);
-                    return ERROR_FAILURE;
+                    return ERROR_SEND;
                 }
                 free(key);
-                return CLIENT_CLOSE; // non-persistent
+                return CLIENT_CLOSE; // non-persistent connection
             } else {
                 print_debug("proxy: serving from server");
                 Query_print(client->query);
@@ -537,7 +577,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 if (Proxy_send(response, response_l, client->socket) < 0) {
                     print_error("proxy: send failed");
                     free(key);
-                    return ERROR_FAILURE;
+                    return ERROR_SEND;
                 }
 
                 print_success("proxy: sent 200 Connection established");
@@ -557,10 +597,10 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     // Check for Body
 
     // assume all GETs for now, GETs don't have a body
-    // If we have both call HandleRequest -- determine what to do depnding on
+    // If we have both call HandleRequest -- determine what to do depending on
     // HTTP Method
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 // TODO
@@ -684,6 +724,8 @@ int Proxy_listen(Proxy *proxy)
 
     return EXIT_SUCCESS;
 }
+
+
 
 /* Static Functions --------------------------------------------------------- */
 static char *get_key(Request *req)
