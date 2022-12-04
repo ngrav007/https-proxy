@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define BUFSIZE 4096
 #define FILE_DIR "files/"

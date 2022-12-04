@@ -24,10 +24,15 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+// #include <ssl.h>
+// #include <err.h>
 
 typedef struct Proxy {
     Cache *cache;
     List *client_list;
+    SSL_CTX *ctx;
     struct sockaddr_in addr;
     struct hostent *client;  // ? do we need this?
     struct hostent *server;  // ? do we need this?
@@ -62,5 +67,7 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list,
 ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 int Proxy_handleConnect(int sender, int receiver);
 int Proxy_sendError(int socket, int msg_code);
+
+int Proxy_SSL_connect(Proxy *proxy, Query *query);
 
 #endif /* _PROXY_H_ */

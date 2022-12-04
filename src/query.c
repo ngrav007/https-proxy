@@ -1,6 +1,6 @@
 #include "query.h"
 
-int Query_new(Query **q, char *buffer, size_t buffer_l)
+int Query_new(Query **q, char *buffer, size_t buffer_l, int type)
 {
     if (q == NULL || buffer == NULL) {
         return ERROR_FAILURE;
@@ -15,6 +15,16 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
     if (*q == NULL) {
         return ERROR_FAILURE;
     }
+
+    /* TODO -- SSL */
+    if (type == QUERY_HTTPS) {
+        SSL_library_init();
+        (*q)->ctx = init_client_context();
+
+        load_ca_certificates((*q)->ctx, CERT_FILE, KEY_FILE);
+        (*q)->ssl = NULL;
+    }
+
 
     (*q)->req = Request_new(buffer, buffer_l);
     if ((*q)->req == NULL) {
@@ -79,6 +89,8 @@ void Query_free(Query *query)
 
     Request_free(query->req);
     Response_free(query->res);
+    Query_clearSSL(query);
+    Query_clearSSLCtx(query);
     close(query->socket);
     free(query->buffer);
     free(query);
@@ -106,5 +118,25 @@ int Query_compare(Query *query1, Query *query2)
     }
 
     return Request_compare(query1->req, query2->req);
+}
+
+void Query_clearSSL(Query *query)
+{
+    if (query == NULL) {
+        return;
+    }
+
+    SSL_free(query->ssl);
+    query->ssl = NULL;
+}
+
+void Query_clearSSLCtx(Query *query)
+{
+    if (query == NULL) {
+        return;
+    }
+
+    SSL_CTX_free(query->ctx);
+    query->ctx = NULL;
 }
 

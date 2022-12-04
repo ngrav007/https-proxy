@@ -24,27 +24,27 @@ INCS = $(wildcard $(INCDIR)/*.h)
 CLIOBJS = $(subst $(PROXY_MAIN), $(CLIENT_MAIN), $(OBJS))
 SEROBJS = $(subst $(CLIENT_MAIN), $(SERVER_MAIN), $(CLIOBJS))
 
-CFLAGS = -g -Wall -Wextra -I$(INCDIR) -fdiagnostics-color=always # -Werror
-LDFLAGS = -g 
+CFLAGS = -g -Wall -Wextra -fdiagnostics-color=always -I$(INCDIR)  # -Werror
+LDFLAGS = -lssl -lcrypto
 
 .PHONY: all clean
 
 all: $(BINDIR)/$(PROXY) $(BINDIR)/$(CLIENT) $(BINDIR)/$(SERVER)
 
 $(BINDIR)/$(PROXY): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c $(INCS)
 	$(CC) $(CFLAGS) -o $@ -c $< 
 
 $(BINDIR)/$(CLIENT): $(CLIOBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BLDDIR)/$(CLIENT).o: $(CLIDIR)/$(CLIENT).c $(INCS) ./build/http.o
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(BINDIR)/$(SERVER): $(SERVER_MAIN) $(SEROBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^  $(LDFLAGS)
 
 $(BLDDIR)/$(SERVER).o: $(SERDIR)/$(SERVER).c $(INCS) ./build/http.o
 	$(CC) $(CFLAGS) -o $@ -c $<
