@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define QUERY_HTTPS 1
 #define QUERY_HTTP  0

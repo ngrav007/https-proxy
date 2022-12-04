@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define BUFSIZE 1024
 #define OUTPUT_DIR "output"

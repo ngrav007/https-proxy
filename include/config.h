@@ -130,7 +130,7 @@
 #define CLI_SSL     3
 
 /* SSL */
-#define CERT_FILE "/home/celebrimbor/certs/myCA.pem"
-#define KEY_FILE  "/home/celebrimbor/certs/myCA.key"
+#define CERT_FILE "/workspaces/Development/etc/certs/server.pem"
+#define KEY_FILE  "/workspaces/Development/etc/certs/server.key"
 
 #endif /* __PROXYCONFIG_H__ */
