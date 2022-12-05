@@ -1420,3 +1420,122 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l)
     }
     memcpy(*f, v, v_l);
 }
+
+/* takes a (response) buffer of size buffer_l, and edits it to include 
+   a style.color attribute for links (html anchor tags). Should instert style attribute BEFORE href attribute. */
+int color_links(char **buffer, size_t *buffer_l, int color_flag)
+{
+    // fprintf(stderr, "Picking Color\n");
+    char *color_attribute = NULL;
+    switch (color_flag) {
+        case RED_F: 
+            color_attribute = RED_STYLE;
+            break;
+        case GREEN_F:
+            color_attribute = GREEN_STYLE;
+            break;
+        default:
+            break;
+    }
+
+    if (color_attribute == NULL) { // no coloring
+        // fprintf(stderr, "Color not picked\n");
+        return 0;
+    }
+
+    // fprintf(stderr, "Initializing new buffer of size: %d\n", *buffer_l);
+    char *new_buffer = calloc(*buffer_l + COLOR_L + 1, sizeof(char));
+    if (new_buffer == NULL) {
+        // fprintf(stderr, "[color_links] calloc failed.\n");
+        return ERROR_FAILURE;
+    }
+
+    int new_buffer_sz = 0;
+    int new_buffer_cap = *buffer_l + COLOR_L;
+    char *new_buffer_pointer = new_buffer;
+    char *buffer_end = (*buffer) + *buffer_l; // last byte
+
+    // loop, copying individual bytes until you reach end of original buffer being copied over. 
+    char *orig_buffer_pointer = *buffer;
+
+    // fprintf(stderr, "Start of loop\n");
+    // fprintf(stderr, "orig_buffer_pointer = %d\n", orig_buffer_pointer);
+    // fprintf(stderr, "buffer_end = %d\n", buffer_end);
+
+    while (orig_buffer_pointer < buffer_end) 
+    {
+        fprintf(stderr, "orig_buffer_pointer = %d\n", orig_buffer_pointer); 
+
+        // ensure new_buffer capacity has enough for remaining bytes in original buffer. 
+        int original_bytes_left = buffer_end - orig_buffer_pointer;
+        if ((original_bytes_left + COLOR_L) > (new_buffer_cap - new_buffer_sz)) 
+        {
+            // expand 
+            // fprintf(stderr, "Expanding\n");
+            new_buffer = 
+                realloc(new_buffer, 
+                        new_buffer_cap + original_bytes_left + COLOR_L);
+            if (new_buffer == NULL) {
+                // fprintf(stderr, "[color_links] realloc failed.\n");
+                return ERROR_FAILURE;
+            }
+            new_buffer_cap += original_bytes_left;
+            new_buffer_cap += COLOR_L;
+        }
+
+        //  strstr for the next "<a " tag
+        char *anchor = strstr(orig_buffer_pointer, ANCHOR_HTTPS_OPEN);
+        if (anchor != NULL) {   // found an anchor tag
+            
+            // fprintf(stderr, "Found an <a> with https\n");
+
+            // copy the bytes up to the space in the anchor tag 
+            for (; orig_buffer_pointer != (anchor + ANCHOR_OPEN_L); 
+                   (new_buffer_pointer)++, (orig_buffer_pointer)++) 
+            {
+                (*new_buffer_pointer) = (*orig_buffer_pointer);
+                new_buffer_sz++;
+            }
+
+            // insert color attribute: 'style="color:#FF0000;" '
+            char *color_pointer = color_attribute;
+            char * color_end = color_attribute + COLOR_L;
+
+            for (; color_pointer != color_end; 
+                   (new_buffer_pointer)++, (color_pointer)++) 
+            {
+                (*new_buffer_pointer) = (*color_pointer);
+                new_buffer_sz++;
+            }
+
+        } else { // no more anchor tags, copy bytes until the end 
+            // fprintf(stderr, "No more <a> with https\n");
+            for (; orig_buffer_pointer != buffer_end; 
+                   (new_buffer_pointer)++, (orig_buffer_pointer)++) 
+            {
+                (*new_buffer_pointer) = (*orig_buffer_pointer);
+                new_buffer_sz++;
+            }
+
+        }
+
+        // orig_buffer_pointer = anchor + ANCHOR_OPEN_L;  // done above
+    }
+
+    free(*buffer);
+
+    new_buffer = realloc(new_buffer, new_buffer_sz + 1);
+    if (new_buffer == NULL) {
+        // fprintf(stderr, "[color_links] realloc failed.\n");
+        return ERROR_FAILURE;
+    }
+
+    new_buffer[new_buffer_sz + 1] = '\0';
+    *buffer_l = new_buffer_sz;
+
+    *buffer = new_buffer;
+
+    return 0;
+
+
+}
