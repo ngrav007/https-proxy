@@ -682,19 +682,8 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
                 size_t response_l = 0;
                 char response[BUFFER_SZ];
                 zero(response, BUFFER_SZ);
-                memcpy(response, HTTP_VERSION_1_1, HTTP_VERSION_1_1_L);
-                response_l += HTTP_VERSION_1_1_L;
-                memcpy(response + response_l, SPACE, SPACE_L);
-                response_l += SPACE_L;
-                memcpy(response + response_l, STATUS_200, STATUS_200_L);
-                response_l += STATUS_200_L;
-                memcpy(response + response_l, SPACE, SPACE_L);
-                response_l += SPACE_L;
-                memcpy(response + response_l, CONNECTION_ESTABLISHED, CONNECTION_ESTABLISHED_L);
-                response_l += CONNECTION_ESTABLISHED_L;
-                memcpy(response + response_l, HEADER_END, HEADER_END_L);
-                response_l += HEADER_END_L;
-
+                memcpy(response + response_l, STATUS_200CE, STATUS_200CE_L);
+                response_l += STATUS_200CE_L;
                 if (Proxy_send(response, response_l, client->socket) < 0) {
                     print_error("proxy: send failed");
                     free(key);

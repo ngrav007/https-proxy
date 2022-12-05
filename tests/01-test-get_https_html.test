@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# Test 09: CONNECT Request, Binary File, to HTTPS website
-
-# Import test config
+# Test 01: GET Request, HTML File, HTTP
 CONFIG=$(dirname $0)/.test-config.conf
 # Import test config
 if [ -f ${CONFIG} ]; then
@@ -13,9 +11,9 @@ else
 fi
 
 # Test Setup
-METHOD="CONNECT"
-URL="https://www.cs.cmu.edu/~dga/dga-headshot.jpg"
-HOST="www.cs.cmu.edu"
+METHOD="GET"
+URL="https://www.cs.tufts.edu/comp/112/index.html"
+HOST="www.cs.tufts.edu"
 SLEEPTIME="5"
 
 # File and Directory Setup
@@ -25,14 +23,14 @@ CACHE_OUT="$REPORT_DIR/$TESTNAME-$CACHE-$OUTPUT_EXT"
 FETCH_REPORT="$REPORT_DIR/$TESTNAME-$FETCH-$REPORT_EXT"
 CACHE_REPORT="$REPORT_DIR/$TESTNAME-$CACHE-$REPORT_EXT"
 
-echo "+ ---------- $TESTNAME: $METHOD Request, Binary File, HTTPS --------- +"
+echo "+ ---------- $TESTNAME: $METHOD Request, HTML File, Tufts HTTP --------- +"
 
 echo "[*] Sending Request:"
 echo " |    $METHOD $URL HTTP/1.1"
 echo " |    Host: $HOST"
 
 echo "[*] Sending initial request to $URL..."
-fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $TLS_CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $FETCH_OUT)
+fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $FETCH_OUT)
 echo "[*] Sleeping for $SLEEPTIME seconds..."
 for i in {1..$SLEEPTIME}; do
     echo -n "."
@@ -41,7 +39,7 @@ done
 
 echo ""
 echo "[*] Sending second request to $URL..."
-cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $TLS_CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $CACHE_OUT)
+cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $CACHE_OUT)
 
 FETCH_RESULTS=$(cat $FETCH_REPORT)
 CACHE_RESULTS=$(cat $CACHE_REPORT)

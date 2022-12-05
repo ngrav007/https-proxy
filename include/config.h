@@ -45,8 +45,6 @@
 #define COLON_L                  1
 #define HTTP_VERSION_1_1         "HTTP/1.1"
 #define HTTP_VERSION_1_1_L       8
-#define CONNECTION_ESTABLISHED   "Connection established"
-#define CONNECTION_ESTABLISHED_L 22
 
 /* HTTP ---------------------------------------------------------------------- */
 #define BAD_REQUEST_400           400

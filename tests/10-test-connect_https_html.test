@@ -32,7 +32,7 @@ echo " |    $METHOD $URL HTTP/1.1"
 echo " |    Host: $HOST"
 
 echo "[*] Sending initial request to $URL..."
-fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $FETCH_OUT)
+fetch=$($TIMER $TIMER_FLAGS $FETCH_REPORT $TLS_CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $FETCH_OUT)
 
 echo "[*] Sleeping for $SLEEPTIME seconds..."
 for i in {1..$SLEEPTIME}; do
@@ -42,7 +42,7 @@ done
 
 echo ""
 echo "[*] Sending second request to $URL..."
-cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $CACHE_OUT)
+cache=$($TIMER $TIMER_FLAGS $CACHE_REPORT $TLS_CLIENT $CLIENT_FLAGS $METHOD $HOST $URL 2> $CACHE_OUT)
 
 FETCH_RESULTS=$(cat $FETCH_REPORT)
 CACHE_RESULTS=$(cat $CACHE_REPORT)

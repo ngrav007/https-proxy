@@ -100,10 +100,10 @@ int main(int argc, char **argv)
     }
 
     /* add non-persistent connection field */
-    if (HTTP_add_field(&raw_request, &raw_l, "Connection", "close") < 0) {
-        close(proxy_fd);
-        error("[!] Failed to add connection field");
-    }
+    // if (HTTP_add_field(&raw_request, &raw_l, "Connection", "close") < 0) {
+    //     close(proxy_fd);
+    //     error("[!] Failed to add connection field");
+    // }
 
     fprintf(stderr, "[+] Sending request:\n%s", raw_request);
     fprintf(stderr, "[+] Length: %zu\n", raw_l);
