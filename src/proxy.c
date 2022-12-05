@@ -126,6 +126,7 @@ int Proxy_handle(struct Proxy *proxy)
         case CLI_SSL:
             // TODO 
             print_info("[Proxy_handle]: client is in SSL state");
+            fprintf(stderr, "[Proxy_handle]: CLI_SSL: TODO\n");
             break;
         }
 
@@ -204,6 +205,11 @@ int Proxy_sendError(int socket, int msg_code)
     }
 }
 
+/**
+ * Handles CONNECT tunneling: 
+ * Takes byte stream from sender socket and forwards to receiver socket 
+ * without parsing or inspecting bytes.
+ */
 int Proxy_handleConnect(int sender, int receiver)
 {
     if (sender == -1 || receiver == -1) {
@@ -233,6 +239,12 @@ int Proxy_handleConnect(int sender, int receiver)
     return EXIT_SUCCESS;
 }
 
+/**
+ * Handles communication when a client made a GET request. 
+ * Receives bytes from query->socket. Creates a Response object onces 
+ * recv'd all bytes from sender. Caller's responsibility to handle Response 
+ * caching and forwarding. (Note: Caller is only Proxy_handle())
+ */
 int Proxy_handleQuery(Proxy *proxy, Query *query)
 {
     if (proxy == NULL || query == NULL) {
@@ -405,6 +417,9 @@ void Proxy_free(void *proxy)
         p->client_fd = -1;
     }
 
+    /* free the SSL context */
+    SSL_CTX_free(p->ctx);
+
     p->port = 0;
 }
 
@@ -425,7 +440,7 @@ void Proxy_print(struct Proxy *proxy)
 
 /**
  * 1. accepts connection request from new client
- * 2. creates a client object for new client
+ * 2. creates a client object for new client, make socket non-blocking
  * 3. puts new client's fd in master set
  * 4. update the value of fdmax
  */
@@ -440,7 +455,20 @@ int Proxy_accept(struct Proxy *proxy)
         Client_free(cli);
         return ERROR_ACCEPT;
     }
-
+    
+    /* set socket to non-blocking */
+    int flags = fcntl(cli->socket, F_GETFL, 0);
+    if (flags == -1) {
+        print_error("proxy: fcntl failed");
+        Client_free(cli);
+        return ERROR_FAILURE;
+    }
+    flags |= O_NONBLOCK;
+    if (fcntl(cli->socket, F_SETFL, flags) == -1) {
+        print_error("proxy: fcntl failed");
+        Client_free(cli);
+        return ERROR_FAILURE;
+    }
 
     /* add client to the proxy's client list */
     int ret = List_push_back(proxy->client_list, (void *)cli);
@@ -456,21 +484,24 @@ int Proxy_accept(struct Proxy *proxy)
     /* 4. updates the max fd */
     proxy->fdmax = cli->socket > proxy->fdmax ? cli->socket : proxy->fdmax;
 
+
     /* 5. Check if client wants to initiate a TLS/SSL handshake */
-    fprintf(stderr, "[Proxy_accept] Checking for a SSL/TLS connection...\n");
-    cli->ssl = SSL_new(proxy->ctx);
-    SSL_set_fd(cli->ssl, cli->socket);
-    int ssl_acc_ret = SSL_accept(cli->ssl);
-    if (ssl_acc_ret <= 0) {
-        fprintf(stderr, "[Proxy_accept] Not an SSL/TLS connection. Shutting down SSL\n");
-        fprintf(stderr, "[Proxy_accept] SSL_get_error() = %d\n", ssl_acc_ret);
+    // fprintf(stderr, "[Proxy_accept] Checking for a SSL/TLS connection...\n");
+    // cli->ssl = SSL_new(proxy->ctx);
+    // SSL_set_fd(cli->ssl, cli->socket);
+    // int ssl_acc_ret = SSL_accept(cli->ssl);
+    // if (ssl_acc_ret <= 0) {
+    //     fprintf(stderr, "[Proxy_accept] Not an SSL/TLS connection. Shutting down SSL\n");
+    //     fprintf(stderr, "[Proxy_accept] SSL_get_error() = %d\n", SSL_get_error(cli->ssl, ssl_acc_ret));
 
-        // SSL_shutdown(cli->ssl);
-        // SSL_free(cli->ssl);
-        // cli->ssl = NULL;
+    //     // SSL_shutdown(cli->ssl);
+    //     // SSL_free(cli->ssl);
+    //     // cli->ssl = NULL;
 
-        Client_clearSSL(cli);
-    }
+        
+
+    //     Client_clearSSL(cli);
+    // }
 
 
     return EXIT_SUCCESS;
@@ -493,6 +524,9 @@ int Proxy_handleListener(struct Proxy *proxy)
 
 // TODO
 // Note:  special handling for HALT
+/**
+ * 
+ */
 int Proxy_handleClient(struct Proxy *proxy, Client *client)
 {
     // SSL -- check if client trusts us
@@ -501,14 +535,15 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     memset(recv_buffer, 0, BUFFER_SZ + 1);
 
     /* Check if client is communicating over SSL */
-    int num_bytes;
-    if (client->ssl != NULL) { // SSL
-        num_bytes = SSL_read(client->ssl, recv_buffer, BUFFER_SZ);
-    } else { // not SSL
-        num_bytes = recv(client->socket, recv_buffer, BUFFER_SZ, 0);
-    }
+    // int num_bytes;
+    // if (client->ssl != NULL) { // SSL
+    //     num_bytes = SSL_read(client->ssl, recv_buffer, BUFFER_SZ);
+    // } else { // not SSL
+    //     num_bytes = recv(client->socket, recv_buffer, BUFFER_SZ, 0);
+    //     fprintf(stderr, "[Proxy_handleClient]: recv_buffer: \n%s\n", recv_buffer);
+    // }
 
-    // int num_bytes = recv(client->socket, recv_buffer, BUFFER_SZ, 0);
+    int num_bytes = recv(client->socket, recv_buffer, BUFFER_SZ, 0);
     if (num_bytes < 0) { // error recv or SSL_read
         print_error("proxy: recv failed");
         perror("recv");
@@ -518,7 +553,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
         return CLIENT_CLOSE;
     }
 
-    /* resize client buffer, include null-terminator for parsing (strstr) */
+    /* resize client buffer, include null-terminator, and copy recv'd bytes */
     client->buffer = realloc(client->buffer, client->buffer_l + num_bytes + 1);
     if (client->buffer == NULL) {
         return ERROR_FAILURE;
@@ -528,6 +563,7 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     /* copy data from recv_buffer to client buffer */
     memcpy(client->buffer + client->buffer_l, recv_buffer, num_bytes);
     client->buffer_l += num_bytes;
+    fprintf(stderr, "[Proxy_handleClient]: client->buffer: \n%s\n", client->buffer);
 
     /* update last receive time to now */
     gettimeofday(&client->last_recv, NULL);
@@ -536,6 +572,12 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
         print_debug("proxy: got header");
         int query_type = (client->ssl == NULL) ? QUERY_HTTP : QUERY_HTTPS;
         ret = Query_new(&client->query, client->buffer, client->buffer_l, query_type);
+
+        // fprintf(stderr, "[Proxy_handleClient]: The request: \n%s\n", client->buffer);
+
+        fprintf(stderr, "[Proxy_handleClient]: query_type is %d\n", query_type);
+        fprintf(stderr, "[Proxy_handleClient]: client->query->req->method = %s\n", client->query->req->method);
+
         if (ret != EXIT_SUCCESS) {
             print_error("proxy: failed to parse query");
             return ret;
@@ -591,6 +633,26 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
         } else if (memcmp(client->query->req->method, CONNECT, CONNECT_L) == 0) { // CONNECT
             print_info("proxy: got CONNECT request");
 
+            /* 5. Check if client wants to initiate a TLS/SSL handshake */
+            fprintf(stderr, "[Proxy_handleClient] Checking for a SSL/TLS connection...\n");
+            client->ssl = SSL_new(proxy->ctx);
+            SSL_set_fd(client->ssl, client->socket);
+            int ssl_acc_ret = SSL_accept(client->ssl);
+            if (ssl_acc_ret <= 0) {
+                fprintf(stderr, "[Proxy_handleClient] Not an SSL/TLS connection. Shutting down SSL\n");
+                // fprintf(stderr, "[Proxy_handleClient] SSL_get_error() = %d; ssl_acc_ret = %d\n", SSL_get_error(client->ssl, ssl_acc_ret), ssl_acc_ret);
+                // fprintf(stderr, "[Proxy_handleClient] ERR_print_errors_fp():\n");
+                // ERR_print_errors_fp(stderr);
+                char err[256];
+                memset(err, 0, 256);
+                ERR_error_string((unsigned long) SSL_get_error(client->ssl, ssl_acc_ret), err);
+                fprintf(stderr, "[Proxy_handleClient] err: %s\n", err);
+
+                Client_clearSSL(client);
+            } else {
+                fprintf(stderr, "[Proxy_handleClient] Client requested a SSL/TLS connection\n");
+            }
+
             // 1. establish connection on client-proxy side
             // --> already done when we accepted a client_fd
 
@@ -602,12 +664,14 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
             // Default is tunnel CONNECT, when client->ssl == NULL
 
             int n;
-            if (client->ssl == NULL) {
+            if (client->ssl == NULL) { // tunneling
                 n = Proxy_fetch(proxy, client->query);
                 client->state = CLI_CONNECT;
+                fprintf(stderr, "[Proxy_handleClient] set Client state to CLI_CONNECT\n");
             } else { // client->ssl != NULL, 
                 n = Proxy_SSL_connect(proxy, client->query);
                 client->state = CLI_SSL;
+                fprintf(stderr, "[Proxy_handleClient] set Client state to CLI_SSL\n");
             }
 
             if (n < 0) {
@@ -702,6 +766,12 @@ int Proxy_SSL_connect(Proxy *proxy, Query *query)
         print_error("[Proxy_SSL_connect]: invalid arguments");
         return ERROR_FAILURE;
     }
+
+    SSL_library_init();
+    query->ctx = init_client_context();
+
+    load_ca_certificates(query->ctx, CERT_FILE, KEY_FILE);
+    query->ssl = NULL;
 
     print_debug("[Proxy_SSL_connect]: connecting to server...");
     int conn = connect(query->socket, (struct sockaddr *)&query->server_addr, sizeof(query->server_addr));

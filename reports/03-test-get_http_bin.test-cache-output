@@ -1,0 +1,32 @@
+[+] Connecting to proxy localhost:9055
+[*] http: Raw request:
+GET http://www.cs.cmu.edu/~dga/dga-headshot.jpg HTTP/1.1
+Host: www.cs.cmu.edu
+
+
+[+] Sending request:
+GET http://www.cs.cmu.edu/~dga/dga-headshot.jpg HTTP/1.1
+Host: www.cs.cmu.edu
+Connection: close
+
+[+] Length: 101
+[*] client: sent 101 bytes
+[*] client: received 1456 bytes
+[*] HTTP Response Header --------------------- +
+
+HTTP/1.1 200 OK
+Date: Mon, 05 Dec 2022 07:42:49 GMT
+Server: Apache/2.4.18 (Ubuntu)
+Set-Cookie: SHIBLOCATION=tilde; path=/; domain=.cs.cmu.edu
+Last-Modified: Sat, 31 Aug 2013 01:21:39 GMT
+ETag: "2ca586-4e53429314ec0"
+Accept-Ranges: bytes
+Content-Length: 2925958
+Content-Type: image/jpeg
+Set-Cookie: BALANCEID=balancer.web38.srv.cs.cmu.edu; path=/;
+Connection: close
+Set-Cookie: BIGipServer~SCS~cs-userdir-pool-80=533332608.20480.0000; path=/; Httponly
+Age: 1
+
+[*] --------------------------------------------
+[+] Saved response to output/resp-dga-headshot.jpg

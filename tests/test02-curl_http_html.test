@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Test 04: Test the http-proxy with a non-Tufts URL GET request and response
+# Test 02: Test the http-proxy with a non-Tufts URL GET request and response
 
 # Start timer for test
-echo "+ ------ Test 04: Non-Tufts URL GET request and response ------ +"
+echo "+ ------ Test 02: Non-Tufts URL GET request and response ------ +"
 
 echo "[*] Sending initial request to http://neverssl.com..."
 fetch=$(time curl -v -x localhost:9056 http://neverssl.com 2>&1)

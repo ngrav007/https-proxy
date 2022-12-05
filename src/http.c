@@ -584,6 +584,8 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
         return -1;
     }
 
+    fprintf(stderr, "[parse_request]: The request: \n%s\n", buffer);
+
     char *buffer_lc = get_buffer_lc(buffer, buffer + buffer_l);
     if (parse_startline(req, buffer_lc) != 0) {
         return -1;
@@ -810,6 +812,8 @@ static char *parse_method(char *request, size_t *method_l, char **saveptr)
     }
 
     char *method = request;
+    fprintf(stderr, "[parse_method]: The request: \n%s\n", request);
+    fprintf(stderr, "[parse_method]: method: %s\n", method);
     char *end    = strchr(request, ' ');
     if (end == NULL) {
         return NULL;
@@ -1032,6 +1036,8 @@ static int parse_startline(Request *req, char *request)
     if (req == NULL || request == NULL) {
         return EXIT_FAILURE;
     }
+
+    fprintf(stderr, "[parse_startline]: The request: \n%s\n", request);
 
     char *sp     = NULL;
     char *method = parse_method(request, &req->method_l, &sp);

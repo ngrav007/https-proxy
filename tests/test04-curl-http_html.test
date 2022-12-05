@@ -3,7 +3,7 @@
 # Test 02: Test the http-proxy with a simple GET request and response
 
 # Start timer for test
-echo "+ ---------- Test 02: Simple GET request and response --------- +"
+echo "+ ---------- Test 04: Simple GET request and response --------- +"
 
 echo "[*] Sending initial request to http://www.cs.cmu.edu/~prs/bio.html..."
 fetch=$(time curl -v -x localhost:9056 http://www.cs.cmu.edu/~prs/bio.html 2>&1)

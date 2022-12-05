@@ -246,7 +246,7 @@ void print_debug(char *msg)
 
 SSL_CTX *init_server_context()
 {
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     SSL_CTX *ctx;
 
     OpenSSL_add_all_algorithms();
@@ -262,7 +262,7 @@ SSL_CTX *init_server_context()
 
 SSL_CTX *init_client_context()
 {
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     SSL_CTX *ctx;
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
