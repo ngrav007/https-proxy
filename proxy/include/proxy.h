@@ -54,7 +54,7 @@ int Proxy_listen(Proxy *proxy);
 void Proxy_free(void *proxy);
 void Proxy_print(Proxy *proxy);
 ssize_t Proxy_recv(Proxy *proxy, int socket);
-ssize_t Proxy_send(char *buffer, size_t buffer_l, int socket);
+ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l);
 int Proxy_handle(Proxy *proxy);
 int Proxy_accept(Proxy *proxy);
 int Proxy_handleListener(Proxy *proxy);

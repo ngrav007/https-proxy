@@ -1,31 +1,19 @@
 #include "query.h"
 
-int Query_new(Query **q, char *buffer, size_t buffer_l, int type)
+int Query_new(Query **q, char *buffer, size_t buffer_l)
 {
     if (q == NULL || buffer == NULL) {
         return ERROR_FAILURE;
     } 
 
     /* allocate memory for the query */
-    if (*q != NULL) {
-        Query_free(*q);
-    }
-
-    *q = calloc(1, sizeof(struct Query));
+    if (*q != NULL) { Query_free(*q); }
+    *q = calloc(1, sizeof(Query));
     if (*q == NULL) {
         return ERROR_FAILURE;
     }
 
-    /* TODO -- SSL */
-    if (type == QUERY_HTTPS) {
-        SSL_library_init();
-        (*q)->ctx = init_client_context();
-
-        load_ca_certificates((*q)->ctx, CERT_FILE, KEY_FILE);
-        (*q)->ssl = NULL;
-    }
-
-
+    /* create new request from buffer */
     (*q)->req = Request_new(buffer, buffer_l);
     if ((*q)->req == NULL) {
         print_error("query: failed to create request");
@@ -34,12 +22,14 @@ int Query_new(Query **q, char *buffer, size_t buffer_l, int type)
         return ERROR_FAILURE;
     }
 
+    /* check if the request is a halt request */
     if (strncmp((*q)->req->method, PROXY_HALT, (*q)->req->method_l) == 0) {
         Query_free(*q);
         *q = NULL;
         return HALT; // TODO make halt in body of POST request
     }
 
+    /* initialize query buffer */
     (*q)->buffer = calloc(QUERY_BUFFER_SZ + 1, sizeof(char));
     if ((*q)->buffer == NULL) {
         Query_free(*q);
@@ -49,6 +39,7 @@ int Query_new(Query **q, char *buffer, size_t buffer_l, int type)
     (*q)->buffer_l = 0;
     (*q)->buffer_sz = QUERY_BUFFER_SZ;
 
+    /* open query socket */
     (*q)->socket = socket(AF_INET, SOCK_STREAM, 0);
     if ((*q)->socket < 0) {
         print_error("client socket call failed");
@@ -60,7 +51,7 @@ int Query_new(Query **q, char *buffer, size_t buffer_l, int type)
     fprintf(stderr, "%s[DEBUG]%s query_new: host: %s\n", BYEL, reset, (*q)->req->host);
     if ((*q)->req->host_l == 0) {
         print_warning("query_new: host is empty");
-        return HOST_INVALID;
+        return INVALID_HOST;
     }
     
     (*q)->host_info = gethostbyname((*q)->req->host);

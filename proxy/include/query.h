@@ -29,13 +29,12 @@ typedef struct Query {
     struct timeval timestamp;
     socklen_t server_addr_l;
     int socket;
-
     char *buffer;
     size_t buffer_l;
     size_t buffer_sz;
 } Query;
 
-int Query_new(Query **q, char *buffer, size_t buffer_l, int type);
+int Query_new(Query **q, char *buffer, size_t buffer_l);
 Query *Query_create(Request *req, Response *res,
                     struct sockaddr_in *server_addr, socklen_t server_addr_l,
                     int server_fd);

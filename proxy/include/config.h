@@ -31,10 +31,8 @@
 #define HEADER_END_L             4
 #define CRLF                     "\r\n"
 #define CRLF_L                   2
-#define HTTP_GET                 "GET"
 #define GET                      "get"
 #define GET_L                    3
-#define HTTP_CONNECT             "CONNECT"
 #define CONNECT                  "connect"
 #define CONNECT_L                7
 #define FIELD_SEP                ": "
@@ -45,13 +43,22 @@
 #define COLON_L                  1
 #define HTTP_VERSION_1_1         "HTTP/1.1"
 #define HTTP_VERSION_1_1_L       8
+#define HTTP                      "http://"
+#define HTTP_L                    7
+#define HTTPS                     "https://"
+#define HTTPS_L                   8
+#define HTTP_GET                 "GET"
+#define HTTP_CONNECT             "CONNECT"
+
 
 /* HTTP ---------------------------------------------------------------------- */
+
 #define BAD_REQUEST_400           400
 #define NOT_FOUND_404             404
 #define IM_A_TEAPOT_418           418
 #define INTERNAL_SERVER_ERROR_500 500
 #define NOT_IMPLEMENTED_501       501
+#define PROXY_AUTH_REQUIRED_407   407
 
 #define STATUS_200     "200 OK\r\n\r\n"
 #define STATUS_200_L   sizeof(STATUS_200) - 1
@@ -61,6 +68,8 @@
 #define STATUS_400_L   sizeof(STATUS_400) - 1
 #define STATUS_404     "404 Not Found\r\n\r\n"
 #define STATUS_404_L   sizeof(STATUS_404) - 1
+#define STATUS_407     "407 Proxy Authentication Required\r\n\r\n"
+#define STATUS_407_L   sizeof(STATUS_407) - 1
 #define STATUS_418     "418 I'm a teapot\r\n\r\n"
 #define STATUS_418_L   sizeof(STATUS_418) - 1
 #define STATUS_500     "500 Internal Server Error\r\n\r\n"
@@ -97,14 +106,14 @@
 #define ERROR_SSL     -9
 #define INVALID_REQUEST  -10
 #define INVALID_RESPONSE -11
+#define PROXY_AUTH_REQUIRED   -13
 
 
+#define INVALID_HEADER   -12
+#define INVALID_HOST      -6
 
-#define INVALID_HEADER   -21
-
-#define ERROR_BAD_URL     -5
-#define HOST_INVALID      -6
-#define HOST_UNKNOWN      -11
+#define INVALID_URL     -5
+#define HOST_UNKNOWN      -15
 #define ERROR_BAD_PORT    -7
 #define ERROR_BAD_METHOD  -8
 #define ERROR_BAD_VERSION -9

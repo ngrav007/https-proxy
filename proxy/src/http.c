@@ -93,6 +93,31 @@ bool HTTP_got_header(char *buffer)
     }
 }
 
+int HTTP_validate_request(Request *req)
+{
+    if (req == NULL) {
+        return ERROR_FAILURE;
+    }
+
+    // ? Do All methods have different lengths? If we implement any more methods this wont work */
+    /* Ensure GET requests are HTTP only */
+    switch (req->method_l) {
+        case GET_L:
+            if (strncmp(req->method, GET, GET_L) == 0) {
+                if (strncmp(req->path, HTTPS, HTTPS_L) == 0) {
+                    return PROXY_AUTH_REQUIRED;
+                }
+            }
+            break;
+        case CONNECT_L:
+            break;
+        default:
+            return ERROR_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /* Request Functions -------------------------------------------------------- */
 
 /* Request_new
@@ -592,7 +617,6 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
     }
 
     if (memcmp(req->method, PROXY_HALT, req->method_l) == 0) {
-        ;
         free(buffer_lc);
         return HALT;
     }
