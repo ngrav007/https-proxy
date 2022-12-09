@@ -100,7 +100,7 @@ openssl genrsa -out ${KEY} 2048
 openssl req -new -key ${KEY} -out ${CSR} -subj "${SUBJECT}${CN}"
 
 # Generate certificate
-openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -CAcreateserial -out ${CRT} -days 825 -sha256 -extfile ${EXT_FILE} -passin file:${ROOT_CA_PASSWD}
+openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -CAcreateserial -out ${CRT} -days 825 -sha256 -extfile ${EXT_FILE} -passin file:${ROOT_CA_PASSWD} -passout file:${ROOT_CA_PASSWD}
 
 # TODO - do we do any of this below for dev certs?
 # # Add certificate to ca-certificates
