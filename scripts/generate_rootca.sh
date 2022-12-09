@@ -40,6 +40,7 @@ echo "      Password: ${PASSWD}"
 # fi
 
 # Generate certificate key include password - store in /workspaces/Development/https-proxy/etc/private
+# To make a key without a password, remove the -des3 option
 echo "[*] Generating certificate key"
 openssl genrsa -des3 -out "${KEY}" -passout "file:${ROOTCA_PASSWD}" 2048
 

@@ -2,9 +2,6 @@
 
 source /workspaces/Development/https-proxy/scripts/config/.config
 
-# source /workspaces/Development/https-proxy/scripts/generate_key.sh  # generate key
-# source /workspaces/Development/https-proxy/scripts/generate_ext.sh  # generate extension file
-
 # External Scripts
 GENERATE_EXT="/workspaces/Development/https-proxy/scripts/generate_ext.sh"
 
@@ -75,5 +72,3 @@ openssl x509 -req                       \
         -out ${CRT} -days 365           \
         -sha256                         \
         -extfile ${EXT}
-
-

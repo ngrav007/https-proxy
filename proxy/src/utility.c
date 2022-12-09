@@ -254,8 +254,8 @@ SSL_CTX *init_server_context()
     method = TLS_server_method();
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
-            ERR_print_errors_fp(stderr);
-            return NULL;
+        ERR_print_errors_fp(stderr);
+        return NULL;
     }
     return ctx;
 }
@@ -280,7 +280,6 @@ SSL_CTX *init_client_context()
 
 int load_ca_certificates(SSL_CTX *ctk, char *ca_cert_file, char *ca_key_file)
 {
-    
     /* set the key and the certificate */
     if (SSL_CTX_use_certificate_file(ctk, ca_cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
