@@ -1444,3 +1444,190 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l)
     }
     memcpy(*f, v, v_l);
 }
+
+/* takes a (response) buffer of size buffer_l, and edits it to include 
+   a style.color attribute for links (html anchor tags). Should instert style attribute BEFORE href attribute. 
+   
+   Update: Now takes a string array; Any links found in the buffer that is 
+   also in the string array will be green. o.w. it is red.
+   */
+int color_links(char **buffer, size_t *buffer_l, 
+                char *cache_keys[], int num_keys)
+{
+    // fprintf(stderr, "Initializing new buffer of size: %d\n", *buffer_l);
+    char *new_buffer = calloc(*buffer_l + COLOR_L + 1, sizeof(char));
+    if (new_buffer == NULL) {
+        // fprintf(stderr, "[color_links] calloc failed.\n");
+        return ERROR_FAILURE;
+    }
+
+    int new_buffer_sz = 0;
+    int new_buffer_cap = *buffer_l + COLOR_L;
+    char *new_buffer_pointer = new_buffer;
+    char *buffer_end = (*buffer) + *buffer_l; // last byte
+
+    // loop, copying individual bytes until you reach end of original buffer being copied over. 
+    char *orig_buffer_pointer = *buffer;
+
+    while (orig_buffer_pointer < buffer_end) 
+    {
+        // ensure new_buffer capacity has enough for remaining bytes in original buffer. 
+        int original_bytes_left = buffer_end - orig_buffer_pointer;
+        if ((original_bytes_left + COLOR_L) > (new_buffer_cap - new_buffer_sz)) 
+        {
+            // expand 
+            // fprintf(stderr, "+=+=+=EXPANDING+=+=+=\n");
+            new_buffer = 
+                realloc(new_buffer, new_buffer_cap + COLOR_L);
+            if (new_buffer == NULL) {
+                // fprintf(stderr, "[color_links] realloc failed.\n");
+                return ERROR_FAILURE;
+            }
+            // new_buffer_cap += original_bytes_left;
+            new_buffer_cap += COLOR_L;
+
+            // fprintf(stderr, "new_buffer_cap Expanded = %d\n", new_buffer_cap); 
+        }
+
+        //  strstr for the next "<a " tag
+        char *anchor = strstr(orig_buffer_pointer, ANCHOR_HTTPS_OPEN);
+        if (anchor != NULL) {   // found an anchor tag; COLOR
+            
+            // fprintf(stderr, "Found an <a> with http*\n");
+
+            // copy the bytes up to the space in the anchor tag 
+            char *stop = anchor + ANCHOR_OPEN_L;
+            for (; orig_buffer_pointer != stop; 
+                   (new_buffer_pointer)++, (orig_buffer_pointer)++) 
+            {
+                (*new_buffer_pointer) = (*orig_buffer_pointer);
+                new_buffer_sz++;
+            }
+
+            // parse out the link, which is always in quotes "   " 
+            char *start_of_link = strstr(orig_buffer_pointer, "\"");
+            start_of_link += 1;
+            char *end_of_link = strstr(start_of_link, "\"");
+            int link_l = end_of_link - start_of_link;
+            // char *link = malloc(link_l + 1);
+            // memcpy(link, start_of_link, link_l);
+
+            // check if link is a perfect prefix of any key in the array, pick color
+            char *color_attribute = NULL;
+            // if (foundKey(link2, cache_keys, num_keys)) {
+            if (foundKey(start_of_link, link_l, cache_keys, num_keys)) {
+                // fprintf(stderr, "Found key: GREEN\n");
+                color_attribute = GREEN_STYLE;
+            } else {
+                // fprintf(stderr, "Not found key: RED\n");
+                color_attribute = RED_STYLE;
+            }
+
+            // insert color attribute: 'style="color:#FF0000;" '
+            char *color_pointer = color_attribute;
+            char * color_end = color_attribute + COLOR_L;
+
+            for (; color_pointer != color_end; 
+                   (new_buffer_pointer)++, (color_pointer)++) 
+            {
+                (*new_buffer_pointer) = (*color_pointer);
+                new_buffer_sz++;
+            }
+
+        } else { // no more anchor tags, copy bytes until the end 
+            // fprintf(stderr, "No more <a> with http*\n");
+            for (; orig_buffer_pointer != buffer_end; 
+                   (new_buffer_pointer)++, (orig_buffer_pointer)++) 
+            {
+                (*new_buffer_pointer) = (*orig_buffer_pointer);
+                new_buffer_sz++;
+            }
+
+        }
+    }
+
+
+    free(*buffer);
+
+    new_buffer = realloc(new_buffer, new_buffer_sz + 1);
+    if (new_buffer == NULL) {
+        fprintf(stderr, "[color_links] realloc failed.\n");
+        return ERROR_FAILURE;
+    }
+    new_buffer[new_buffer_sz + 1] = '\0';
+
+    *buffer_l = new_buffer_sz;
+    *buffer = new_buffer;
+
+    return 0;
+
+
+}
+
+/**
+    if target is a perfect url-prefix of a string (key) in the array, function returns 1 for true. 0 for false, o.w.
+*/
+// int foundKey(char *target, char *arr[], int arr_size)
+int foundKey(char *target, int target_l, char *arr[], int arr_size)
+{
+    int i = 0;
+    for (int i = 0; i < arr_size; i++) {
+        if (perfectKeyPrefix(target, target_l, arr[i])) {
+            // fprintf(stderr, "Perfect Key Prefix Match\n");
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
+ if pre is a prefix of str, then returns 1 for true. 0 for false, o.w.
+*/
+int perfectKeyPrefix(char *pre, int pre_l, char *str) 
+{
+    // if s is longer than t, return 0
+    // int pre_sz = strlen(pre);
+    int pre_sz = pre_l;
+    int str_sz = strlen(str);
+
+    if (pre_sz > str_sz) { 
+        // fprintf(stderr, "Target string is longer than Key-candidate\n");
+        return 0; 
+    }
+
+    // chekc if they match from the first http:// or https://
+    if (strncmp(pre, str, 4) != 0) { 
+        // fprintf(stderr, "Target and Candidate have different HTTP protocols\n");
+        return 0; 
+    }
+
+    // start comparting on the first // 
+    char *pre_ptr = strstr(pre, "//");
+    char *str_ptr = strstr(str, "//");
+    char *pre_end = pre + pre_sz;
+    char *str_end = str + str_sz;
+
+    // loop until you find a mismatch or until pre completes
+    for (; pre_ptr != pre_end; (pre_ptr)++, (str_ptr)++) 
+    {
+        if (*pre_ptr != *str_ptr) { // Mismatch
+            // fprintf(stderr, "Mismatch: %c vs. %c\n", *pre_ptr, *str_ptr);
+            return 0;
+        }
+    }
+
+    // check remainter of str; if it has more in it's path, return 0
+    // but if its a port number thats part of a key, or nothing, return 1.
+    if (str_ptr == str_end) { // both are "\0"
+        // fprintf(stderr, "Match: Perfect\n");
+        return 1;
+    } else if (*str_ptr == ':' && isdigit(*(str_ptr + 1))) {
+        // end of str is ":<portno>", just check for partial port
+        // fprintf(stderr, "Match: Candidate only has a port\n");
+        return 1;
+    } 
+    
+    // port does not follow the prefix, str is not ended. There is more to the path in str
+    // fprintf(stderr, "Mismatch: Candidate indicated longer URI\n");
+    return 0;
+}

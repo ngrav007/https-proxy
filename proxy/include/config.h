@@ -136,6 +136,19 @@
 #define CLI_CONNECT 2
 #define CLI_SSL     3
 
+/* */
+#define ANCHOR_OPEN "<a "
+#define ANCHOR_OPEN_L 3
+#define ANCHOR_HTTPS_OPEN "<a href=\"https"
+#define ANCHOR_HTTPS_OPEN_L 14 
+
+/* */
+#define RED_F 0
+#define GREEN_F 1
+#define RED_STYLE   "style=\"color:#FF0000;\" "
+#define GREEN_STYLE "style=\"color:#00FF00;\" "
+#define COLOR_L 23
+
 /* SSL */
 #define CERT_FILE "/workspaces/Development/etc/certs/server.pem"
 #define KEY_FILE  "/workspaces/Development/etc/certs/server.key"
