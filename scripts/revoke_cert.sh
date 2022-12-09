@@ -34,11 +34,25 @@ if [ -f ${PEM_FILE} ]; then
     rm ${PEM_FILE}
 fi
 
-# Remove the key and local folder
+# Remove the key
 KEY_FILE=${KEYS_DIR}/${CN}.key
 if [ -f ${KEY_FILE} ]; then
     echo "[+] Removing key file ${KEY_FILE}"
     rm ${KEY_FILE}
+fi
+
+# Remove secure key
+SECURE_KEY_FILE=${KEYS_DIR}/${CN}.key.secure
+if [ -f ${SECURE_KEY_FILE} ]; then
+    echo "[+] Removing secure key file ${SECURE_KEY_FILE}"
+    rm ${SECURE_KEY_FILE}
+fi
+
+# Remove Password file
+PASSWD_FILE=${PASSWD_DIR}/${CN}.passwd 
+if [ -f ${PASSWD_FILE} ]; then
+    echo "[+] Removing password file ${PASSWD_FILE}"
+    rm ${PASSWD_FILE}
 fi
 
 # Remove csr and local folder
