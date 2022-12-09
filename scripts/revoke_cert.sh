@@ -20,68 +20,36 @@ fi
 
 CN=$1
 
-# Remove the certificate and local folder
-CRT_FILE=${CERTS_DIR}/${CN}.crt
-if [ -f ${CRT_FILE} ]; then
-    echo "[+] Removing certificate file ${CRT_FILE}"
-    rm ${CRT_FILE}
-fi
+# Files
+CRT="${LOCAL_CERTS}/${CN}.crt"
+CSR="${LOCAL_CSRS}/${CN}.csr"
+KEY="${LOCAL_KEYS}/${CN}.key"
+EXT="${LOCAL_EXTS}/${CN}.ext"
 
-# Remove PEM file
-PEM_FILE=${CERTS_DIR}/${CN}.pem
-if [ -f ${PEM_FILE} ]; then
-    echo "[+] Removing PEM file ${PEM_FILE}"
-    rm ${PEM_FILE}
+# Remove the certificate
+if [ -f ${CRT} ]; then
+    echo "[+] Removing certificate file ${CRT}"
+    rm ${CRT}
 fi
 
 # Remove the key
-KEY_FILE=${KEYS_DIR}/${CN}.key
-if [ -f ${KEY_FILE} ]; then
-    echo "[+] Removing key file ${KEY_FILE}"
-    rm ${KEY_FILE}
-fi
-
-# Remove secure key
-SECURE_KEY_FILE=${KEYS_DIR}/${CN}.key.secure
-if [ -f ${SECURE_KEY_FILE} ]; then
-    echo "[+] Removing secure key file ${SECURE_KEY_FILE}"
-    rm ${SECURE_KEY_FILE}
-fi
-
-# Remove Password file
-PASSWD_FILE=${PASSWD_DIR}/${CN}.passwd 
-if [ -f ${PASSWD_FILE} ]; then
-    echo "[+] Removing password file ${PASSWD_FILE}"
-    rm ${PASSWD_FILE}
+if [ -f ${KEY} ]; then
+    echo "[+] Removing key file ${KEY}"
+    rm ${KEY}
 fi
 
 # Remove csr and local folder
-CSR_FILE=${CERTS_DIR}/${CN}.csr
-if [ -f ${CSR_FILE} ]; then
-    echo "[+] Removing CSR file ${CSR_FILE}"
-    rm ${CSR_FILE}
+if [ -f ${CSR} ]; then
+    echo "[+] Removing CSR file ${CSR}"
+    rm ${CSR}
 fi
 
 # Extension for certificate
-EXT_FILE=${EXT_DIR}/${CN}.ext
-if [ -f ${EXT_FILE} ]; then
-    echo "[+] Removing extension file ${EXT_FILE}"
-    rm ${EXT_FILE}
+if [ -f ${EXT} ]; then
+    echo "[+] Removing extension file ${EXT}"
+    rm ${EXT}
 fi
 
-# Remove from ca-certificates
-if [ -f /usr/local/share/ca-certificates/${CN}.crt ]; then
-    echo "[+] Removing ${CN}.crt certificate from ca-certificates"
-    rm /usr/local/share/ca-certificates/${CN}.crt
-    update-ca-certificates
-fi
-
-if [ -f /usr/local/share/ca-certificates/${CN}.pem ]; then
-    echo "[+] Removing ${CN}.pem certificate from ca-certificates"
-    rm /usr/local/share/ca-certificates/${CN}.pem
-    update-ca-certificates
-fi
-
-echo "[*] Certificate and key removed from server"
+echo "[*] '${CN}' certificate and key successfully removed"
 
 exit 0
