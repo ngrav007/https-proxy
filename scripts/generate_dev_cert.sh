@@ -42,7 +42,7 @@ fi
 
 # Extension file - will force overwrite
 EXT_FILE=${EXT_DIR}/${CN}.ext
-./generate_dev_ext.sh ${EXT_FILE}
+./generate_dev_ext.sh ${CN}
 
 if [ ! -f ${EXT_FILE} ]; then
     echo "[!] Extension file ${EXT_FILE} not found"
@@ -68,19 +68,24 @@ echo "         Certificate: ${CRT}"
 echo " -------------------------------------------------- "
 
 # Generate key for new certificate
+echo "[*] Generating key for ${CN}"
 openssl genrsa -out ${KEY} 2048 
 
 # Generate certificate signing request
+echo "[*] Generating certificate signing request for ${CN}"
 openssl req -new -key ${KEY} -out ${CSR} -subj "${SUBJECT}${CN}"
 
 # Generate certificate
-openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -passin file:${ROOT_CA_PASSWD} -CAcreateserial -out ${CRT} -days 825 -sha256 -extfile ${EXT_FILE}
+echo "[*] Generating certificate for ${CN}"
+# use file for ca root cert
+openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -CAcreateserial -out ${CRT} -days 365 -sha256 -extfile ${EXT_FILE}
+# openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -CAcreateserial -out ${CRT} -days 365 -sha256 -extfile ${EXT_FILE}
 
 # TODO - do we do any of this below for dev certs?
 # # Add certificate to ca-certificates
-# echo "[*] Updating ca-certificates"
-# cp "${CRT}" "/usr/share/ca-certificates/${CN}.crt"
-# update-ca-certificates
+echo "[*] Updating ca-certificates"
+cp "${CRT}" "/usr/share/ca-certificates/${CN}.crt"
+update-ca-certificates
 
 # # Add key to trusted store
 # echo "[*] Updating trusted store"
@@ -91,7 +96,7 @@ openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -passin fi
 # chown root:root ${TRUSTED_PRIVATE_KEY_DIR}/${CN}.key
 # chmod 0600 ${TRUSTED_PRIVATE_KEY_DIR}/${CN}.key
 
-# # Verify certificate
-# echo "[*] Verifying certificate"
-# openssl verify -CAfile "${CRT}" "${CRT}"
-# awk -v cmd='openssl x509 -noout -subject' '/BEGIN/{close(cmd)};{print | cmd}' < /etc/ssl/certs/ca-certificates.crt | grep eregion
+# Verify certificate
+echo "[*] Verifying certificate"
+openssl verify -CAfile "${CRT}" "${CRT}"
+awk -v cmd='openssl x509 -noout -subject' '/BEGIN/{close(cmd)};{print | cmd}' < /etc/ssl/certs/ca-certificates.crt | grep eregion

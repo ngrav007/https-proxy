@@ -28,15 +28,10 @@ if [ -z "$1" ]; then
     echo "Usage: $0 <filename>"
     exit 1
 fi
-# CN=$1
-EXT_FILE=$1
+CN=$1
 
 # Extension file
-# EXT_FILE=${EXT_DIR}/${CN}.ext
-# if [ -f ${EXT_FILE} ]; then
-#     echo "[!] Extension file ${EXT_FILE} already exists"
-#     rm ${EXT_FILE} # TODO - should we always remove?
-# fi
+EXT_FILE=${EXT_DIR}/${CN}.ext
 
 # Generate extension file
 echo "authorityKeyIdentifier=keyid,issuer" > ${EXT_FILE}

@@ -16,13 +16,10 @@ if [ -z "$1" ]; then
     echo "Usage: $0 <filename>"
     exit 1
 fi
-# CN=$1
+CN=$1
 
 # Create Key File
-# KEY_FILE=${KEYS_DIR}/${CN}.key
-# if [ -f ${KEYS_FILE} ]; then
-#     rm ${KEY_FILE}
-# fi
+KEY_FILE=${KEYS_DIR}/${CN}.key
 
 # Generate password
 KEY=DEFAULT_DEV_PASSWD
