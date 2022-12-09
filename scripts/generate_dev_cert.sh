@@ -4,7 +4,14 @@ source /workspaces/Development/https-proxy/scripts/config/.config
 
 source /workspaces/Development/https-proxy/scripts/generate_dev_key.sh  # generate key
 source /workspaces/Development/https-proxy/scripts/generate_dev_ext.sh  # generate extension file
-  
+
+# Get Common Name
+if [ -z "$1" ]; then
+    echo "Usage: generate_dev_cert.sh <common name>"
+    exit 1
+fi
+CN=$1
+
 # Check for sudo privileges
 if [[ $EUID -ne 0 ]]; then
    echo "[!] This script must be run as root" 1>&2
@@ -23,18 +30,10 @@ if [ ! -f "${ROOT_CA_KEY}" ]; then
     exit 1
 fi
 
-# Get Common Name
-if [ -z "$1" ]; then
-    echo "Usage: $0 <common name>"
-    exit 1
-fi
-CN=$1
-
 # Key File - will force overwrite
 KEY=${KEYS_DIR}/${CN}.key
 echo "[*] Generating key for ${CN} in ${KEYS_DIR}"
-./generate_dev_key.sh ${KEY}
-
+./generate_dev_passwd.sh ${CN}
 if [ ! -f ${KEY} ]; then
     echo "[!] Key file ${KEY} not found"
     exit 1
