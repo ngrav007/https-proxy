@@ -2,7 +2,8 @@
 
 source /workspaces/Development/https-proxy/scripts/config/.config
 
-source /workspaces/Development/https-proxy/scripts/generate_dev_passwd.sh
+source /workspaces/Development/https-proxy/scripts/generate_dev_key.sh  # generate key
+source /workspaces/Development/https-proxy/scripts/generate_dev_ext.sh  # generate extension file
   
 # Check for sudo privileges
 if [[ $EUID -ne 0 ]]; then
@@ -29,57 +30,30 @@ if [ -z "$1" ]; then
 fi
 CN=$1
 
-# Key File
+# Key File - will force overwrite
 KEY=${KEYS_DIR}/${CN}.key
-if [ -f ${KEY} ]; then
-    echo "[!] Key ${KEY} already exists, removing..."
-    rm ${KEY} # TODO - should we always remove?
-    generate_dev_passwd.sh ${CN}
-elif [ ! -f ${KEY} ]; then
-    echo "[!] Key ${KEY} does not exist"
-    generate_dev_passwd.sh ${CN}
+echo "[*] Generating key for ${CN} in ${KEYS_DIR}"
+./generate_dev_key.sh ${KEY}
+
+if [ ! -f ${KEY} ]; then
+    echo "[!] Key file ${KEY} not found"
+    exit 1
 fi
 
-# Certificate Signing Request
-CSR=${CERTS_DIR}/${CN}.csr
-if [ -f ${CSR} ]; then
-    echo "[!] Certificate Signing Request ${CSR} already exists"
-    rm ${CSR} # TODO - should we always remove?
-fi
-
-# Certificate
-CRT=${CERTS_DIR}/${CN}.crt
-if [ -f ${CRT} ]; then
-    echo "[!] Certificate ${CRT} already exists"
-    rm ${CRT} # TODO - should we always remove?
-fi
-
-# Extension file
+# Extension file - will force overwrite
 EXT_FILE=${EXT_DIR}/${CN}.ext
+./generate_dev_ext.sh ${EXT_FILE}
+
 if [ ! -f ${EXT_FILE} ]; then
     echo "[!] Extension file ${EXT_FILE} not found"
     exit 1
 fi
 
-# # If key exists, remove it
-# if [ -f "${KEY}" ]; then
-#     echo "Removing existing key"
-#     # Remove local key
-#     rm "${KEY}"
-#     # # TODO - should we remove key from trusted store?
-#     # rm "/etc/ssl/private/${CN}.key"
-# fi
+# Certificate Signing Request
+CSR=${CERTS_DIR}/${CN}.csr
 
-# # If certificate exists, remove it
-# if [ -f "${CRT}" ]; then
-#     echo "Removing existing certificate"
-#     # Remove local certificate
-#     rm "${CRT}"
-#     # # TODO - should we remove certificate from ca-certificates?
-#     # rm "/usr/share/ca-certificates/${CN}.crt"
-#     # # TODO - should we remove certificate from trusted store?
-#     # rm "/etc/ssl/certs/${CN}.crt"
-# fi
+# Certificate
+CRT=${CERTS_DIR}/${CN}.crt
 
 echo "[*] Generating certificate for ${CN} in ${CERTS_DIR}"
 echo " -------------------------------------------------- "
@@ -94,13 +68,13 @@ echo "         Certificate: ${CRT}"
 echo " -------------------------------------------------- "
 
 # Generate key for new certificate
-openssl genrsa -out ${KEY} 2048
+openssl genrsa -out ${KEY} 2048 
 
 # Generate certificate signing request
 openssl req -new -key ${KEY} -out ${CSR} -subj "${SUBJECT}${CN}"
 
 # Generate certificate
-openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -CAcreateserial -out ${CRT} -days 825 -sha256 -extfile ${EXT_FILE} -passin file:${ROOT_CA_PASSWD} -passout file:${ROOT_CA_PASSWD}
+openssl x509 -req -in ${CSR} -CA ${ROOT_CA_CRT} -CAkey ${ROOT_CA_KEY} -passin file:${ROOT_CA_PASSWD} -CAcreateserial -out ${CRT} -days 825 -sha256 -extfile ${EXT_FILE}
 
 # TODO - do we do any of this below for dev certs?
 # # Add certificate to ca-certificates

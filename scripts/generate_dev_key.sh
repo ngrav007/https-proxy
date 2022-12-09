@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Generate a password file for a dev certificate
-# Usage: generate_dev_passwd.sh <common name>
+# Usage: generate_dev_key.sh <filename>
 
 source /workspaces/Development/https-proxy/scripts/config/.config
 
@@ -13,20 +13,19 @@ fi
 
 # Get Common Name
 if [ -z "$1" ]; then
-    echo "Usage: $0 <common name>"
+    echo "Usage: $0 <filename>"
     exit 1
 fi
-CN=$1
+# CN=$1
 
-# Get Password
-PASSWD_FILE=${PASSWD_DIR}/${CN}.passwdmn
-if [ -f ${PASSWD_FILE} ]; then
-    echo "[!] Password file ${PASSWD_FILE} already exists"
-    exit 1
-fi
+# Create Key File
+# KEY_FILE=${KEYS_DIR}/${CN}.key
+# if [ -f ${KEYS_FILE} ]; then
+#     rm ${KEY_FILE}
+# fi
 
 # Generate password
-PASSWD=$(openssl rand -base64 32)
+KEY=DEFAULT_DEV_PASSWD
 
 # Write password to file
-echo ${PASSWD} > ${PASSWD_FILE}
+echo ${KEY} > $1

@@ -74,6 +74,15 @@ else
     rm ${PASSWDMN}
 fi
 
+# Extension for certificate
+EXT_FILE=${EXT_DIR}/${CN}.ext
+if [ ! -f ${EXT_FILE} ]; then
+    echo "Extension file ${EXT_FILE} not found"
+else
+    echo "Removing extension file ${EXT_FILE}"
+    rm ${EXT_FILE}
+fi
+
 # Remove from ca-certificates
 if [ -f /usr/local/share/ca-certificates/${CN}.crt ]; then
     rm /usr/local/share/ca-certificates/${CN}.crt
