@@ -1445,6 +1445,7 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l)
     memcpy(*f, v, v_l);
 }
 
+
 /* takes a (response) buffer of size buffer_l, and edits it to include 
    a style.color attribute for links (html anchor tags). Should instert style attribute BEFORE href attribute. 
    

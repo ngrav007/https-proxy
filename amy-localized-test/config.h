@@ -139,8 +139,8 @@
 /* */
 #define ANCHOR_OPEN "<a "
 #define ANCHOR_OPEN_L 3
-#define ANCHOR_HTTPS_OPEN "<a href=\"https"
-#define ANCHOR_HTTPS_OPEN_L 14 
+#define ANCHOR_HTTPS_OPEN "<a href=\"http"
+#define ANCHOR_HTTPS_OPEN_L 13
 
 /* */
 #define RED_F 0
