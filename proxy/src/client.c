@@ -16,7 +16,11 @@ Client *Client_new()
 
     client->state             = CLI_QUERY;
     client->query             = NULL;
-    client->ssl               = NULL;
+
+    #if RUN_SSL
+        client->ssl               = NULL;
+    #endif 
+
     client->buffer            = NULL;
     client->buffer_l          = 0;
     client->socket            = -1;
@@ -68,7 +72,11 @@ int Client_init(Client *client, int socket)
 
     Client_setSocket(client, socket);
     client->query             = NULL;
-    client->ssl               = NULL;
+
+    #if RUN_SSL
+        client->ssl               = NULL;
+    #endif 
+
     client->buffer            = NULL;
     client->buffer_l          = 0;
     client->socket            = -1;
@@ -97,7 +105,11 @@ void Client_free(void *client)
     }
 
     Client_clearQuery(c);
-    Client_clearSSL(c);
+
+    #if RUN_SSL
+        Client_clearSSL(c);
+    #endif 
+
     free_buffer(&c->buffer, &c->buffer_l, NULL);
     free(c);
 }
@@ -252,6 +264,7 @@ void Client_clearQuery(Client *client)
  * Parameters: @client - Pointer to a Client to clear SLL from
  *    Returns: 0 on success, -1 on failure.
  */
+#if RUN_SSL
 void Client_clearSSL(Client *client)
 {
     if (client == NULL || client->ssl == NULL) {
@@ -262,6 +275,7 @@ void Client_clearSSL(Client *client)
     SSL_free(client->ssl);
     client->ssl = NULL;
 }
+#endif 
 
 /* Client_getId
  *    Purpose: Returns the client id for a Client

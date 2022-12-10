@@ -1,8 +1,8 @@
 #ifndef _CACHE_H_
 #define _CACHE_H_
 
-#include "colors.h"
 #include "config.h"
+#include "colors.h"
 #include "entry.h"
 #include "http.h"
 #include "list.h"

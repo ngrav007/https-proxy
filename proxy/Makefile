@@ -62,4 +62,4 @@ $(BLDDIR)/$(SERVER).o: $(SERDIR)/$(SERVER).c $(INCS) ./build/http.o
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.* $(OUTDIR)/* $(TESTDIR)/$(REPORTDIR)/*
+	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.* $(OUTDIR)/* $(REPORTDIR)/*

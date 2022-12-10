@@ -348,7 +348,7 @@ static int remove_stale_entry(Cache *cache)
 char **Cache_getKeyList(Cache *cache)
 {
     fprintf(stderr, "[Cache] KeyArray:\n");
-    int i = 0;
+    size_t i = 0;
     for (; i < cache->size; i++) {
         fprintf(stderr, "%s\n", cache->key_array[i]);
     }

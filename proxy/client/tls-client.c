@@ -18,8 +18,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+// #if RUN_SSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+// #endif 
 
 #define BUFSIZE 1024
 #define OUTPUT_DIR "output"
@@ -73,8 +76,13 @@ int main(int argc, char **argv)
     /* SSL Initialize */
     SSL *ssl;
     SSL_CTX *ctx;
+
+    fprintf(stderr, "[+] Initializing SSL Library\n");
     SSL_library_init();
+    fprintf(stderr, "[+] Loading SSL Error Strings\n");
     ctx = init_ctx();
+
+
 
     /* connect to proxy */
     int proxy_fd = connect_to_proxy(proxy_host, proxy_port);
@@ -83,6 +91,7 @@ int main(int argc, char **argv)
     }
 
     /* TLS/SSL Initialize */
+    fprintf(stderr, "[+] Initializing SSL\n");
     ssl = SSL_new(ctx);
     SSL_set_fd(ssl, proxy_fd);
     // if (SSL_connect(ssl) == -1) {
@@ -117,7 +126,10 @@ int main(int argc, char **argv)
     }
 
     if (SSL_connect(ssl) == -1) {
+        fprintf(stderr, "SSL_connect failed\n");
         ERR_print_errors_fp(stderr);
+        close(proxy_fd);
+        error("[!] Failed failed on SSL_connect");
     }
 
     /* receive raw response */
@@ -442,3 +454,4 @@ static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
 //     }
 //     return ctx;
 // }
+

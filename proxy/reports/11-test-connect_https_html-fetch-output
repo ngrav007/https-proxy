@@ -1,0 +1,19 @@
+[+] Initializing SSL Library
+[+] Loading SSL Error Strings
+[+] Connecting to proxy localhost:9055
+[+] Initializing SSL
+[*] http: Raw request:
+CONNECT https://www.cs.tufts.edu/ HTTP/1.1
+Host: www.cs.tufts.edu:443
+
+
+[+] Sending request:
+CONNECT https://www.cs.tufts.edu/ HTTP/1.1
+Host: www.cs.tufts.edu:443
+
+[+] Length: 74
+[*] client: sent 74 bytes
+[*] client: received 540 bytes
+[*] HTTP Response Header --------------------- +
+
+[!] Failed to find header end: Success

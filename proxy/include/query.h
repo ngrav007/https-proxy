@@ -13,8 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+
+#if RUN_SSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#endif 
 
 #define QUERY_HTTPS 1
 #define QUERY_HTTP  0
@@ -22,8 +25,12 @@
 typedef struct Query {
     Request *req;
     Response *res;
-    SSL *ssl;
-    SSL_CTX *ctx;
+
+    #if RUN_SSL
+        SSL *ssl;
+        SSL_CTX *ctx;
+    #endif 
+
     struct sockaddr_in server_addr;
     struct hostent *host_info;
     struct timeval timestamp;
@@ -41,8 +48,11 @@ Query *Query_create(Request *req, Response *res,
 void Query_free(Query *query);
 void Query_print(Query *query);
 int Query_compare(Query *query1, Query *query2);
+
+#if RUN_SSL
 void Query_clearSSLCtx(Query *query);
 void Query_clearSSL(Query *query);
+#endif 
 
 
 #endif /* _Query_H_ */

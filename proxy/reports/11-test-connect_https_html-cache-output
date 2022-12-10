@@ -1,2 +1,4 @@
+[+] Initializing SSL Library
+[+] Loading SSL Error Strings
 [+] Connecting to proxy localhost:9055
 [!] connect: : Connection refused

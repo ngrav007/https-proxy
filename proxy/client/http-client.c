@@ -143,7 +143,11 @@ int main(int argc, char **argv)
         }
         body += HEADER_END_L;
 
-        snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
+        // random number
+        srand(time(NULL));
+        int r = rand() % 1000000;
+
+        snprintf(output_file, BUFSIZE, "%s/%s-%d-%s", OUTPUT_DIR, OUTPUT_FILE, r, basename);
         int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
         if (fp == -1) {
             free(raw_request);

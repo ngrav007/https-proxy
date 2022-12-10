@@ -16,12 +16,19 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+
+#if RUN_SSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#endif 
 
 typedef struct Client {
     Query *query;
-    SSL *ssl;
+
+    #if RUN_SSL
+        SSL *ssl;
+    #endif 
+
     struct sockaddr_in addr;  // Client address
     struct timeval last_recv; // Time of last activity
     socklen_t addr_l;         // Length of client address
@@ -47,7 +54,9 @@ bool Client_isLoggedIn(Client *client);
 bool Client_isSlowMofo(Client *client);
 int Client_timestamp(Client *client);
 void Client_clearQuery(Client *client);
-void Client_clearSSL(Client *client);
 
+#if RUN_SSL
+void Client_clearSSL(Client *client);
+#endif 
 
 #endif /* _CLIENT_H_ */

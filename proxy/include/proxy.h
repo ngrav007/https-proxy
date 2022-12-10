@@ -1,13 +1,17 @@
 #ifndef _PROXY_H_
 #define _PROXY_H_
 
-#include "cache.h"
+#include "config.h"
 #include "client.h"
 #include "colors.h"
-#include "config.h"
+
 #include "http.h"
 #include "list.h"
 #include "utility.h"
+
+#if RUN_CACHE == 1
+#include "cache.h"
+#endif
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -24,15 +28,25 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
+#if RUN_SSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 // #include <ssl.h>
 // #include <err.h>
+#endif 
 
 typedef struct Proxy {
-    Cache *cache;
+    #if RUN_CACHE 
+        Cache *cache;
+    #endif 
+
     List *client_list;
-    SSL_CTX *ctx;
+
+    #if RUN_SSL
+        SSL_CTX *ctx;
+    #endif 
+
     struct sockaddr_in addr;
     struct hostent *client;  // ? do we need this?
     struct hostent *server;  // ? do we need this?
@@ -68,6 +82,8 @@ ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 int Proxy_handleConnect(int sender, int receiver);
 int Proxy_sendError(Client *client, int msg_code);
 
-int Proxy_SSL_connect(Proxy *proxy, Query *query);
+#if RUN_SSL
+    int Proxy_SSL_connect(Proxy *proxy, Query *query);
+#endif 
 
 #endif /* _PROXY_H_ */

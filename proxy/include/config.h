@@ -4,6 +4,11 @@
 #include <limits.h>
 // #include <fcntl.h> // oflags
 
+#define RUN_CACHE   1
+#define RUN_SSL     1 
+#define RUN_COLOR   0 
+
+
 #define DEBUG 1
 #define TRUE  1
 #define FALSE 0

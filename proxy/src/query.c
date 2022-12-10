@@ -80,8 +80,12 @@ void Query_free(Query *query)
 
     Request_free(query->req);
     Response_free(query->res);
-    Query_clearSSL(query);
-    Query_clearSSLCtx(query);
+
+    #if RUN_SSL
+        Query_clearSSL(query);
+        Query_clearSSLCtx(query);
+    #endif 
+
     close(query->socket);
     free(query->buffer);
     free(query);
@@ -111,6 +115,7 @@ int Query_compare(Query *query1, Query *query2)
     return Request_compare(query1->req, query2->req);
 }
 
+#if RUN_SSL
 void Query_clearSSL(Query *query)
 {
     if (query == NULL) {
@@ -130,4 +135,5 @@ void Query_clearSSLCtx(Query *query)
     SSL_CTX_free(query->ctx);
     query->ctx = NULL;
 }
+#endif 
 

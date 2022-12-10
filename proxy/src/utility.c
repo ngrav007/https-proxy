@@ -244,6 +244,8 @@ void print_debug(char *msg)
     fprintf(stderr, "%s[DEBUG]%s %s\n", BYEL, reset, msg);
 }
 
+
+// #if RUN_SSL
 SSL_CTX *init_server_context()
 {
     const SSL_METHOD *method;
@@ -270,7 +272,6 @@ SSL_CTX *init_ctx()
     method = TLS_client_method();
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
-        fprintf(stderr, "[Proxy_SSL_connect]: failed to create SSL_CTX to connect to destination host\n");
         ERR_print_errors_fp(stderr);
         return NULL; /* should close the client since we can't connect to server */
     }
@@ -327,6 +328,8 @@ int is_root()
     }
     return 1;
 }
+
+// #endif 
 
 
 
