@@ -268,9 +268,9 @@ int List_remove_node(List *list, Node *node)
     }
 
     if (node->prev == NULL) {
-        return List_pop_front(list);
+        return List_remove_front(list);
     } else if (node->next == NULL) {
-        return List_pop_back(list);
+        return List_remove_back(list);
     } else {
         node->prev->next = node->next;
         node->next->prev = node->prev;
@@ -281,7 +281,7 @@ int List_remove_node(List *list, Node *node)
     return 0;
 }
 
-/* List_pop_front
+/* List_remove_front
  *    Purpose: Removes the first node from the list. The data in the node is
  *             freed if the free function pointer is not NULL. The node is freed
  *             regardless. If free_data is NULL, the data is not freed and the
@@ -290,7 +290,7 @@ int List_remove_node(List *list, Node *node)
  * Parameters: @list - Pointer to a list to remove a node from
  *    Returns: 0 on success, -1 on failure
  */
-int List_pop_front(List *list)
+int List_remove_front(List *list)
 {
     if (List_is_empty(list)) {
         return -1;
@@ -311,7 +311,7 @@ int List_pop_front(List *list)
     return 0;
 }
 
-/* List_pop_back
+/* List_remove_back
  *    Purpose: Removes the last node from the list. The data in the node is
  *             freed if the free function pointer is not NULL. The node is freed
  *             regardless. If free_data is NULL, the data is not freed and the
@@ -320,7 +320,7 @@ int List_pop_front(List *list)
  * Parameters: @list - Pointer to a list to remove a node from
  *    Returns: 0 on success, -1 on failure
  */
-int List_pop_back(List *list)
+int List_remove_back(List *list)
 {
     if (List_is_empty(list)) {
         return -1;
@@ -339,6 +339,70 @@ int List_pop_back(List *list)
     list->size--;
 
     return 0;
+}
+
+/* List_pop_front
+ *    Purpose: Removes the first node from the list. The data in the node is
+ *             freed if the free function pointer is not NULL. The node is freed
+ *             regardless. If free_data is NULL, the data is not freed and the
+ *             caller is responsible for freeing the data. If the list is empty,
+ *             the function returns -1 and does nothing.
+ * Parameters: @list - Pointer to a list to remove a node from
+ *    Returns: 0 on success, -1 on failure
+ */
+void *List_pop_front(List *list)
+{
+    if (List_is_empty(list)) {
+        return NULL;
+    }
+
+    Node *node = list->head;
+    if (List_size(list) == 1) {
+        list->head = NULL;
+        list->tail = NULL;
+    } else {
+        list->head       = node->next;
+        list->head->prev = NULL;
+    }
+
+    void *data = node->data;
+
+    Node_free(node, NULL);
+    list->size--;
+
+    return data;
+}
+
+/* List_pop_back
+ *    Purpose: Removes the last node from the list. The data in the node is
+ *             freed if the free function pointer is not NULL. The node is freed
+ *             regardless. If free_data is NULL, the data is not freed and the
+ *             caller is responsible for freeing the data. If the list is empty,
+ *             the function returns -1 and does nothing.
+ * Parameters: @list - Pointer to a list to remove a node from
+ *    Returns: 0 on success, -1 on failure
+ */
+void *List_pop_back(List *list)
+{
+    if (List_is_empty(list)) {
+        return NULL;
+    }
+
+    Node *node = list->tail;
+    if (List_size(list) == 1) {
+        list->head = NULL;
+        list->tail = NULL;
+    } else {
+        list->tail       = node->prev;
+        list->tail->next = NULL;
+    }
+
+    void *data = node->data;
+
+    Node_free(node, NULL);
+    list->size--;
+
+    return data;
 }
 
 /* List_get

@@ -78,9 +78,10 @@ char *Raw_request(char *method, char *url, char *host, char *port, char *body, s
 
 // int color_links(char **buffer, size_t *buffer_l, int color_flag);
 int color_links(char **buffer, size_t *buffer_l, char *cache_keys[], int num_keys);
-// int foundKey(char *target, char *arr[], int arr_size);
 int foundKey(char *target, int target_l, char *arr[], int arr_size);
-// int perfectKeyPrefix(char *pre, char *str);
 int perfectKeyPrefix(char *pre, int pre_l, char *str);
+// int foundKey(char *target, char *arr[], int arr_size);
+// int perfectKeyPrefix(char *pre, char *str);
+
 
 #endif /* _HTTP_H_ */

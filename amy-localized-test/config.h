@@ -2,6 +2,7 @@
 #define __PROXYCONFIG_H__
 
 #include <limits.h>
+#include <fcntl.h> // oflags
 
 #define DEBUG 1
 #define TRUE  1

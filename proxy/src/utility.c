@@ -260,7 +260,7 @@ SSL_CTX *init_server_context()
     return ctx;
 }
 
-SSL_CTX *init_client_context()
+SSL_CTX *init_ctx()
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
@@ -278,26 +278,55 @@ SSL_CTX *init_client_context()
     return ctx;
 }
 
-int load_ca_certificates(SSL_CTX *ctk, char *ca_cert_file, char *ca_key_file)
+void display_certs(SSL *ssl)
+{
+    X509 *cert;
+    char *line;
+    cert = SSL_get_peer_certificate(ssl);
+    if (cert != NULL) {
+        fprintf(stderr, "[Server Certificates]\n");
+        line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+        fprintf(stderr, "[Subject]\n%s\n", line);
+        free(line); 
+        line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+        fprintf(stderr, "[Issuer]\n%s\n", line);
+        free(line);
+        X509_free(cert);
+    } else {
+        fprintf(stderr, "[!] No Certificates.\n");
+    }
+}
+
+int load_ca_certificates(SSL_CTX *ctx, char *ca_cert_file, char *ca_key_file)
 {
     /* set the key and the certificate */
-    if (SSL_CTX_use_certificate_file(ctk, ca_cert_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_certificate_file(ctx, ca_cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
 
     /* set the private key from the key file - can be same as CertFile */
-    if (SSL_CTX_use_PrivateKey_file(ctk, ca_key_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_PrivateKey_file(ctx, ca_key_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
     
     /* verify the private key */
-    if (!SSL_CTX_check_private_key(ctk)) {
+    if (!SSL_CTX_check_private_key(ctx)) {
         print_error("Private key does not match the certificate public key");
         return -1;
     }
 
     return 0;
 }
+
+int is_root()
+{
+    if (getuid() != 0) {
+        return 0;
+    }
+    return 1;
+}
+
+
 

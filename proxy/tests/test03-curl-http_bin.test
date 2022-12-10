@@ -9,7 +9,7 @@ OUTFILE=${OUTDIR}/${TESTNAME%.*}.out
 echo "+ ------- Test 03: Binary File GET request and response ------- +"
 
 echo "[*] Sending initial request to http://www.cs.cmu.edu/~dga/dga-headshot.jpg..."
-fetch=$(time curl -v --output ${OUTFILE} -x localhost:9056 http://www.cs.cmu.edu/~dga/dga-headshot.jpg 2>&1)
+fetch=$(time curl -v --output ${OUTFILE} -x localhost:9055 http://www.cs.cmu.edu/~dga/dga-headshot.jpg 2>&1)
 
 echo "[*] Sleeping for 5 seconds..."
 for i in {1..5}; do
@@ -19,7 +19,7 @@ done
 echo ""
 
 echo "[*] Sending second request to http://www.cs.cmu.edu/~dga/dga-headshot.jpg..."
-cache=$(time curl -v --output ${OUTFILE} -x localhost:9056 http://www.cs.cmu.edu/~dga/dga-headshot.jpg 2>&1)
+cache=$(time curl -v --output ${OUTFILE} -x localhost:9055 http://www.cs.cmu.edu/~dga/dga-headshot.jpg 2>&1)
 
 echo "[+] Results ----------------------------------------------- +"
 echo ""

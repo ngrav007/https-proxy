@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     SSL *ssl;
     SSL_CTX *ctx;
     SSL_library_init();
-    ctx = init_client_context();
+    ctx = init_ctx();
 
     /* connect to proxy */
     int proxy_fd = connect_to_proxy(proxy_host, proxy_port);

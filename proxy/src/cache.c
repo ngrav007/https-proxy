@@ -1,6 +1,8 @@
 #include "cache.h"
 
 static int remove_stale_entry(Cache *cache);
+// static void cache_clear_entry(void *entry);
+// static void cache_print_entry(void *entry);
 
 /* ----------------------- Cache Function Definitions ----------------------- */
 Cache *Cache_new(size_t cap, void (*free_foo)(void *),
@@ -17,7 +19,7 @@ Cache *Cache_new(size_t cap, void (*free_foo)(void *),
         return NULL;
     }
 
-    cache->lru = List_new(NULL, print_foo, cmp_foo);
+    cache->lru = List_new(NULL, NULL, Entry_cmp);
     if (cache->lru == NULL) {
         free(cache->table);
         free(cache);
@@ -28,6 +30,12 @@ Cache *Cache_new(size_t cap, void (*free_foo)(void *),
     cache->free_foo  = (free_foo == NULL) ? free : free_foo;
     cache->print_foo = print_foo;
     cache->size      = 0;
+
+    // initialize each array key-string-entry to NULL
+    int i = 0; 
+    for (i = 0; i < CACHE_SZ; i++) {
+        cache->key_array[i] = NULL;
+    }
 
     return cache;
 }
@@ -50,19 +58,26 @@ int Cache_put(Cache *cache, char *key, void *value, long max_age)
         Cache_evict(cache);
     }
 
+    /* put key in array */ 
+    size_t key_size = strlen(key);
+    cache->key_array[cache->size] = calloc(key_size + 1, sizeof(char));
+    memcpy(cache->key_array[cache->size], key, key_size);
+
     size_t i;
     for (i = 0; i < cache->capacity; i++) {
         /* Empty slot */
         if (cache->table[i] == NULL) {
             cache->table[i] = e;
             cache->size++;
-            List_push_back(cache->lru, e->value);
+            // List_push_back(cache->lru, e->value);
+            List_push_back(cache->lru, e);
             return 0;
         } else if (cache->table[i]->deleted) {
             Entry_free(&cache->table[i], cache->free_foo);
             cache->table[i] = e;
             cache->size++;
-            List_push_back(cache->lru, e->value);
+            // List_push_back(cache->lru, e->value);
+            List_push_back(cache->lru, e);
             return 0;
         }
     }
@@ -84,13 +99,15 @@ void *Cache_get(Cache *cache, char *key)
         } else if (strncmp(e->key, key, strlen(key)) == 0) { // Key Found
             if (e->stale) { // TODO - check if this is correct
                 fprintf(stderr, "%s[DEBUG] cache: entry is stale%s\n", BLU, reset);
-                List_remove(cache->lru, e->value);
-                Entry_delete(e, cache->free_foo); // clear entry and set as 'deleted' for
-                                         // cache linear probing
+                // List_remove(cache->lru, e->value);
+                List_remove(cache->lru, e);
+
                 return NULL;
             } else {
-                List_remove(cache->lru, e->value);
-                List_push_back(cache->lru, e->value);
+                // List_remove(cache->lru, e->value);
+                List_remove(cache->lru, e);
+                // List_push_back(cache->lru, e->value);
+                List_push_back(cache->lru, e);
                 e->retrieved = true;
             }
 
@@ -133,7 +150,8 @@ int Cache_remove(Cache *cache, char *key)
     }
 
     /* Note: uncomment to enable first-in-first-out eviction policy */
-    List_remove(cache->lru, e->value);
+    // List_remove(cache->lru, e->value);
+    List_remove(cache->lru, e);
 
     Entry_free(&e, cache->free_foo);
     cache->size--;
@@ -153,12 +171,36 @@ int Cache_evict(Cache *cache)
 
     /* Evict Stale Entry */
     if (remove_stale_entry(cache) == 0) {
+        // needs to remove from lru list if an entry is removed
         return 0;
     }
 
     /* Evict LRU Entry */
     if (cache->lru->head != NULL) {
-        List_pop_front(cache->lru);
+        /* get the lru Entry's key and remove it from the string key_array */
+        Entry *entry = List_pop_front(cache->lru);
+        char *key = entry->key;
+
+        size_t j;
+        // find and remove the key form key_array
+        for (j = 0; j < cache->size; j++) {
+            if (strncmp(key, cache->key_array[j], strlen(key))) {
+                free(cache->key_array[j]);
+                cache->key_array[j] = NULL;
+                break;
+            }
+        }
+
+        // left shift array if the key removed wasn't the last key
+        if (j < cache->size) {
+            for (; j < cache->size - 1; j++) {
+                cache->key_array[j] = cache->key_array[j + 1];
+                cache->key_array[j + 1] = NULL;
+            }
+        }
+
+        // clear entry and free the value it holds
+        Entry_delete(entry, cache->free_foo);
         cache->size--;
 
         return 0;
@@ -166,6 +208,7 @@ int Cache_evict(Cache *cache)
 
     return -1; // Cache is empty
 }
+
 
 int Cache_refresh(Cache *cache)
 {
@@ -205,6 +248,11 @@ void Cache_free(Cache **cache)
         if (curr != NULL) {
             Entry_free(&curr, (*cache)->free_foo);
         }
+    }
+
+    /* free each key in the array */
+    for (i = 0; i < (*cache)->capacity; i++) {
+        free((*cache)->key_array[i]);
     }
 
     /* Note: uncomment to enable first-in-first-out eviction policy */
@@ -264,9 +312,30 @@ static int remove_stale_entry(Cache *cache)
         return -1;
     }
 
-    /* remove oldest entry from fifo and lru lists */
-    /* Note: uncomment to enable first-in-first-out eviction policy */
-    List_remove(cache->lru, oldest->value);
+
+    // find and remove the key form key_array
+    char *key = (char *)oldest->key;
+    size_t j = 0;
+    for (j = 0; j < cache->size; j++) {
+        if (strncmp(key, cache->key_array[j], strlen(key))) {
+            free(cache->key_array[j]);
+            cache->key_array[j] = NULL;
+            break;
+        }
+    }
+
+    // left shift array if the key removed wasn't the last key
+    if (j < cache->size) {
+        for (; j < cache->size - 1; j++) {
+            cache->key_array[j] = cache->key_array[j + 1];
+            cache->key_array[j + 1] = NULL;
+        }
+    }
+
+
+    /* remove oldest entry lru list */
+    // List_remove(cache->lru, oldest->value);
+    List_remove(cache->lru, oldest);
 
     /* remove oldest stale entry */
     Entry_delete(oldest, cache->free_foo);
@@ -274,3 +343,26 @@ static int remove_stale_entry(Cache *cache)
 
     return 0;
 }
+
+
+char **Cache_getKeyList(Cache *cache)
+{
+    fprintf(stderr, "[Cache] KeyArray:\n");
+    int i = 0;
+    for (; i < cache->size; i++) {
+        fprintf(stderr, "%s\n", cache->key_array[i]);
+    }
+    return &(cache->key_array[0]);
+}
+
+// static void cache_clear_entry(void *cache)
+// {
+//     Cache *c = (Cache *)cache;
+//     Entry_delete(entry, c->free_foo);
+// }
+
+// static void cache_print_entry(void *cache)
+// {
+//     Cache *c = (Cache *)cache;
+//     Entry_print(entry, c->print_foo);
+// }

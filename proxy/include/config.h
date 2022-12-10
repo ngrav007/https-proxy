@@ -2,10 +2,24 @@
 #define __PROXYCONFIG_H__
 
 #include <limits.h>
+// #include <fcntl.h> // oflags
 
 #define DEBUG 1
 #define TRUE  1
 #define FALSE 0
+
+/* Root CA */
+#define ROOTCA_CERT "/workspaces/Development/https-proxy/etc/certs/EnnorRootCA.pem"
+#define ROOTCA_KEY "/workspaces/Development/https-proxy/etc/private/EnnorRootCA.key"
+#define ROOTCA_PASSWD "/workspaces/Development/https-proxy/etc/passwd/EnnorRootCA.passwd"
+
+/* Proxy Certificate */
+#define PROXY_CN "eregion.local"
+
+#define PROXY_CERT "/workspaces/Development/https-proxy/etc/certs/eregion.local.crt"
+#define PROXY_KEY "/workspaces/Development/https-proxy/etc/private/eregion.local.key"
+#define PROXY_CSR "/workspaces/Development/https-proxy/etc/csr/eregion.local.csr"
+#define PROXY_EXT "/workspaces/Development/https-proxy/etc/ext/eregion.local.ext"
 
 /* Proxy */
 #define DEFAULT_MAX_AGE 3600
@@ -130,27 +144,24 @@
 #define HOST_NAME_MAX 64
 #endif
 
-/* */
-#define CLI_QUERY   0
-#define CLI_GET     1
-#define CLI_CONNECT 2
-#define CLI_SSL     3
-
-/* */
+/* HTML Parse */
 #define ANCHOR_OPEN "<a "
 #define ANCHOR_OPEN_L 3
-#define ANCHOR_HTTPS_OPEN "<a href=\"https"
-#define ANCHOR_HTTPS_OPEN_L 14 
+#define ANCHOR_HTTPS_OPEN "<a href=\"http"
+#define ANCHOR_HTTPS_OPEN_L 13
 
-/* */
+/* HTML Re-Coloring */
 #define RED_F 0
 #define GREEN_F 1
 #define RED_STYLE   "style=\"color:#FF0000;\" "
 #define GREEN_STYLE "style=\"color:#00FF00;\" "
 #define COLOR_L 23
 
-/* SSL */
-#define CERT_FILE "/workspaces/Development/etc/certs/server.pem"
-#define KEY_FILE  "/workspaces/Development/etc/certs/server.key"
+/* Client States */
+#define CLI_QUERY   0
+#define CLI_GET     1
+#define CLI_CONNECT 2
+#define CLI_SSL     3
+
 
 #endif /* __PROXYCONFIG_H__ */

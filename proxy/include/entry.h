@@ -31,9 +31,10 @@ typedef struct Entry {
 Entry *Entry_new(void *value, void *key, size_t key_l, long max_age);
 void Entry_init(Entry *entry, char *key, void *value, long max_age);
 void Entry_free(Entry **entry, void (*foo)(void *));
-void Entry_delete(Entry *entry, void (*foo)(void *));
+void Entry_delete(void *entry, void (*foo)(void *));
+int Entry_cmp(void *entry1, void *entry2);
 int Entry_touch(Entry *entry);
-void Entry_print(Entry *entry, void (*foo)(void *));
+void Entry_print(void *entry, void (*foo)(void *));
 int Entry_update(Entry *entry, void *value, long ttl, void (*foo)(void *));
 long Entry_get_age(Entry *entry);
 long Entry_get_ttl(Entry *entry);

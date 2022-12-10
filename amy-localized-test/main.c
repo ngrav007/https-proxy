@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 
 
     // Write results to out file
-    int out_file = open("Colorcs112.html", O_WRONLY | O_CREAT, 0777); 
+    int out_file = open("ColorCs112.html", O_WRONLY | O_CREAT, 0777); 
     write(out_file, buffer, file_size_bytes);
     fprintf(stderr, "Wrote to file\n");
 

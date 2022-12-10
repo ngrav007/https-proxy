@@ -30,10 +30,15 @@ void List_print(List *list);
 int List_push_back(List *list, void *data);
 int List_push_front(List *list, void *data);
 int List_insert(List *list, void *data, int index);
-int List_pop_back(List *list);
-int List_pop_front(List *list);
-int List_remove_node(List *list, Node *node);
+
 int List_remove(List *list, void *data);
+int List_remove_back(List *list);
+int List_remove_front(List *list);
+int List_remove_node(List *list, Node *node);
+
+void *List_pop_front(List *list);
+void *List_pop_back(List *list);
+
 void *List_get(List *list, int index);
 int List_move_to_back(List *list, void *data);
 int List_size(List *list);

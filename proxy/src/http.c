@@ -1452,9 +1452,15 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l)
    also in the string array will be green. o.w. it is red.
    */
 int color_links(char **buffer, size_t *buffer_l, 
-                char *cache_keys[], int num_keys)
+                char **cache_keys, int num_keys)
 {
-    // fprintf(stderr, "Initializing new buffer of size: %d\n", *buffer_l);
+    // fprintf(stderr, "Num keys: %d\n", num_keys);
+    // fprintf(stderr, "[HTTP] KeyArray:\n");
+    int i = 0;
+    for (; i < num_keys; i++) {
+        fprintf(stderr, "%s\n", cache_keys[i]);
+    }
+    // fprintf(stderr, "Initializing new buffer of size: %ld\n", *buffer_l);
     char *new_buffer = calloc(*buffer_l + COLOR_L + 1, sizeof(char));
     if (new_buffer == NULL) {
         // fprintf(stderr, "[color_links] calloc failed.\n");
@@ -1477,14 +1483,14 @@ int color_links(char **buffer, size_t *buffer_l,
         {
             // expand 
             // fprintf(stderr, "+=+=+=EXPANDING+=+=+=\n");
-            new_buffer = 
-                realloc(new_buffer, new_buffer_cap + COLOR_L);
+            new_buffer = realloc(new_buffer, new_buffer_cap + COLOR_L + 1);
             if (new_buffer == NULL) {
                 // fprintf(stderr, "[color_links] realloc failed.\n");
                 return ERROR_FAILURE;
             }
             // new_buffer_cap += original_bytes_left;
             new_buffer_cap += COLOR_L;
+            new_buffer_pointer = new_buffer + new_buffer_sz;
 
             // fprintf(stderr, "new_buffer_cap Expanded = %d\n", new_buffer_cap); 
         }
@@ -1525,7 +1531,7 @@ int color_links(char **buffer, size_t *buffer_l,
 
             // insert color attribute: 'style="color:#FF0000;" '
             char *color_pointer = color_attribute;
-            char * color_end = color_attribute + COLOR_L;
+            char *color_end = color_attribute + COLOR_L;
 
             for (; color_pointer != color_end; 
                    (new_buffer_pointer)++, (color_pointer)++) 
@@ -1551,13 +1557,19 @@ int color_links(char **buffer, size_t *buffer_l,
 
     new_buffer = realloc(new_buffer, new_buffer_sz + 1);
     if (new_buffer == NULL) {
-        fprintf(stderr, "[color_links] realloc failed.\n");
+        // fprintf(stderr, "[color_links] realloc failed.\n");
         return ERROR_FAILURE;
     }
-    new_buffer[new_buffer_sz + 1] = '\0';
+    new_buffer[new_buffer_sz] = '\0';
 
     *buffer_l = new_buffer_sz;
     *buffer = new_buffer;
+
+    // write repsonse to out file 
+    // int out_file = open("ResponseHTTP.html", O_WRONLY | O_CREAT, 0777); 
+    // write(out_file, new_buffer, new_buffer_sz);
+    // fprintf(stderr, "[HTTP]: Wrote to file\n");
+    // close(out_file);
 
     return 0;
 
@@ -1568,10 +1580,12 @@ int color_links(char **buffer, size_t *buffer_l,
     if target is a perfect url-prefix of a string (key) in the array, function returns 1 for true. 0 for false, o.w.
 */
 // int foundKey(char *target, char *arr[], int arr_size)
-int foundKey(char *target, int target_l, char *arr[], int arr_size)
+int foundKey(char *target, int target_l, char **arr, int arr_size)
 {
+    // fprintf(stderr, "Arr size: %d\n", arr_size);
     int i = 0;
-    for (int i = 0; i < arr_size; i++) {
+    for (i = 0; i < arr_size; i++) {
+        fprintf(stderr, "i: %d\n", i);
         if (perfectKeyPrefix(target, target_l, arr[i])) {
             // fprintf(stderr, "Perfect Key Prefix Match\n");
             return 1;
@@ -1587,6 +1601,10 @@ int perfectKeyPrefix(char *pre, int pre_l, char *str)
 {
     // if s is longer than t, return 0
     // int pre_sz = strlen(pre);
+    // fprintf(stderr, "Response Target Link: ");
+    // print_ascii(pre, pre_l);
+    // fprintf(stderr, "\nKey: %s\n", str);
+
     int pre_sz = pre_l;
     int str_sz = strlen(str);
 

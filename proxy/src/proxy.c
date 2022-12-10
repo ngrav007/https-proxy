@@ -51,25 +51,6 @@ int Proxy_run(short port, size_t cache_size)
                 return ret;
             }
         }
-        // if (ret < 0) {
-        //     print_error("proxy: select failed");
-        //     perror("select"); // TODO: remove
-        //     break;
-        // } else if (ret == 0) {
-            
-        // } else {
-        //     /* check listening socket and accept new clients */
-        //     if (FD_ISSET(proxy.listen_fd, &proxy.readfds)) {
-        //         if (Proxy_handleListener(&proxy) == ERROR_FAILURE) {
-        //             return ERROR_FAILURE; // out of memory
-        //         }
-        //     }
-        //     /* check client sockets for requests and serve responses */
-        //     ret = Proxy_handle(&proxy);
-        //     if (ret != EXIT_SUCCESS) {
-        //         break;
-        //     }
-        // }
     }
 
     if (ret == HALT) {
@@ -114,10 +95,28 @@ int Proxy_handle(Proxy *proxy)
                 fprintf(stderr, "[Proxy_handle] Proxy_handleQuery returned: %d\n", ret);
                 if (client->query->res != NULL) { // Non-Persistent
                     print_debug("proxy_handle: response received, caching response...");
-                    if (Proxy_send(client->socket, client->query->res->raw, client->query->res->raw_l) < 0) {
+
+                    /* Color links in the response */
+                    char **key_array = Cache_getKeyList(proxy->cache);
+                    int num_keys = (int) proxy->cache->size;
+
+                    char *response_buffer = calloc(client->query->res->raw_l + 1, sizeof(char));
+                    size_t response_sz = client->query->res->raw_l;
+                    memcpy(response_buffer, client->query->res->raw, response_sz);
+
+                    if (color_links(&response_buffer, &response_sz, 
+                        key_array, num_keys) != 0) {
+                        fprintf(stderr, "%s[Proxy_handle]: couldn't color hyperlinks.%s\n", RED, reset);
+                    } else {
+                        fprintf(stderr, "%s[Proxy_handle]: colored hyperlinks.%s\n", RED, reset);
+                    }
+
+                    if (Proxy_send(client->socket, response_buffer, response_sz) < 0) {
                         print_error("proxy: failed to send response to client");
                         return ERROR_SEND;
                     }
+                    free(response_buffer);
+
                     key        = get_key(client->query->req);
                     cached_res = Response_copy(client->query->res);
                     ret        = Cache_put(proxy->cache, key, cached_res, cached_res->max_age);
@@ -632,18 +631,51 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
 
                 /* add 'Age' field to HTTP header */
                 size_t response_size = Response_size(response);
-                char *raw_response   = Response_get(response);
-                if (HTTP_add_field(&raw_response, &response_size, "Age", age) < 0) {
+                char *raw_response   = Response_get(response); // original in cache
+
+                char *response_dup = calloc(response_size + 1, sizeof(char));
+                memcpy(response_dup, raw_response, response_size);
+
+                // if (HTTP_add_field(&raw_response, &response_size, "Age", age) < 0) {
+                if (HTTP_add_field(&response_dup, &response_size, "Age", age) < 0) {
                     print_error("proxy: failed to add Age field to response");
                     return ERROR_FAILURE;
                 }
 
-                if (Proxy_send(client->socket, raw_response, response_size) < 0) {
+                /* Color links in the response */
+                char **key_array = Cache_getKeyList(proxy->cache);
+
+
+                int num_keys = (int) proxy->cache->size;
+
+
+                // fprintf(stderr, "[Proxy] KeyArray:\n");
+                int i = 0;
+                for (; i < num_keys; i++) {
+                    fprintf(stderr, "%s\n", key_array[i]);
+                }
+
+                if (color_links(&response_dup, &response_size, 
+                    key_array, num_keys) != 0) {
+                    fprintf(stderr, "[Proxy_handleClient]: couldn't color hyperlinks.\n");
+                } else {
+                    fprintf(stderr, "[Proxy_handleClient]: colored hyperlinks.\n");
+                }
+
+                // write repsonse to out file 
+                // int out_file = open("ResponseProxy.html", O_WRONLY | O_CREAT, 0777); 
+                // write(out_file, response_dup, response_size);
+                // fprintf(stderr, "[Proxy]: Wrote to file\n");
+                // close(out_file);
+
+                // if (Proxy_send(client->socket, raw_response, response_size) < 0) {
+                if (Proxy_send(client->socket, response_dup, response_size) < 0) {
                     print_error("proxy: send failed");
                     free(key);
                     return ERROR_SEND;
                 }
                 free(key);
+                free(response_dup);
                 return CLIENT_CLOSE; // non-persistent connection
             } else {
                 print_debug("proxy: serving from server");
@@ -781,9 +813,9 @@ int Proxy_SSL_connect(Proxy *proxy, Query *query)
     }
 
     SSL_library_init();
-    query->ctx = init_client_context();
+    query->ctx = init_ctx();
 
-    load_ca_certificates(query->ctx, CERT_FILE, KEY_FILE);
+    load_ca_certificates(query->ctx, PROXY_CERT, PROXY_KEY);
     query->ssl = NULL;
 
     print_debug("[Proxy_SSL_connect]: connecting to server...");
@@ -906,8 +938,8 @@ static char *get_key(Request *req)
     }
 
     char *key = calloc(req->host_l + req->path_l + 1, sizeof(char));
-    memcpy(key, req->host, req->host_l);
-    memcpy(key + req->host_l, req->path, req->path_l);
+    memcpy(key, req->path, req->path_l);
+    memcpy(key + req->path_l, req->host, req->host_l);
 
     return key;
 }

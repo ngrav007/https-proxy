@@ -12,7 +12,7 @@ OUTFILE=${OUTDIR}/${TESTNAME%.*}.out
 echo "+ ---------- Test 01: Simple GET request and response --------- +"
 
 echo "[*] Sending initial request to http://www.cs.tufts.edu/comp/112/index.html..."
-fetch=$(time curl -o ${OUTFILE} -x localhost:9055 http://www.cs.tufts.edu/comp/112/index.html 2>&1)
+FETCH_CMD=$(time curl -o ${OUTFILE} -x ${PROXY_HOST}:${PROXY_PORT} http://www.cs.tufts.edu/comp/112/index.html 2>&1)
 echo "[*] Sleeping for 5 seconds..."
 for i in {1..5}; do
     echo -n "."
@@ -21,11 +21,11 @@ done
 echo ""
 
 echo "[*] Sending second request to http://www.cs.tufts.edu/comp/112/index.html..."
-cache=$(time curl -o ${OUTFILE} -x localhost:9056 http://www.cs.tufts.edu/comp/112/index.html 2>&1)
+CACHE_CMD=$(time curl -o ${OUTFILE} -x ${PROXY_HOST}:${PROXY_PORT} http://www.cs.tufts.edu/comp/112/index.html 2>&1)
 
 echo "[+] Results ----------------------------------------------- +"
 echo ""
-echo "    [*] Time Elapsed w/ Fetch: $fetch"
-echo "    [*] Time Elapsed w/ Cache: $cache"
+echo "    [*] Time Elapsed w/ Fetch: ${FETCH_CMD}"
+echo "    [*] Time Elapsed w/ Cache: ${CACHE_CMD}"
 echo ""
 echo "+ --------------------------------------------------------- +"

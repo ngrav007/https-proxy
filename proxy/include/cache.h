@@ -17,13 +17,16 @@
 #include <unistd.h>
 
 typedef struct Cache {
-    Entry **table;
-    List *lru;
+    Entry **table; 
+    List *lru; /* Node data is Entry * */
 
     size_t capacity;
     size_t size;
     void (*free_foo)(void *);
     void (*print_foo)(void *);
+    int (*cmp_foo)(void *, void *);
+
+    char *key_array[CACHE_SZ];
 } Cache;
 
 Cache *Cache_new(size_t cap, void (*free_foo)(void *),
@@ -38,5 +41,8 @@ Entry *Cache_find(Cache *cache, char *key);
 long Cache_get_age(Cache *cache, char *key);
 int Cache_remove(Cache *cache, char *key);
 int Cache_delete(Cache *cache, char *key);
+
+/* returns pointer to start of string array of cache keys: key_array */
+char **Cache_getKeyList(Cache *cache);
 
 #endif /* _CACHE_H_ */

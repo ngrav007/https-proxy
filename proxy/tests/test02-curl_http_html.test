@@ -6,7 +6,7 @@
 echo "+ ------ Test 02: Non-Tufts URL GET request and response ------ +"
 
 echo "[*] Sending initial request to http://neverssl.com..."
-fetch=$(time curl -v -x localhost:9056 http://neverssl.com 2>&1)
+fetch=$(time curl -v -x localhost:9055 http://neverssl.com 2>&1)
 
 echo "[*] Sleeping for 5 seconds..."
 for i in {1..5}; do
@@ -16,7 +16,7 @@ done
 echo ""
 
 echo "[*] Sending second request to http://neverssl.com..."
-cache=$(time curl -v -x localhost:9056 http://neverssl.com 2>&1)
+cache=$(time curl -v -x localhost:9055 http://neverssl.com 2>&1)
 
 echo "[+] Results ----------------------------------------------- +"
 echo ""
