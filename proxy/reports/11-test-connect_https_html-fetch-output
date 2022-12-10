@@ -13,7 +13,3 @@ Host: www.cs.tufts.edu:443
 
 [+] Length: 74
 [*] client: sent 74 bytes
-[*] client: received 540 bytes
-[*] HTTP Response Header --------------------- +
-
-[!] Failed to find header end: Success

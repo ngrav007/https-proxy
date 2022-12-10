@@ -80,10 +80,11 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list,
                  Client *client);
 ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 int Proxy_handleConnect(int sender, int receiver);
+int Proxy_handleSSL(Proxy *proxy, Client *client);
 int Proxy_sendError(Client *client, int msg_code);
 
 #if RUN_SSL
-    int Proxy_SSL_connect(Proxy *proxy, Query *query);
+    int Proxy_SSLconnect(Proxy *proxy, Query *query);
 #endif 
 
 #endif /* _PROXY_H_ */

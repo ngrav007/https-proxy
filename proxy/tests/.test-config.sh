@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PROXY_HALT_CODE="__halt__"
+
 WORKDIR="/workspaces/Development/https-proxy/proxy"
 BINDIR="${WORKDIR}/bin"
 TESTDIR="${WORKDIR}/tests"
