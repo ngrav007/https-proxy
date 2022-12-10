@@ -64,26 +64,27 @@ typedef struct Proxy {
 
 int Proxy_run(short port, size_t cache_size);
 int Proxy_init(Proxy *proxy, short port, size_t cache_size);
-int Proxy_listen(Proxy *proxy);
 void Proxy_free(void *proxy);
 void Proxy_print(Proxy *proxy);
-ssize_t Proxy_recv(Proxy *proxy, int socket);
-ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l);
-int Proxy_handle(Proxy *proxy);
+
+int Proxy_listen(Proxy *proxy);
 int Proxy_accept(Proxy *proxy);
-int Proxy_handleListener(Proxy *proxy);
-int Proxy_handleQuery(Proxy *proxy, Query *query);
-int Proxy_handleClient(Proxy *proxy, Client *client);
-int Proxy_handleTimeout(Proxy *proxy);
-int Proxy_event_handle(Proxy *proxy, Client *client, int error_code);
-void Proxy_close(int socket, fd_set *master_set, List *client_list,
-                 Client *client);
-ssize_t Proxy_fetch(Proxy *proxy, Query *request);
-int Proxy_handleConnect(int sender, int receiver);
-int Proxy_handleSSL(Proxy *proxy, Client *client);
+ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l);
 int Proxy_sendError(Client *client, int msg_code);
+ssize_t Proxy_recv(Proxy *proxy, int socket);
+ssize_t Proxy_fetch(Proxy *proxy, Query *request);
+void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client);
+
+int Proxy_handle(Proxy *proxy);
+int Proxy_handleListener(Proxy *proxy);
+int Proxy_handleClient(Proxy *proxy, Client *client);
+int Proxy_handleQuery(Proxy *proxy, Query *query);
+int Proxy_handleTimeout(Proxy *proxy);
+int Proxy_handleEvent(Proxy *proxy, Client *client, int error_code);
+int Proxy_handleConnect(int sender, int receiver);
 
 #if RUN_SSL
+    int Proxy_handleSSL(Proxy *proxy, Client *client);
     int Proxy_SSLconnect(Proxy *proxy, Query *query);
 #endif 
 

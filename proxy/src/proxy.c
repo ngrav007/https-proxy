@@ -236,88 +236,12 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *clie
 /* PROXY SOCKET FUNCTIONS ----------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 
-
-/** Proxy_SSLconnect
- * makes s connection to destination host on behalf of a clien
+/** Proxy_listen
+ *    Purpose: Sets the proxy's listening socket. Binds and listens on the port given at the command
+ *             line. If successful, the listening socket will be added to the proxy's master set.
+ * Parameters: A pointer to the proxy struct
+ *    Returns: EXIT_SUCCESS when successful, otherwise ERROR_FAILURE
  */
-#if RUN_SSL
-int Proxy_SSLconnect(Proxy *proxy, Query *query)
-{
-    if (proxy == NULL || query == NULL) {
-        print_error("[Proxy_SSLconnect]: invalid arguments");
-        return ERROR_FAILURE;
-    }
-
-    fprintf(stderr, "[Proxy_SSLconnect]: initializing SSL context...\n");
-
-    query->ctx = init_ctx();
-
-    load_ca_certificates(query->ctx, PROXY_CERT, PROXY_KEY);
-    query->ssl = NULL;
-
-    print_debug("[Proxy_SSLconnect]: connecting to server...");
-    int conn = connect(query->socket, (struct sockaddr *)&query->server_addr, sizeof(query->server_addr));
-    if (conn < 0) {
-        print_error("[Proxy_SSLconnect]: failed to connect to server");
-        perror("connect");
-        return ERROR_CONNECT;
-    }
-    print_debug("[Proxy_SSLconnect]: connected to server");
-
-    FD_SET(query->socket, &proxy->master_set);
-    proxy->fdmax = (query->socket > proxy->fdmax) ? query->socket : proxy->fdmax;
-
-    query->ssl = SSL_new(query->ctx);
-    SSL_set_fd(query->ssl, query->socket);
-
-    /* perform connection */
-    if (SSL_connect(query->ssl) < 0) {
-        fprintf(stderr, "[Proxy_SSLconnect]: SSL_connect() failed\n");
-        ERR_print_errors_fp(stderr);
-        return ERROR_CLOSE;
-    }
-
-    return EXIT_SUCCESS;
-}
-#endif 
-
-/**
- * connects to server
- */
-ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
-{
-    if (proxy == NULL || qry == NULL) {
-        print_error("proxy_fetch: fetch: invalid arguments");
-        return ERROR_FAILURE;
-    }
-
-    /* make connection to server */
-    print_debug("proxy_fetch: making connection to server");
-    if (connect(qry->socket, (struct sockaddr *)&qry->server_addr, sizeof(qry->server_addr)) < 0) {
-        print_error("proxy_fetch: failed to connect to server");
-        perror("connect");
-        return ERROR_CONNECT;
-    }
-    print_debug("proxy_fetch: connected to server");
-
-    /* add server socket to master_set */
-    FD_SET(qry->socket, &proxy->master_set);
-    proxy->fdmax = (qry->socket > proxy->fdmax) ? qry->socket : proxy->fdmax;
-
-    /* send message to server */
-    ssize_t msgsize = 0;
-    if (strncmp(qry->req->method, GET, GET_L) == 0) {
-        print_info("proxy_fetch: sending GET request to server");
-        print_ascii(qry->req->raw, qry->req->raw_l);
-        if (Proxy_send(qry->socket, qry->req->raw, qry->req->raw_l) < 0) {
-            print_error("proxy_fetch: send failed");
-            return ERROR_FETCH;
-        }
-    }
-
-    return msgsize; // number of bytes sent
-}
-
 int Proxy_listen(Proxy *proxy)
 {
     if (proxy == NULL) {
@@ -367,81 +291,6 @@ int Proxy_listen(Proxy *proxy)
 
     return EXIT_SUCCESS;
 }
-
-/* Proxy_sendError
- *    Purpose: Send error message to client
- * Parameters: @client - client to send error message to
- *             @msg_code - error code indicating which message to send
- *   Returns: EXIT_SUCCESS on success, ERROR_FAILURE when encountering an unexpected error code
- */
-int Proxy_sendError(Client *client, int msg_code)
-{
-    if (client == NULL) {
-        return EXIT_SUCCESS;
-    }
-
-    switch (msg_code) {
-    case BAD_REQUEST_400:
-        return Proxy_send(client->socket, STATUS_400, STATUS_400_L);
-    case NOT_FOUND_404:
-        return Proxy_send(client->socket, STATUS_404, STATUS_404_L);
-    case INTERNAL_SERVER_ERROR_500:
-        return Proxy_send(client->socket, STATUS_500, STATUS_500_L);
-    case NOT_IMPLEMENTED_501:
-        return Proxy_send(client->socket, STATUS_501, STATUS_501_L);
-    case IM_A_TEAPOT_418:
-        return Proxy_send(client->socket, STATUS_418, STATUS_418_L);
-    default:
-        fprintf(stderr, "%s[!]%s proxy: unknown error code: %d\n", RED, reset, msg_code);
-        exit(EXIT_FAILURE); // TODO - handle this better
-        return ERROR_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-/** Proxy_send
- *    Purpose: Sends bytes from buffer to socket. Returns number of bytes sent.
- * Parameters: @socket - socket to send to
- *             @buffer - pointer to buffer to send
- *             @buffer_l - length of buffer
- *   Returns: number of bytes sent on success, or error code indicating type of failure
- */
-ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l)
-{
-    if (buffer == NULL) {
-        print_error("proxy_send: buffer is null ");
-        return ERROR_FAILURE;
-    }
-
-    // fprintf(stderr, "[Proxy_Send] we are sending: \n%s\n", buffer);
-    fprintf(stderr, "[Proxy_Send] sending non-null buffer of size: %ld.\n", buffer_l);
-
-    /* write request to server */
-    ssize_t written  = 0;
-    ssize_t to_write = buffer_l;
-    ssize_t n        = 0;
-    while (written < (ssize_t)buffer_l) {
-        n = send(socket, buffer + written, to_write, 0);
-        if (n == -1) {
-            print_error("proxy: send failed");
-            return ERROR_SEND;
-        }
-        written += n;
-        to_write -= n;
-
-        fprintf(stderr, "[Proxy_send] Bytes sent: %ld\n", n);
-    }
-    fprintf(stderr, "Bytes To Write: %ld\n", to_write);
-    fprintf(stderr, "Bytes Written: %ld\n", written);
-    fprintf(stderr, "%s[END PROXY SEND]%s\n", GRN, reset);
-
-    return written;
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-/* PROXY SSL FUNCTIONS -------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------------------------- */
 
 /** Proxy_accept
  *     Purpose: Accepts a connection request from a new client. Creates a new client object and
@@ -518,11 +367,174 @@ int Proxy_accept(struct Proxy *proxy)
     return EXIT_SUCCESS;
 }
 
+/** Proxy_fetch
+ *    Purpose: Connects to the client-requested server and forwards client's request.
+ * Parameters: @proxy - the proxy struct
+ *             @qry - the query containing the server information we are fetcher from
+ *    Returns: The number of bytes sent if successful, otherwise, ERROR_CONNECT is returned
+ *             indicating an error connecting to the server has occurred, ERROR_FETCH is an error
+ *             occurred sending the request to server, else ERROR_FAILURE
+ */
+ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
+{
+    if (proxy == NULL || qry == NULL) {
+        print_error("proxy_fetch: fetch: invalid arguments");
+        return ERROR_FAILURE;
+    }
+
+    /* make connection to server */
+    print_debug("proxy_fetch: making connection to server");
+    if (connect(qry->socket, (struct sockaddr *)&qry->server_addr, sizeof(qry->server_addr)) < 0) {
+        print_error("proxy_fetch: failed to connect to server");
+        perror("connect");
+        return ERROR_CONNECT;
+    }
+    print_debug("proxy_fetch: connected to server");
+
+    /* add server socket to master_set */
+    FD_SET(qry->socket, &proxy->master_set);
+    proxy->fdmax = (qry->socket > proxy->fdmax) ? qry->socket : proxy->fdmax;
+
+    /* send message to server */
+    ssize_t msgsize = 0;
+    if (strncmp(qry->req->method, GET, GET_L) == 0) {
+        print_info("proxy_fetch: sending GET request to server");
+        print_ascii(qry->req->raw, qry->req->raw_l);
+        if (Proxy_send(qry->socket, qry->req->raw, qry->req->raw_l) < 0) {
+            print_error("proxy_fetch: send failed");
+            return ERROR_FETCH;
+        }
+    }
+
+    return msgsize; // number of bytes sent
+}
+
+/** Proxy_send
+ *    Purpose: Sends bytes from buffer to socket. Returns number of bytes sent.
+ * Parameters: @socket - socket to send to
+ *             @buffer - pointer to buffer to send
+ *             @buffer_l - length of buffer
+ *   Returns: number of bytes sent on success, or error code indicating type of failure
+ */
+ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l)
+{
+    if (buffer == NULL) {
+        print_error("proxy_send: buffer is null ");
+        return ERROR_FAILURE;
+    }
+
+    // fprintf(stderr, "[Proxy_Send] we are sending: \n%s\n", buffer);
+    fprintf(stderr, "[Proxy_Send] sending non-null buffer of size: %ld.\n", buffer_l);
+
+    /* write request to server */
+    ssize_t written  = 0;
+    ssize_t to_write = buffer_l;
+    ssize_t n        = 0;
+    while (written < (ssize_t)buffer_l) {
+        n = send(socket, buffer + written, to_write, 0);
+        if (n == -1) {
+            print_error("proxy: send failed");
+            return ERROR_SEND;
+        }
+        written += n;
+        to_write -= n;
+
+        fprintf(stderr, "[Proxy_send] Bytes sent: %ld\n", n);
+    }
+    fprintf(stderr, "Bytes To Write: %ld\n", to_write);
+    fprintf(stderr, "Bytes Written: %ld\n", written);
+    fprintf(stderr, "%s[END PROXY SEND]%s\n", GRN, reset);
+
+    return written;
+}
+
+/* Proxy_sendError
+ *    Purpose: Send error message to client
+ * Parameters: @client - client to send error message to
+ *             @msg_code - error code indicating which message to send
+ *   Returns: EXIT_SUCCESS on success, ERROR_FAILURE when encountering an unexpected error code
+ */
+int Proxy_sendError(Client *client, int msg_code)
+{
+    if (client == NULL) {
+        return EXIT_SUCCESS;
+    }
+
+    switch (msg_code) {
+    case BAD_REQUEST_400:
+        return Proxy_send(client->socket, STATUS_400, STATUS_400_L);
+    case NOT_FOUND_404:
+        return Proxy_send(client->socket, STATUS_404, STATUS_404_L);
+    case INTERNAL_SERVER_ERROR_500:
+        return Proxy_send(client->socket, STATUS_500, STATUS_500_L);
+    case NOT_IMPLEMENTED_501:
+        return Proxy_send(client->socket, STATUS_501, STATUS_501_L);
+    case IM_A_TEAPOT_418:
+        return Proxy_send(client->socket, STATUS_418, STATUS_418_L);
+    default:
+        fprintf(stderr, "%s[!]%s proxy: unknown error code: %d\n", RED, reset, msg_code);
+        exit(EXIT_FAILURE); // TODO - handle this better
+        return ERROR_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* PROXY SSL FUNCTIONS -------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------------------------- */
+
+/** Proxy_SSLconnect
+ * makes s connection to destination host on behalf of a clien
+ */
+#if RUN_SSL
+int Proxy_SSLconnect(Proxy *proxy, Query *query)
+{
+    if (proxy == NULL || query == NULL) {
+        print_error("[Proxy_SSLconnect]: invalid arguments");
+        return ERROR_FAILURE;
+    }
+
+    fprintf(stderr, "[Proxy_SSLconnect]: initializing SSL context...\n");
+
+    query->ctx = init_ctx();
+
+    load_ca_certificates(query->ctx, PROXY_CERT, PROXY_KEY);
+    query->ssl = NULL;
+
+    print_debug("[Proxy_SSLconnect]: connecting to server...");
+    int conn = connect(query->socket, (struct sockaddr *)&query->server_addr, sizeof(query->server_addr));
+    if (conn < 0) {
+        print_error("[Proxy_SSLconnect]: failed to connect to server");
+        perror("connect");
+        return ERROR_CONNECT;
+    }
+    print_debug("[Proxy_SSLconnect]: connected to server");
+
+    FD_SET(query->socket, &proxy->master_set);
+    proxy->fdmax = (query->socket > proxy->fdmax) ? query->socket : proxy->fdmax;
+
+    query->ssl = SSL_new(query->ctx);
+    SSL_set_fd(query->ssl, query->socket);
+
+    /* perform connection */
+    if (SSL_connect(query->ssl) < 0) {
+        fprintf(stderr, "[Proxy_SSLconnect]: SSL_connect() failed\n");
+        ERR_print_errors_fp(stderr);
+        return ERROR_CLOSE;
+    }
+
+    return EXIT_SUCCESS;
+}
+#endif 
+
+
 /* ---------------------------------------------------------------------------------------------- */
 /* --------------------------------------- PROXY HANDLERS --------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 
-
+/** Proxy_handle
+ */
 int Proxy_handle(Proxy *proxy)
 {
     int ret              = EXIT_SUCCESS;
@@ -634,7 +646,7 @@ int Proxy_handle(Proxy *proxy)
 
         /* checking for events/errors */
         if (ret != EXIT_SUCCESS) {
-            ret = Proxy_event_handle(proxy, client, ret);
+            ret = Proxy_handleEvent(proxy, client, ret);
             if (ret != EXIT_SUCCESS) {
                 return ret;
             }
@@ -655,7 +667,7 @@ int Proxy_handleListener(struct Proxy *proxy)
 {
     int ret;
     if ((ret = Proxy_accept(proxy)) < 0) {
-        Proxy_event_handle(proxy, NULL, ret);
+        Proxy_handleEvent(proxy, NULL, ret);
     }
 
     return EXIT_SUCCESS;
@@ -994,7 +1006,7 @@ int Proxy_handleConnect(int sender, int receiver)
 //     return EXIT_SUCCESS;
 // }
 
-int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
+int Proxy_handleEvent(Proxy *proxy, Client *client, int error_code)
 {
     fprintf(stderr, "[Event_Handle] ErrorCode = %d\n", error_code); // TODO - remove
     if (proxy == NULL) {
@@ -1094,7 +1106,7 @@ static short select_loop(Proxy *proxy)
             /* check listening socket and accept new clients */
             if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
                 if ((ret = Proxy_handleListener(proxy)) != EXIT_SUCCESS) {
-                    ret = Proxy_event_handle(proxy, NULL, ret);
+                    ret = Proxy_handleEvent(proxy, NULL, ret);
                     if (ret != EXIT_SUCCESS) {
                         return ret;
                     }
