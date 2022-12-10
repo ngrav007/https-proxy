@@ -297,16 +297,16 @@ void display_certs(SSL *ssl)
     }
 }
 
-int load_ca_certificates(SSL_CTX *ctx, char *ca_cert_file, char *ca_key_file)
+int load_ca_certificates(SSL_CTX *ctx, char *cert_file, char *key_file)
 {
     /* set the key and the certificate */
-    if (SSL_CTX_use_certificate_file(ctx, ca_cert_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
 
     /* set the private key from the key file - can be same as CertFile */
-    if (SSL_CTX_use_PrivateKey_file(ctx, ca_key_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }

@@ -66,7 +66,7 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list,
                  Client *client);
 ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 int Proxy_handleConnect(int sender, int receiver);
-int Proxy_sendError(int socket, int msg_code);
+int Proxy_sendError(Client *client, int msg_code);
 
 int Proxy_SSL_connect(Proxy *proxy, Query *query);
 

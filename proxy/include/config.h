@@ -14,12 +14,12 @@
 #define ROOTCA_PASSWD "/workspaces/Development/https-proxy/etc/passwd/EnnorRootCA.passwd"
 
 /* Proxy Certificate */
-#define PROXY_CN "eregion.local"
+#define PROXY_CN "eregion.proxy"
 
-#define PROXY_CERT "/workspaces/Development/https-proxy/etc/certs/eregion.local.crt"
-#define PROXY_KEY "/workspaces/Development/https-proxy/etc/private/eregion.local.key"
-#define PROXY_CSR "/workspaces/Development/https-proxy/etc/csr/eregion.local.csr"
-#define PROXY_EXT "/workspaces/Development/https-proxy/etc/ext/eregion.local.ext"
+#define PROXY_CERT "/workspaces/Development/https-proxy/etc/certs/eregion.proxy.crt"
+#define PROXY_KEY "/workspaces/Development/https-proxy/etc/private/eregion.proxy.key"
+#define PROXY_CSR "/workspaces/Development/https-proxy/etc/csr/eregion.proxy.csr"
+#define PROXY_EXT "/workspaces/Development/https-proxy/etc/ext/eregion.proxy.ext"
 
 /* Proxy */
 #define DEFAULT_MAX_AGE 3600

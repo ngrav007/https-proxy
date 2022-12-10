@@ -148,6 +148,8 @@ int main(int argc, char **argv)
         // else {
             printf("[+] Connected with %s encryption\n", SSL_get_cipher(ssl));
 
+            display_certs(ssl);
+
             // Send a GET request
             char *method = "GET";
             char *uri = "/comp/112/index.html";
@@ -423,3 +425,20 @@ static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
 
     return EXIT_SUCCESS;
 }
+
+
+// SSL_CTX* init_ctx(void)
+// {
+//     SSL_METHOD *method;
+//     SSL_CTX *ctx;
+//     OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
+//     SSL_load_error_strings();   /* Bring in and register error messages */
+//     method = TLS_client_method();  /* Create new client-method instance */
+//     ctx = SSL_CTX_new(method);   /* Create new context */
+//     if ( ctx == NULL )
+//     {
+//         fprintf(stderr, "[!] Failed to initiate context\n");
+//         return EXIT_FAILURE;
+//     }
+//     return ctx;
+// }

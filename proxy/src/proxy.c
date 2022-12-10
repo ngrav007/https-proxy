@@ -11,6 +11,13 @@ int Proxy_run(short port, size_t cache_size)
 {
     struct Proxy proxy;
 
+    if (!is_root()) {
+        print_error("proxy: must be run as root");
+        return ERROR_FAILURE;
+    }
+    
+    SSL_library_init();    
+
     /* initialize the proxy */
     Proxy_init(&proxy, port, cache_size);
     print_success("[+] HTTP Proxy -----------------------------------");
@@ -41,14 +48,18 @@ int Proxy_run(short port, size_t cache_size)
         default:
             /* check listening socket and accept new clients */
             if (FD_ISSET(proxy.listen_fd, &proxy.readfds)) {
-                if (Proxy_handleListener(&proxy) == ERROR_FAILURE) {
-                    return ERROR_FAILURE; // out of memory
+                if ((ret = Proxy_handleListener(&proxy)) < 0) {
+                    ret = Proxy_event_handle(&proxy, NULL, ret);
+                    if (ret != EXIT_SUCCESS) {
+                        break;
+                    }
                 }
             }
             /* check client sockets for requests and serve responses */
+            fprintf(stderr, "[Proxy_run] calling Proxy_handle\n");
             ret = Proxy_handle(&proxy);
             if (ret != EXIT_SUCCESS) {
-                return ret;
+                break;
             }
         }
     }
@@ -167,18 +178,18 @@ int Proxy_handle(Proxy *proxy)
 int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
 {
     fprintf(stderr, "[Event_Handle] ErrorCode = %d\n", error_code); // TODO - remove
-    if (proxy == NULL || client == NULL) {
+    if (proxy == NULL) {
         return ERROR_FAILURE;
     }
 
     switch (error_code) {
     case ERROR_FAILURE:
         print_error("proxy: failed");
-        Proxy_sendError(client->socket, INTERNAL_SERVER_ERROR_500);
+        Proxy_sendError(client, INTERNAL_SERVER_ERROR_500);
         return ERROR_FAILURE;
     case HALT:
         print_info("proxy: halt signal received");
-        Proxy_sendError(client->socket, IM_A_TEAPOT_418);
+        Proxy_sendError(client, IM_A_TEAPOT_418);
         return HALT;
     case ERROR_SEND:
         print_error("proxy: failed to send message, closing connection");
@@ -186,19 +197,19 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
         break;
     case INVALID_REQUEST:
         print_error("proxy: invalid request");
-        Proxy_sendError(client->socket, BAD_REQUEST_400);
+        Proxy_sendError(client, BAD_REQUEST_400);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list,
                     client); // ? - close for persistent connections?
         break;
     case PROXY_AUTH_REQUIRED:
         print_error("proxy: invalid method in request");
-        Proxy_sendError(client->socket, PROXY_AUTH_REQUIRED_407);
+        Proxy_sendError(client, PROXY_AUTH_REQUIRED_407);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list,
                     client); // ? - close for persistent connections?
         break;
     case HOST_UNKNOWN:
         print_error("proxy: invalid request");
-        Proxy_sendError(client->socket, BAD_REQUEST_400);
+        Proxy_sendError(client, BAD_REQUEST_400);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list,
                     client); // ? - close for persistent connections?
         break;
@@ -217,20 +228,29 @@ int Proxy_event_handle(Proxy *proxy, Client *client, int error_code)
     return EXIT_SUCCESS;
 }
 
-int Proxy_sendError(int socket, int msg_code)
+int Proxy_sendError(Client *client, int msg_code)
 {
+    if (client == NULL) {
+        return EXIT_SUCCESS;
+    }
+
     switch (msg_code) {
     case BAD_REQUEST_400:
-        return Proxy_send(socket, STATUS_400, STATUS_400_L);
+        return Proxy_send(client->socket, STATUS_400, STATUS_400_L);
     case NOT_FOUND_404:
-        return Proxy_send(socket, STATUS_404, STATUS_404_L);
+        return Proxy_send(client->socket, STATUS_404, STATUS_404_L);
     case INTERNAL_SERVER_ERROR_500:
-        return Proxy_send(socket, STATUS_500, STATUS_500_L);
+        return Proxy_send(client->socket, STATUS_500, STATUS_500_L);
     case NOT_IMPLEMENTED_501:
-        return Proxy_send(socket, STATUS_501, STATUS_501_L);
+        return Proxy_send(client->socket, STATUS_501, STATUS_501_L);
+    case IM_A_TEAPOT_418:
+        return Proxy_send(client->socket, STATUS_418, STATUS_418_L);
     default:
+        fprintf(stderr, "%s[!]%s proxy: unknown error code: %d\n", RED, reset, msg_code);
         return ERROR_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 /** Proxy_handleQuery
@@ -418,12 +438,14 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     }
 
     /* initialize SSL Context */
-    SSL_library_init();
     proxy->ctx = init_server_context();
     if (proxy->ctx == NULL) {
         print_error("proxy: failed to initialize SSL context");
         return ERROR_FAILURE;
     }
+
+    /* load certificates */
+    load_ca_certificates(proxy->ctx, PROXY_CERT, PROXY_KEY);
 
     return EXIT_SUCCESS;
 }
@@ -434,11 +456,15 @@ void Proxy_free(void *proxy)
         return;
     }
 
+    fprintf(stderr, "FREESING Proxy\n");
+
     struct Proxy *p = (struct Proxy *)proxy;
 
     /* free the proxy */
     Cache_free(&p->cache);
+    // free(p->cache);
     List_free(&p->client_list);
+    // free(p->client_list);
     if (p->listen_fd != -1) {
         close(p->listen_fd);
         p->listen_fd = -1;
@@ -491,7 +517,7 @@ int Proxy_accept(struct Proxy *proxy)
         return ERROR_ACCEPT;
     }
 
-    /* set socket to non-blocking */
+    /* set socket to non-blocking */// ? why did we do this again?
     int flags = fcntl(cli->socket, F_GETFL, 0);
     if (flags == -1) {
         print_error("proxy: fcntl failed");
@@ -520,20 +546,17 @@ int Proxy_accept(struct Proxy *proxy)
     proxy->fdmax = cli->socket > proxy->fdmax ? cli->socket : proxy->fdmax;
 
     /* 5. Check if client wants to initiate a TLS/SSL handshake */
-    // fprintf(stderr, "[Proxy_accept] Checking for a SSL/TLS connection...\n");
-    // cli->ssl = SSL_new(proxy->ctx);
-    // SSL_set_fd(cli->ssl, cli->socket);
-    // int ssl_acc_ret = SSL_accept(cli->ssl);
-    // if (ssl_acc_ret <= 0) {
-    //     fprintf(stderr, "[Proxy_accept] Not an SSL/TLS connection. Shutting down SSL\n");
-    //     fprintf(stderr, "[Proxy_accept] SSL_get_error() = %d\n", SSL_get_error(cli->ssl, ssl_acc_ret));
+    fprintf(stderr, "[Proxy_accept] Checking for a SSL/TLS connection...\n");
 
-    //     // SSL_shutdown(cli->ssl);
-    //     // SSL_free(cli->ssl);
-    //     // cli->ssl = NULL;
-
-    //     Client_clearSSL(cli);
-    // }
+    cli->ssl = SSL_new(proxy->ctx);
+    SSL_set_fd(cli->ssl, cli->socket);
+    int ssl_acc_ret = SSL_accept(cli->ssl);
+    if (ssl_acc_ret == 1) {
+        fprintf(stderr, "[Proxy_accept] SSL/TLS connection established!\n");
+    } else {
+        fprintf(stderr, "[Proxy_accept] SSL/TLS connection failed!\n");
+        return ERROR_SSL;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -547,7 +570,7 @@ int Proxy_handleListener(struct Proxy *proxy)
 {
     int ret;
     if ((ret = Proxy_accept(proxy)) < 0) {
-        return ret;
+        Proxy_event_handle(proxy, NULL, ret);
     }
 
     return EXIT_SUCCESS;
@@ -812,7 +835,8 @@ int Proxy_SSL_connect(Proxy *proxy, Query *query)
         return ERROR_FAILURE;
     }
 
-    SSL_library_init();
+    fprintf(stderr, "[Proxy_SSL_connect]: initializing SSL context...\n");
+
     query->ctx = init_ctx();
 
     load_ca_certificates(query->ctx, PROXY_CERT, PROXY_KEY);
