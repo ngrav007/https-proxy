@@ -5,8 +5,7 @@ static int remove_stale_entry(Cache *cache);
 // static void cache_print_entry(void *entry);
 
 /* ----------------------- Cache Function Definitions ----------------------- */
-Cache *Cache_new(size_t cap, void (*free_foo)(void *),
-                 void (*print_foo)(void *), int (*cmp_foo)(void *, void *))
+Cache *Cache_new(size_t cap, void (*free_foo)(void *), void (*print_foo)(void *))
 {
     Cache *cache = calloc(1, sizeof(struct Cache));
     if (cache == NULL) {

@@ -5,7 +5,6 @@
 
 // Ports -- 9055 to 9059
 static char *get_key(Request *req);
-static int validate_request(Request *req);
 static short select_loop(Proxy *proxy);
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -86,7 +85,7 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
 
     /* initialize the proxy cache */
     #if RUN_CACHE 
-        proxy->cache = Cache_new(cache_size, Response_free, Response_print, Response_compare);
+        proxy->cache = Cache_new(cache_size, Response_free, Response_print);
         if (proxy->cache == NULL) {
             print_error("proxy: cache init failed");
             return ERROR_FAILURE;

@@ -111,8 +111,8 @@
 
 /* Error and Event Indicators */
 
-#define CLIENT_CLOSE    100
-#define CLIENT_TIMEDOUT 101
+#define CLIENT_CLOSE    -100
+#define CLIENT_TIMEDOUT -101
 
 #define ERROR_FAILURE -1
 #define ERROR_CLOSE   -2

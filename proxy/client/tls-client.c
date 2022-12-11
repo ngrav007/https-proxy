@@ -27,7 +27,7 @@
 #define BUFSIZE 1024
 #define OUTPUT_DIR "output"
 #define OUTPUT_FILE "resp"
-#define SAVE_FILE 1
+#define SAVE_FILE 0
 #define PERMS 0644
 
 static int sendall(int s, char *buf, size_t len);
@@ -153,62 +153,62 @@ int main(int argc, char **argv)
     print_ascii(raw_response, header_end - raw_response);
     fprintf(stderr, "\n[*] --------------------------------------------\n");
 
-    if (strstr(raw_response, "200 OK") != NULL) {  // Connection Established
+    if (strstr(raw_response, "200") != NULL) {  // Connection Established
         // if (SSL_connect(ssl) == -1) {
         //     ERR_print_errors_fp(stderr);
         // } 
         // else {
-            printf("[+] Connected with %s encryption\n", SSL_get_cipher(ssl));
+        printf("[+] Connected with %s encryption\n", SSL_get_cipher(ssl));
 
-            display_certs(ssl);
+        display_certs(ssl);
 
-            // Send a GET request
-            char *method = "GET";
-            char *uri = "/comp/112/index.html";
-            char *host = "www.cs.tufts.edu";
-            char *port = "443";
+        // Send a GET request
+        char *method = "GET";
+        char *uri = "/comp/112/index.html";
+        char *host = "www.cs.tufts.edu";
+        char *port = "443";
 
-            char *get_request = Raw_request(method, uri, host, port, NULL, &raw_l);
-            if (get_request == NULL) {
-                SSL_free(ssl);
-                SSL_CTX_free(ctx);
-                free(raw_request);
-                free(raw_response);
-                close(proxy_fd);
-                error("[!] Failed to build raw request");
-            }
-            
-            // Create a follow-up get request to send to same host through proxy 
-            
-            SSL_write(ssl, get_request, sizeof(get_request));
-            
-            
-            // Read the response from dest server that proxy re-encrypted 
-            char *ssl_response = NULL;
-            size_t ssl_response_l = 0;
-            size_t ssl_response_sz = 0;
-            if (sslreadall(ssl, &ssl_response, &ssl_response_l, &ssl_response_sz) < 0) {
-                SSL_free(ssl);
-                SSL_CTX_free(ctx);
-                free(raw_request);
-                free(raw_response);
-                close(proxy_fd);
-                error("[!] Failed to read ssl response.");
+        char *get_request = Raw_request(method, uri, host, port, NULL, &raw_l);
+        if (get_request == NULL) {
+            SSL_free(ssl);
+            SSL_CTX_free(ctx);
+            free(raw_request);
+            free(raw_response);
+            close(proxy_fd);
+            error("[!] Failed to build raw request");
+        }
+        
+        // Create a follow-up get request to send to same host through proxy 
+        
+        SSL_write(ssl, get_request, sizeof(get_request));
+        
+        
+        // Read the response from dest server that proxy re-encrypted 
+        char *ssl_response = NULL;
+        size_t ssl_response_l = 0;
+        size_t ssl_response_sz = 0;
+        if (sslreadall(ssl, &ssl_response, &ssl_response_l, &ssl_response_sz) < 0) {
+            SSL_free(ssl);
+            SSL_CTX_free(ctx);
+            free(raw_request);
+            free(raw_response);
+            close(proxy_fd);
+            error("[!] Failed to read ssl response.");
 
-            }
+        }
 
-            fprintf(stderr, "[*] HTTPS (TLS) Response Header ---------- +\n\n");
-            char *header_response_end = strstr(ssl_response, "\r\n\r\n");
-            if (header_response_end == NULL) {
-                SSL_free(ssl);
-                SSL_CTX_free(ctx);
-                free(raw_request);
-                free(raw_response);
-                close(proxy_fd);
-                error("[!] Failed to find response header end");
-            }   
-            print_ascii(ssl_response, header_response_end - ssl_response);
-            fprintf(stderr, "\n[*] --------------------------------------------\n");
+        fprintf(stderr, "[*] HTTPS (TLS) Response Header ---------- +\n\n");
+        char *header_response_end = strstr(ssl_response, "\r\n\r\n");
+        if (header_response_end == NULL) {
+            SSL_free(ssl);
+            SSL_CTX_free(ctx);
+            free(raw_request);
+            free(raw_response);
+            close(proxy_fd);
+            error("[!] Failed to find response header end");
+        }   
+        print_ascii(ssl_response, header_response_end - ssl_response);
+        fprintf(stderr, "\n[*] --------------------------------------------\n");
         // }
     }
 
