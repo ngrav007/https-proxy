@@ -41,10 +41,11 @@ void print_warning(char *msg);
 void print_debug(char *msg);
 
 // #if RUN_SSL
-int load_ca_certificates(SSL_CTX *ctk, char *ca_cert_file, char *ca_key_file);
-SSL_CTX *init_server_context();
-SSL_CTX *init_ctx();
-void display_certs(SSL *ssl);
+int LoadClientCertificates(SSL_CTX *ctx, char *cert_file, char *key_file, char *passwd);
+int LoadCertificates(SSL_CTX *ctx, char *cert_file, char *key_file, char *passwd);
+SSL_CTX *InitServerCTX();
+SSL_CTX *InitCTX();
+void ShowCerts(SSL *ssl);
 
 int is_root();
 // #endif

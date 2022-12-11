@@ -320,19 +320,27 @@ int Proxy_accept(struct Proxy *proxy)
         return ERROR_ACCEPT;
     }
 
+    #if RUN_SSL
+    if (Proxy_SSLaccept(proxy, cli) == ERROR_FAILURE) {
+        Client_free(cli);
+        return ERROR_SSL;
+    }
+        
+    #endif
+
     /* set socket to non-blocking */// ? why did we do this again?
-    int flags = fcntl(cli->socket, F_GETFL, 0);
-    if (flags == -1) {
-        print_error("proxy: fcntl failed");
-        Client_free(cli);
-        return ERROR_FAILURE;
-    }
-    flags |= O_NONBLOCK;
-    if (fcntl(cli->socket, F_SETFL, flags) == -1) {
-        print_error("proxy: fcntl failed");
-        Client_free(cli);
-        return ERROR_FAILURE;
-    }
+    // int flags = fcntl(cli->socket, F_GETFL, 0);
+    // if (flags == -1) {
+    //     print_error("proxy: fcntl failed");
+    //     Client_free(cli);
+    //     return ERROR_FAILURE;
+    // }
+    // flags |= O_NONBLOCK;
+    // if (fcntl(cli->socket, F_SETFL, flags) == -1) {
+    //     print_error("proxy: fcntl failed");
+    //     Client_free(cli);
+    //     return ERROR_FAILURE;
+    // }
 
     /* add client to the proxy's client list */
     int ret = List_push_back(proxy->client_list, (void *)cli);
@@ -348,22 +356,51 @@ int Proxy_accept(struct Proxy *proxy)
     /* 4. updates the max fd */
     proxy->fdmax = cli->socket > proxy->fdmax ? cli->socket : proxy->fdmax;
 
+    return EXIT_SUCCESS;
+}
+
+int Proxy_SSLaccept(Proxy *proxy, Client *cli)
+{
+    if (proxy == NULL || cli == NULL) {
+        print_error("proxy_sslaccept: invalid args");
+        return ERROR_FAILURE;
+    }
+
     /* 5. Check if client wants to initiate a TLS/SSL handshake */
     #if RUN_SSL
-        fprintf(stderr, "[Proxy_accept] Checking for a SSL/TLS connection...\n");
+    fprintf(stderr, "[Proxy_accept] Checking for a SSL/TLS connection...\n");
 
-        cli->ssl = SSL_new(proxy->ctx);
-        SSL_set_fd(cli->ssl, cli->socket);
-        int ssl_acc_ret = SSL_accept(cli->ssl);
-        if (ssl_acc_ret == 1) {
-            fprintf(stderr, "[Proxy_accept] SSL/TLS connection established!\n");
-        } else {
-            fprintf(stderr, "[Proxy_accept] SSL/TLS connection failed!\n");
-            return ERROR_SSL;
-        }
+    cli->ssl = SSL_new(proxy->ctx);
+    SSL_set_fd(cli->ssl, cli->socket);
+    if (SSL_accept(cli->ssl) == -1) {
+        fprintf(stderr, "[Proxy_accept] SSL/TLS connection failed!\n");
+        cli->ssl_state = CLI_PLAIN;
+    } else {
+        fprintf(stderr, "[Proxy_accept] SSL/TLS connection established!\n");
+        cli->ssl_state = CLI_SSL;
+    }
     #endif 
 
     return EXIT_SUCCESS;
+}
+
+int Proxy_SSLwrite(Proxy *proxy, Client *cli, char *buf, int len)
+{
+    if (proxy == NULL || cli == NULL || buf == NULL || len < 0) {
+        print_error("proxy_sslwrite: invalid args");
+        return ERROR_FAILURE;
+    }
+
+    int ret = 0;
+    #if RUN_SSL
+    ret = SSL_write(cli->ssl, buf, len);
+    if (ret < 0) {
+        print_error("proxy_sslwrite: SSL_write failed");
+        return ERROR_FAILURE;
+    }
+    #endif
+
+    return ret;
 }
 
 /** Proxy_fetch
@@ -630,17 +667,6 @@ int Proxy_handle(Proxy *proxy)
                 ret = Proxy_handleConnect(client->query->socket, client->socket);
             }
             break;
-        case CLI_SSL:
-            // print_info("proxy: client is in SSL state");
-            // if (FD_ISSET(client->socket, &proxy->readfds)) {
-            //     ret = Proxy_handleSSL(client->socket, client->query->socket);
-            // }
-
-            // if (ret == EXIT_SUCCESS && client != NULL && client->query != NULL &&
-            //     FD_ISSET(client->query->socket, &proxy->readfds)) {
-            //     ret = Proxy_handleSSL(client->query->socket, client->socket);
-            // }
-            // break;
         }
 
         /* checking for events/errors */
@@ -680,6 +706,10 @@ int Proxy_handleListener(struct Proxy *proxy)
  */
 int Proxy_handleClient(struct Proxy *proxy, Client *client)
 {
+    if (client == NULL) {
+        return ERROR_FAILURE;
+    }
+
     int ret;
     char recv_buffer[BUFFER_SZ + 1];
     memset(recv_buffer, 0, BUFFER_SZ + 1);
@@ -687,7 +717,6 @@ int Proxy_handleClient(struct Proxy *proxy, Client *client)
     int num_bytes = recv(client->socket, recv_buffer, BUFFER_SZ, 0);
     if (num_bytes < 0) { // error recv 
         print_error("proxy: recv failed");
-        perror("recv");
         return ERROR_RECV; // TODO - if recv fails, just close the socket
     } else if (num_bytes == 0) {
         print_info("proxy: client disconnected");
@@ -1023,6 +1052,11 @@ int Proxy_handleEvent(Proxy *proxy, Client *client, int error_code)
         return HALT;
     case ERROR_SEND:
         print_error("proxy: failed to send message, closing connection");
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        break;
+    case ERROR_SSL:
+        print_error("proxy: failed to establish SSL connection");
+        Proxy_sendError(client, INTERNAL_SERVER_ERROR_500);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
     case INVALID_REQUEST:

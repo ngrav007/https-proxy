@@ -74,6 +74,6 @@ openssl x509 -req                       \
         -extfile ${EXT}
 
 # Add certificate to local trust store
-echo "[*] Adding certificate to local trust store"  
-cp ${CRT} /usr/local/share/ca-certificates/${CN}.crt
-update-ca-certificates
+# echo "[*] Adding certificate to local trust store"  
+# cp ${CRT} /usr/local/share/ca-certificates/${CN}.crt
+# update-ca-certificates

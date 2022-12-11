@@ -26,7 +26,8 @@ typedef struct Client {
     Query *query;
 
     #if RUN_SSL
-        SSL *ssl;
+    SSL *ssl;
+    int ssl_state;
     #endif 
 
     struct sockaddr_in addr;  // Client address

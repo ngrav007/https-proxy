@@ -16,15 +16,23 @@
 /* Root CA */
 #define ROOTCA_CERT "/workspaces/Development/https-proxy/etc/certs/EnnorRootCA.pem"
 #define ROOTCA_KEY "/workspaces/Development/https-proxy/etc/private/EnnorRootCA.key"
-#define ROOTCA_PASSWD "/workspaces/Development/https-proxy/etc/passwd/EnnorRootCA.passwd"
+#define ROOTCA_PASSWD_FILE "/workspaces/Development/https-proxy/etc/passwd/EnnorRootCA.passwd"
+#define ROOTCA_PASSWD "friend"
 
 /* Proxy Certificate */
-#define PROXY_CN "eregion.proxy"
-
 #define PROXY_CERT "/workspaces/Development/https-proxy/etc/certs/eregion.proxy.crt"
 #define PROXY_KEY "/workspaces/Development/https-proxy/etc/private/eregion.proxy.key"
 #define PROXY_CSR "/workspaces/Development/https-proxy/etc/csr/eregion.proxy.csr"
 #define PROXY_EXT "/workspaces/Development/https-proxy/etc/ext/eregion.proxy.ext"
+#define PROXY_PASSWD "friend"
+
+/* Client Certificate */
+#define CLIENT_CN "eregion.client"
+#define CLIENT_CERT "/workspaces/Development/https-proxy/etc/certs/eregion.client.crt"
+#define CLIENT_KEY "/workspaces/Development/https-proxy/etc/private/eregion.client.key"
+#define CLIENT_CSR "/workspaces/Development/https-proxy/etc/csr/eregion.client.csr"
+#define CLIENT_EXT "/workspaces/Development/https-proxy/etc/ext/eregion.client.ext"
+#define CLIENT_PASSWD "friend"
 
 /* Proxy */
 #define DEFAULT_MAX_AGE 3600
@@ -167,6 +175,7 @@
 #define CLI_GET     1
 #define CLI_CONNECT 2
 #define CLI_SSL     3
+#define CLI_PLAIN   4
 
 
 #endif /* __PROXYCONFIG_H__ */

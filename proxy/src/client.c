@@ -18,7 +18,8 @@ Client *Client_new()
     client->query             = NULL;
 
     #if RUN_SSL
-        client->ssl               = NULL;
+    client->ssl               = NULL;
+    client->ssl_state         = -1;
     #endif 
 
     client->buffer            = NULL;

@@ -86,6 +86,7 @@ int Proxy_handleConnect(int sender, int receiver);
 #if RUN_SSL
     int Proxy_handleSSL(Proxy *proxy, Client *client);
     int Proxy_SSLconnect(Proxy *proxy, Query *query);
+    int Proxy_SSLaccept(Proxy *proxy, Client *cli);
 #endif 
 
 #endif /* _PROXY_H_ */

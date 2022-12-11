@@ -244,16 +244,14 @@ void print_debug(char *msg)
     fprintf(stderr, "%s[DEBUG]%s %s\n", BYEL, reset, msg);
 }
 
-
-// #if RUN_SSL
-SSL_CTX *init_server_context()
+SSL_CTX *InitServerCTX()
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
 
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
-    method = TLS_server_method();
+    method = SSLv23_server_method(); // TLS_server_method();
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
         ERR_print_errors_fp(stderr);
@@ -262,14 +260,15 @@ SSL_CTX *init_server_context()
     return ctx;
 }
 
-SSL_CTX *init_ctx()
+SSL_CTX *InitCTX()
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
+
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
 
-    method = TLS_client_method();
+    method = SSLv23_client_method(); // TLS_client_method();
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
         ERR_print_errors_fp(stderr);
@@ -279,7 +278,7 @@ SSL_CTX *init_ctx()
     return ctx;
 }
 
-void display_certs(SSL *ssl)
+void ShowCerts(SSL *ssl)
 {
     X509 *cert;
     char *line;
@@ -298,13 +297,54 @@ void display_certs(SSL *ssl)
     }
 }
 
-int load_ca_certificates(SSL_CTX *ctx, char *cert_file, char *key_file)
+
+int LoadCertificates(SSL_CTX *ctx, char *cert_file, char *key_file, char *passwd)
+{
+    if (SSL_CTX_load_verify_locations(ctx, cert_file, key_file) != 1) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    if (SSL_CTX_set_default_verify_paths(ctx) != 1) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    /* set the key and the certificate */
+    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd);
+
+    /* set the private key from the key file - can be same as CertFile */
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    /* verify the private key */
+    if (!SSL_CTX_check_private_key(ctx)) {
+        fprintf(stderr, "[!] Private key does not match the certificate public key\n");
+        return -1;
+    }
+
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+    SSL_CTX_set_verify_depth(ctx, 4);
+
+    return 0;
+}
+
+int LoadClientCertificates(SSL_CTX *ctx, char *cert_file, char *key_file, char *passwd)
 {
     /* set the key and the certificate */
     if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
+
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd);
 
     /* set the private key from the key file - can be same as CertFile */
     if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
@@ -328,8 +368,3 @@ int is_root()
     }
     return 1;
 }
-
-// #endif 
-
-
-
