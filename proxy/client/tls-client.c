@@ -49,8 +49,8 @@ int main(int argc, char **argv)
     }
 
     char *raw_response = NULL;
-    ssize_t raw_response_l = 0;
-    ssize_t bytes, bytes_read = 0;
+    size_t raw_response_l = 0, bytes_read = 0;
+    ssize_t bytes;
     char buffer[BUFSIZE] = {0};
     
     /* get information to form request */
@@ -88,6 +88,20 @@ int main(int argc, char **argv)
     }
 
     /* send raw request */
+    fprintf(stderr, "[+] Sending raw request\n");
+    if (sendall(proxy_fd, raw_request, raw_l) < 0) {
+        close(proxy_fd);
+        error("[!] Failed to send raw request");
+    }
+
+    /* receive raw response */
+    print_info("[+] Receiving raw response");
+    if (recvall(proxy_fd, &raw_response, &raw_response_l, &bytes_read) < 0) {
+        close(proxy_fd);
+        error("[!] Failed to receive raw response");
+    }
+
+    
     /* TLS/SSL Handshake ------------------------------------------------------------------------ */
     
     /* SSL Initialize */
@@ -98,7 +112,7 @@ int main(int argc, char **argv)
     SSL_CTX *ctx = InitCTX();
 
     fprintf(stderr, "[+] Loading SSL Certificates\n");
-    LoadClientCertificates(ctx, CLIENT_CERT, CLIENT_KEY, CLIENT_PASSWD);
+    LoadClientCertificates(ctx, CLIENT_CERT, CLIENT_KEY);
 
     fprintf(stderr, "[+] Creating SSL Object\n");
     SSL *ssl = SSL_new(ctx);
@@ -234,11 +248,11 @@ static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz)
     /* receive data */
     ssize_t n = 0, ret = 0;
     while (1) {
-        n = recv(s, *buf + *buf_l, *buf_sz - *buf_l, 0);
+        n = recv(s, *buf + *buf_l, *buf_sz - *buf_l, MSG_DONTWAIT);
         if (n < 0) {
             error("[!] client: error occurred when receiving.");
             return EXIT_FAILURE;
-        } else if (n == 0) {
+        } else if (n == 0 || n == EAGAIN || n == EWOULDBLOCK) {
             *buf_l += n;
             (*buf)[*buf_l] = '\0';
             break;
@@ -271,6 +285,7 @@ static int sendall(int s, char *buf, size_t len)
         }
         total += n;
         bytes_left -= n;
+        fprintf(stderr, "[*] client: sent %d bytes\n", n);
     }
 
     fprintf(stderr, "[*] client: sent %zu bytes\n", total);

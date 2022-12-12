@@ -556,6 +556,39 @@ bool List_is_empty(List *list)
     return list->head == NULL && list->tail == NULL && List_size(list) == 0;
 }
 
+/* List_head
+ */
+Node *List_head(List *list)
+{
+    if (list == NULL) {
+        return NULL;
+    }
+
+    return list->head;
+}
+
+/* List_tail
+ */
+Node *List_tail(List *list)
+{
+    if (list == NULL) {
+        return NULL;
+    }
+
+    return list->tail;
+}
+
+/* List_next
+ */
+Node *List_next(Node *node)
+{
+    if (node == NULL) {
+        return NULL;
+    }
+
+    return node->next;
+}
+
 /* get_node
  *    Purpose: Returns the node at the given index. If the index is out of
  *             bounds, the function returns NULL.

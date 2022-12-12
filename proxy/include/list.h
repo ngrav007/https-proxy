@@ -44,5 +44,8 @@ int List_move_to_back(List *list, void *data);
 int List_size(List *list);
 bool List_contains(List *list, void *data);
 void *List_find(List *list, void *data);
+Node *List_head(List *list);
+Node *List_tail(List *list);
+Node *List_next(Node *node);
 
 #endif /* _LIST_H_ */

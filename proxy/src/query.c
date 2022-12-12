@@ -63,14 +63,15 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
     bzero(&(*q)->server_addr, sizeof((*q)->server_addr));
     (*q)->server_addr.sin_family = AF_INET;
     memcpy((char *)&(*q)->server_addr.sin_addr.s_addr, (*q)->host_info->h_addr_list[0], ((*q)->host_info->h_length));
-    (*q)->server_addr.sin_port = htons(atoi((*q)->req->port));
+    (*q)->server_addr.sin_port = htons(atoi((*q)->req->port)); // tODO - need to change port 443 
 
     (*q)->res = NULL;
+
+    (*q)->state = -1;
 
     return EXIT_SUCCESS;
 }
 
-Query *Query_create(Request *req, Response *res, struct sockaddr_in *server_addr, socklen_t server_addr_l, int server_fd);
 
 void Query_free(Query *query)
 {
@@ -82,11 +83,16 @@ void Query_free(Query *query)
     Response_free(query->res);
 
     #if RUN_SSL
-        Query_clearSSL(query);
-        Query_clearSSLCtx(query);
+    Query_clearSSL(query);
     #endif 
 
     close(query->socket);
+    query->socket = -1;
+
+    #if RUN_SSL
+    Query_clearSSLCtx(query);
+    #endif 
+
     free(query->buffer);
     free(query);
 }

@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 
 #if RUN_SSL
 #include <openssl/ssl.h>
@@ -39,12 +40,12 @@ typedef struct Query {
     char *buffer;
     size_t buffer_l;
     size_t buffer_sz;
+    int gotHeader;
+    int bytes_left;
+    int state;
 } Query;
 
 int Query_new(Query **q, char *buffer, size_t buffer_l);
-Query *Query_create(Request *req, Response *res,
-                    struct sockaddr_in *server_addr, socklen_t server_addr_l,
-                    int server_fd);
 void Query_free(Query *query);
 void Query_print(Query *query);
 int Query_compare(Query *query1, Query *query2);

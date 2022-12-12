@@ -132,7 +132,7 @@ int Entry_update(Entry *entry, void *value, long max_age, void (*foo)(void *))
     entry->value   = value;
     entry->max_age = max_age;
     entry->ttl     = max_age;
-    entry->init_time = get_time();
+    entry->init_time = get_current_time();
     entry->stale   = (entry->ttl <= 0) ? true : false;
     entry->deleted = false;
 
@@ -148,7 +148,7 @@ int Entry_touch(Entry *entry)
         return -1;
     }
 
-    double now = get_time();
+    double now = get_current_time();
     double age = now - entry->init_time;
     entry->ttl = entry->max_age - age;
 
@@ -168,7 +168,7 @@ long Entry_get_age(Entry *entry)
         return -1;
     }
 
-    double now = get_time();
+    double now = get_current_time();
     double age = now - entry->init_time;
 
     return (long)age;

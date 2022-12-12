@@ -19,15 +19,16 @@ Client *Client_new()
 
     #if RUN_SSL
     client->ssl               = NULL;
-    client->ssl_state         = -1;
+    client->isSSL             = false;
+
     #endif 
 
-    client->buffer            = NULL;
+    client->buffer            = calloc(BUFFER_SZ, sizeof(char));
     client->buffer_l          = 0;
+    client->buffer_sz         = BUFFER_SZ;
     client->socket            = -1;
-    client->last_recv.tv_sec  = 0;
-    client->last_recv.tv_usec = 0;
-    client->isSlow            = false;
+    client->last_active.tv_sec  = 0;
+    client->last_active.tv_usec = 0;
 
     return client;
 }
@@ -81,9 +82,9 @@ int Client_init(Client *client, int socket)
     client->buffer            = NULL;
     client->buffer_l          = 0;
     client->socket            = -1;
-    client->last_recv.tv_sec  = 0;
-    client->last_recv.tv_usec = 0;
-    client->isSlow            = false;
+    client->last_active.tv_sec  = 0;
+    client->last_active.tv_usec = 0;
+    client->isSSL            = 0;
 
     return 0;
 }
@@ -100,10 +101,6 @@ void Client_free(void *client)
     }
 
     Client *c = (Client *)client;
-    if (c->socket != -1) {
-        close(c->socket);
-        c->socket = -1;
-    }
 
     Client_clearQuery(c);
 
@@ -111,7 +108,11 @@ void Client_free(void *client)
         Client_clearSSL(c);
     #endif 
 
-    free_buffer(&c->buffer, &c->buffer_l, NULL);
+    
+    close(c->socket);
+    c->socket = -1;
+
+    free_buffer(&c->buffer, &c->buffer_l, &c->buffer_sz);
     free(c);
 }
 
@@ -129,9 +130,9 @@ void Client_print(void *client)
         fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
         fprintf(stderr, "  socket = %d\n", c->socket);
         fprintf(stderr, "  partialRead = %s\n",
-                (c->isSlow) ? "true" : "false");
-        fprintf(stderr, "  last_recv = %ld.%ld\n", c->last_recv.tv_sec,
-                c->last_recv.tv_usec);
+                (c->isSSL) ? "true" : "false");
+        fprintf(stderr, "  last_active = %ld.%ld\n", c->last_active.tv_sec,
+                c->last_active.tv_usec);
         fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
         Query_print(c->query);
     }
@@ -172,7 +173,7 @@ int Client_timestamp(Client *client)
         return -1;
     }
 
-    return gettimeofday(&client->last_recv, NULL);
+    return gettimeofday(&client->last_active, NULL);
 }
 
 /* Client_setSocket
@@ -255,8 +256,7 @@ void Client_clearQuery(Client *client)
         return;
     }
 
-    Query *q = client->query;
-    Query_free(q);
+    Query_free(client->query);
     client->query = NULL;
 }
 
@@ -275,6 +275,7 @@ void Client_clearSSL(Client *client)
     SSL_shutdown(client->ssl);
     SSL_free(client->ssl);
     client->ssl = NULL;
+    client->isSSL = 0;
 }
 #endif 
 
@@ -311,11 +312,11 @@ void Client_clearSSL(Client *client)
  * Parameters: @client - Pointer to a Client
  *    Returns: isSlow status (true or false)
  */
-bool Client_isisSlow(Client *client)
+bool Client_isSSL(Client *client)
 {
     if (client == NULL) {
         return false;
     }
 
-    return client->isSlow;
+    return client->isSSL;
 }

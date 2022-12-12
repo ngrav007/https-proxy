@@ -130,6 +130,7 @@ Entry *Cache_find(Cache *cache, char *key)
         if (e == NULL) {
             continue;
         } else if (strcmp(e->key, key) == 0 && !e->deleted) {
+            fprintf(stderr, "[DEBUG] e->key = %s\tkey = %s\t\n", e->key, key);
             return e;
         }
     }
@@ -217,9 +218,11 @@ int Cache_refresh(Cache *cache)
 
     /* touch every entry in the cache */
     size_t i;
+    Entry *e = NULL;
     for (i = 0; i < cache->capacity; i++) {
-        if (cache->table[i] != NULL) {
-            Entry_touch(cache->table[i]);
+        e = cache->table[i];
+        if (e != NULL) {
+            Entry_touch(e);
         }
     }
 
@@ -287,7 +290,7 @@ long Cache_get_age(Cache *cache, char *key)
         return -1;
     }
 
-    return get_time() - e->init_time;
+    return get_current_time() - e->init_time;
 }
 
 static int remove_stale_entry(Cache *cache)
@@ -311,7 +314,6 @@ static int remove_stale_entry(Cache *cache)
         return -1;
     }
 
-
     // find and remove the key form key_array
     char *key = (char *)oldest->key;
     size_t j = 0;
@@ -331,9 +333,7 @@ static int remove_stale_entry(Cache *cache)
         }
     }
 
-
     /* remove oldest entry lru list */
-    // List_remove(cache->lru, oldest->value);
     List_remove(cache->lru, oldest);
 
     /* remove oldest stale entry */
@@ -342,7 +342,6 @@ static int remove_stale_entry(Cache *cache)
 
     return 0;
 }
-
 
 char **Cache_getKeyList(Cache *cache)
 {

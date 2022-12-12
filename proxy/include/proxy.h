@@ -70,23 +70,30 @@ void Proxy_print(Proxy *proxy);
 int Proxy_listen(Proxy *proxy);
 int Proxy_accept(Proxy *proxy);
 ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l);
+ssize_t Proxy_recv(void *sender, int sender_type);
 int Proxy_sendError(Client *client, int msg_code);
-ssize_t Proxy_recv(Proxy *proxy, int socket);
 ssize_t Proxy_fetch(Proxy *proxy, Query *request);
 void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client);
 
 int Proxy_handle(Proxy *proxy);
 int Proxy_handleListener(Proxy *proxy);
 int Proxy_handleClient(Proxy *proxy, Client *client);
-int Proxy_handleQuery(Proxy *proxy, Query *query);
+int Proxy_handleQuery(Proxy *proxy, Query *query, int isSSL);
 int Proxy_handleTimeout(Proxy *proxy);
 int Proxy_handleEvent(Proxy *proxy, Client *client, int error_code);
-int Proxy_handleConnect(int sender, int receiver);
-
+int Proxy_handleGET(Proxy *proxy, Client *client);
+int Proxy_handleCONNECT(Proxy *proxy, Client *client);
+int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key);
+int Proxy_handleTunnel(int sender, int receiver);
+int Proxy_sendServerResp(Proxy *proxy, Client *client);
 #if RUN_SSL
-    int Proxy_handleSSL(Proxy *proxy, Client *client);
-    int Proxy_SSLconnect(Proxy *proxy, Query *query);
-    int Proxy_SSLaccept(Proxy *proxy, Client *cli);
+    int ProxySSL_connect(Proxy *proxy, Query *query);
+    int ProxySSL_handshake(Proxy *proxy, Client * client);
+    int ProxySSL_write(Proxy *proxy, Client *client, char *buf, int len);
+    int ProxySSL_shutdown(Proxy *proxy, Client *client);
+    int ProxySSL_read(void *sender, int sender_type);
 #endif 
+int Proxy_updateExtFile(Proxy *proxy, char *hostname);
+int Proxy_updateContext(Proxy *proxy);
 
 #endif /* _PROXY_H_ */

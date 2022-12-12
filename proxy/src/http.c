@@ -169,8 +169,8 @@ Request *Request_create(char *method, char *path, char *version, char *host, cha
         request->port_l = strlen(port);
         request->port   = strndup(port, request->port_l);
     } else {
-        request->port_l = DEFAULT_PORT_L;
-        request->port   = strndup(DEFAULT_PORT, request->port_l);
+        request->port_l = DEFAULT_HTTP_PORT_L;
+        request->port   = strndup(DEFAULT_HTTP_PORT, request->port_l);
     }
     if (body != NULL) {
         request->body_l = strlen(body);
@@ -1197,8 +1197,8 @@ static char *parse_port(char **host, size_t *host_l, char *path, size_t *port_l)
 
     /* Default port */
     if (port == NULL) {
-        port     = DEFAULT_PORT;
-        port_len = DEFAULT_PORT_L;
+        port     = DEFAULT_HTTP_PORT;
+        port_len = DEFAULT_HTTP_PORT_L;
         if (port_l != NULL) {
             *port_l = port_len;
         }
