@@ -5,3 +5,6 @@ subjectAltName = @alt_names
 [alt_names]
 DNS.1 = eregion.proxy
 DNS.2 = *.eregion.proxy
+DNS.3 = httpbin.org
+DNS.4 = www.tufts.edu
+DNS.5 = github.com

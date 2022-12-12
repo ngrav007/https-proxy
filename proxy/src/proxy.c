@@ -33,21 +33,24 @@ int Proxy_run(short port, size_t cache_size)
         print_error("proxy: must be run as root");
         return ERROR_FAILURE;
     }
-    // SSL_library_init(); // TODO - might not need
 
-    /* initialize the proxy */
+    /* Initialize SSL --------------------------------------------------------------------------- */
+    SSL_load_error_strings();   // ? - might not need
+    SSL_library_init();         // ? - might not need
+
+    /* Initialize Proxy ------------------------------------------------------------------------- */
     Proxy_init(&proxy, port, cache_size);
     print_success("[+] HTTP Proxy -----------------------------------");
     fprintf(stderr, "%s[*]%s   Proxy Port = %d\n", YEL, reset, proxy.port);
     fprintf(stderr, "%s[*]%s   Cache Size = %ld\n", YEL, reset, proxy.cache->capacity);
 
-    /* bind and listen proxy socket */
+    /* Bind & Listen Proxy Socket --------------------------------------------------------------- */
     if (Proxy_listen(&proxy) < 0) {
         print_error("proxy: failed to listen");
         return ERROR_FAILURE;
     }
 
-    /* Select Loop ---------------------------------------------------------- */
+    /* Select Loop ------------------------------------------------------------------------------ */
     short ret = select_loop(&proxy);
     if (ret == HALT) {
         print_info("proxy: shutting down");
@@ -55,6 +58,7 @@ int Proxy_run(short port, size_t cache_size)
         return EXIT_SUCCESS;
     }
 
+    /* Shutdown Proxy --------------------------------------------------------------------------- */
     print_error("proxy: failed and cannot recover");
     Proxy_free(&proxy);
 
@@ -104,10 +108,10 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
     proxy->server_fd = -1;
     proxy->client_fd = -1;
 
-    /* set the proxy port */
+    /* set the proxy port to given port */
     proxy->port = port;
 
-    /* zero out fd_sets and initialize max fd of master_set */
+    /* zero out fd_sets and initialize max fd of master_set and timeout */
     FD_ZERO(&(proxy->master_set));
     FD_ZERO(&(proxy->readfds));
     proxy->fdmax   = 0;

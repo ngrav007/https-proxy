@@ -8,26 +8,26 @@ GENERATE_EXT="/workspaces/Development/https-proxy/scripts/generate_ext.sh"
 # Get Common Name
 if [ -z "$1" ]; then
     echo "Usage: generate_cert.sh <common name>"
-    exit 1
+    exit -1
 fi
 CN=$1
 
 # Check for sudo privileges
 if [[ $EUID -ne 0 ]]; then
    echo "[!] This script must be run as root" 1>&2
-   exit 1
+   exit -1
 fi
 
 # Ensure Root CA exists
 if [ ! -f "${ROOTCA_CRT}" ]; then
     echo "[!] Root CA certificate ${ROOTCA_CRT} not found"
-    exit 1
+    exit -1
 fi
 
 # Ensure Root CA Key exists
 if [ ! -f "${ROOTCA_KEY}" ]; then
     echo "[!] Root CA key ${ROOTCA_KEY} not found"
-    exit 1
+    exit -1
 fi
 
 # Files
@@ -37,7 +37,10 @@ KEY="${LOCAL_KEYS}/${CN}.key"
 EXT="${LOCAL_EXTS}/${CN}.ext"
 
 # Generate Extension File
-${GENERATE_EXT} ${CN}
+if [ ! -f "${EXT}" ]; then
+    echo "[*] Generating extension file for ${CN}"
+    ${GENERATE_EXT} ${CN}
+fi
 
 # Print information
 echo "[*] Generating certificate for '${CN}' in '${LOCAL_CERTS}'"
@@ -72,6 +75,8 @@ openssl x509 -req                       \
         -out ${CRT} -days 365           \
         -sha256                         \
         -extfile ${EXT}
+
+exit 0
 
 # Add certificate to local trust store
 # echo "[*] Adding certificate to local trust store"  
