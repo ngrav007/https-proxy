@@ -32,33 +32,24 @@
 #if RUN_SSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-// #include <ssl.h>
-// #include <err.h>
 #endif 
 
 typedef struct Proxy {
     #if RUN_CACHE 
         Cache *cache;
     #endif 
-
-    List *client_list;
-
     #if RUN_SSL
         SSL_CTX *ctx;
     #endif 
 
+    List *client_list;
+
     struct sockaddr_in addr;
-    struct hostent *client;  // ? do we need this?
-    struct hostent *server;  // ? do we need this?
-    struct timeval *timeout; // ? do we need timeouts
+    struct timeval *timeout;
     fd_set master_set;
     fd_set readfds;
-    char *client_ip;
-    char *server_ip;
     int fdmax;
     int listen_fd;
-    int client_fd;
-    int server_fd;
     short port;
 } Proxy;
 

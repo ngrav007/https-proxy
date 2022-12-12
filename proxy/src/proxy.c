@@ -98,15 +98,11 @@ int Proxy_init(struct Proxy *proxy, short port, size_t cache_size)
 
     /* zero out the proxy addresses */
     zero(&(proxy->addr), sizeof(proxy->addr));
-    zero(&(proxy->client), sizeof(proxy->client));
-    zero(&(proxy->server), sizeof(proxy->server));
-    zero(&(proxy->client_ip), sizeof(proxy->client_ip));
-    zero(&(proxy->server_ip), sizeof(proxy->server_ip));
+
+
 
     /* initialize socket fds to -1 */
     proxy->listen_fd = -1;
-    proxy->server_fd = -1;
-    proxy->client_fd = -1;
 
     /* set the proxy port to given port */
     proxy->port = port;
@@ -155,7 +151,12 @@ void Proxy_free(void *proxy)
 
     struct Proxy *p = (struct Proxy *)proxy;
 
-/* free the proxy */
+    /* free the SSL context */
+#if RUN_SSL
+    SSL_CTX_free(p->ctx);
+#endif
+
+    /* free the proxy */
 #if RUN_CACHE
     Cache_free(&p->cache);
 #endif
@@ -165,14 +166,6 @@ void Proxy_free(void *proxy)
         close(p->listen_fd);
         p->listen_fd = -1;
     }
-    if (p->server_fd != -1) {
-        close(p->server_fd);
-        p->server_fd = -1;
-    }
-    if (p->client_fd != -1) {
-        close(p->client_fd);
-        p->client_fd = -1;
-    }
 
     /* free the timeout */
     if (p->timeout != NULL) {
@@ -180,12 +173,7 @@ void Proxy_free(void *proxy)
         p->timeout = NULL;
     }
 
-/* free the SSL context */
-#if RUN_SSL
-    SSL_CTX_free(p->ctx);
-#endif
-
-    p->port = 0;
+    free(p);
 }
 
 /** Proxy_print
@@ -202,14 +190,10 @@ void Proxy_print(struct Proxy *proxy)
     fprintf(stderr, "%s[Proxy]%s\n", BMAG, reset);
     fprintf(stderr, "  port = %d\n", proxy->port);
     fprintf(stderr, "  listen_fd = %d\n", proxy->listen_fd);
-    fprintf(stderr, "  server_fd = %d\n", proxy->server_fd);
-    fprintf(stderr, "  client_fd = %d\n", proxy->client_fd);
-
+    List_print(proxy->client_list);
 #if RUN_CACHE
     Cache_print(proxy->cache);
 #endif
-
-    List_print(proxy->client_list);
 }
 
 /** Proxy_close
@@ -224,11 +208,10 @@ void Proxy_print(struct Proxy *proxy)
 void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *client)
 {
     /* close this connection */
-    fprintf(stderr, "%s[?] Closing Socket # = %d%s\n", YEL, socket, reset);
+    fprintf(stderr, "%s[?] Closing Socket #%d%s\n", YEL, socket, reset);
     close(socket);
 
-    fprintf(stderr, "%s[?] Remove Socket # from master_set = %d%s\n", YEL, socket, reset);
-
+    fprintf(stderr, "%s[?] Removing Socket #%d from master_set%s\n", YEL, socket, reset);
     /* remove the client from master fd_set */
     FD_CLR(socket, master_set);
     if (client->query != NULL && client->query->socket != -1) {
@@ -236,7 +219,7 @@ void Proxy_close(int socket, fd_set *master_set, List *client_list, Client *clie
     }
 
     /* remove the client from client_list */
-    fprintf(stderr, "%s[?] Remove Socket # from client_list = %d%s\n", YEL, socket, reset);
+    fprintf(stderr, "%s[?] Remove Socket #%d from client_list%s\n", YEL, socket, reset);
     List_remove(client_list, (void *)client);
 }
 
@@ -273,7 +256,7 @@ int Proxy_listen(Proxy *proxy)
         return ERROR_FAILURE;
     }
 
-    /* build proxy address (type is: struct sockaddr_in) */
+    /* build proxy address */
     bzero((char *)&(proxy->addr), sizeof(proxy->addr));
     proxy->addr.sin_family      = AF_INET;
     proxy->addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -324,45 +307,45 @@ int Proxy_accept(struct Proxy *proxy)
         return ERROR_FAILURE;
     }
     /* accept connection request from new client */
-    Client *cli = Client_new();
-    cli->addr_l = sizeof(cli->addr);
-    cli->socket = accept(proxy->listen_fd, (struct sockaddr *)&(cli->addr), &(cli->addr_l));
-    if (cli->socket == -1) {
+    Client *c = Client_new();
+    c->addr_l = sizeof(c->addr);
+    c->socket = accept(proxy->listen_fd, (struct sockaddr *)&(c->addr), &(c->addr_l));
+    if (c->socket == -1) {
         print_error("proxy: accept failed");
-        Client_free(cli);
+        Client_free(c);
         return ERROR_ACCEPT;
     }
 
     /* timestamp the client */
-    Client_timestamp(cli);
+    Client_timestamp(c);
 
-    /* set socket to non-blocking */ // ? why did we do this again?
-    // int flags = fcntl(cli->socket, F_GETFL, 0);
+    /* set socket to non-blocking */ // ? set to non-blocking - why?
+    // int flags = fcntl(c->socket, F_GETFL, 0);
     // if (flags == -1) {
     //     print_error("proxy: fcntl failed");
-    //     Client_free(cli);
+    //     Client_free(c);
     //     return ERROR_FAILURE;
     // }
     // flags |= O_NONBLOCK;
-    // if (fcntl(cli->socket, F_SETFL, flags) == -1) {
+    // if (fcntl(c->socket, F_SETFL, flags) == -1) {
     //     print_error("proxy: fcntl failed");
-    //     Client_free(cli);
+    //     Client_free(c);
     //     return ERROR_FAILURE;
     // }
 
     /* add client to the proxy's client list */
-    int ret = List_push_back(proxy->client_list, (void *)cli);
+    int ret = List_push_back(proxy->client_list, (void *)c);
     if (ret < 0) {
-        Client_free(cli);
+        Client_free(c);
         print_error("proxy: failed to add client to client list");
         return ERROR_FAILURE;
     }
 
-    /* put new clients's socket in master set */
-    FD_SET(cli->socket, &(proxy->master_set));
+    /* put new client's socket in master set */
+    FD_SET(c->socket, &(proxy->master_set));
 
     /* 4. updates the max fd */
-    proxy->fdmax = cli->socket > proxy->fdmax ? cli->socket : proxy->fdmax;
+    proxy->fdmax = (c->socket > proxy->fdmax) ? c->socket : proxy->fdmax;
 
     return EXIT_SUCCESS;
 }
@@ -370,21 +353,21 @@ int Proxy_accept(struct Proxy *proxy)
 /** Proxy_fetch
  *    Purpose: Connects to the client-requested server and forwards client's request.
  * Parameters: @proxy - the proxy struct
- *             @qry - the query containing the server information we are fetcher from
+ *             @q - the query containing the server information we are fetcher from
  *    Returns: The number of bytes sent if successful, otherwise, ERROR_CONNECT is returned
  *             indicating an error connecting to the server has occurred, ERROR_FETCH is an error
  *             occurred sending the request to server, else ERROR_FAILURE
  */
-ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
+ssize_t Proxy_fetch(Proxy *proxy, Query *q)
 {
-    if (proxy == NULL || qry == NULL) {
+    if (proxy == NULL || q == NULL) {
         print_error("proxy_fetch: fetch: invalid arguments");
         return ERROR_FAILURE;
     }
 
     /* make connection to server */
     print_debug("proxy_fetch: making connection to server");
-    if (connect(qry->socket, (struct sockaddr *)&qry->server_addr, sizeof(qry->server_addr)) < 0) {
+    if (connect(q->socket, (struct sockaddr *)&q->server_addr, sizeof(q->server_addr)) < 0) {
         print_error("proxy_fetch: failed to connect to server");
         perror("connect");
         return ERROR_BAD_GATEWAY;
@@ -392,15 +375,15 @@ ssize_t Proxy_fetch(Proxy *proxy, Query *qry)
     print_debug("proxy_fetch: connected to server");
 
     /* add server socket to master_set */
-    FD_SET(qry->socket, &proxy->master_set);
-    proxy->fdmax = (qry->socket > proxy->fdmax) ? qry->socket : proxy->fdmax;
+    FD_SET(q->socket, &proxy->master_set);
+    proxy->fdmax = (q->socket > proxy->fdmax) ? q->socket : proxy->fdmax;
 
     /* send message to server */
     ssize_t msgsize = 0;
-    if (strncmp(qry->req->method, GET, GET_L) == 0) {
+    if (strncmp(q->req->method, GET, GET_L) == 0) {
         print_info("proxy_fetch: sending GET request to server");
-        print_ascii(qry->req->raw, qry->req->raw_l);
-        if (Proxy_send(qry->socket, qry->req->raw, qry->req->raw_l) < 0) {
+        print_ascii(q->req->raw, q->req->raw_l);
+        if (Proxy_send(q->socket, q->req->raw, q->req->raw_l) < 0) {
             print_error("proxy_fetch: send failed");
             return ERROR_FETCH;
         }
@@ -427,26 +410,24 @@ ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l)
     fprintf(stderr, "[Proxy_Send] sending non-null buffer of size: %ld.\n", buffer_l);
 
     /* write request to server */
-    ssize_t written  = 0;
-    ssize_t to_write = buffer_l;
-    ssize_t n        = 0;
-    while (written < (ssize_t)buffer_l) {
-        n = send(socket, 
-        buffer + written, 
-        to_write, 0);
-        if (n == -1) {
-            print_error("proxy: send failed");
-            perror("send");
-            return ERROR_SEND;
+    ssize_t written  = 0, n = 0, to_write = buffer_l;
+    while ((size_t)written < buffer_l) {
+        n = send(socket, buffer + written, to_write, 0);
+        if (n == -1 && (errno == ECONNRESET || errno == ECONNABORTED || errno == EPIPE)) {
+            print_error("proxy_send: connection reset by peer");
+            return ERROR_CLOSE;
+        } else if (n == -1) {
+            print_error("proxy_send: send failed");
+            return ERROR_FAILURE;
+        } else {
+            written += n;
+            to_write -= n;
+            fprintf(stderr, "[Proxy_send] Bytes sent: %ld\n", n);
+            fprintf(stderr, "Bytes To Write: %ld\n", to_write);
+            fprintf(stderr, "Bytes Written: %ld\n", written);
+            fprintf(stderr, "%s[END PROXY SEND]%s\n", GRN, reset);
         }
-        written += n;
-        to_write -= n;
-
-        fprintf(stderr, "[Proxy_send] Bytes sent: %ld\n", n);
     }
-    fprintf(stderr, "Bytes To Write: %ld\n", to_write);
-    fprintf(stderr, "Bytes Written: %ld\n", written);
-    fprintf(stderr, "%s[END PROXY SEND]%s\n", GRN, reset);
 
     return written;
 }
