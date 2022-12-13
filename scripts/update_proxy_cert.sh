@@ -63,7 +63,21 @@ PROXY_DNS_COUNT=$(( ${PROXY_DNS_COUNT} + 1 ))
 CONFIG_FILE="/workspaces/Development/https-proxy/scripts/config/.config"
 sed -i "s/PROXY_DNS_COUNT=.*/PROXY_DNS_COUNT=${PROXY_DNS_COUNT}/g" ${CONFIG_FILE}
 
-# Generate new proxy certificate
-${GENERATE_CERT} ${PROXY_CN}
+# Remove old proxy certificate
+rm -f ${PROXY_CRT}
 
-exit 1
+# Generate new proxy certificate
+# Generate certificate using our own root ca
+echo "[*] Generating certificate for ${CN}"
+openssl x509 -req                       \
+        -in ${PROXY_CSR}               \
+        -CA ${ROOTCA_CRT}               \
+        -CAkey ${ROOTCA_KEY}            \
+        -passin "file:${ROOTCA_PASSWD}" \
+        -CAcreateserial                 \
+        -out ${PROXY_CRT} -days 365           \
+        -sha256                         \
+        -extfile ${PROXY_EXT}
+
+# Update proxy certificate
+# echo "[*] Updating proxy certificate"
