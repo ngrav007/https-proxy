@@ -59,3 +59,4 @@ archive/
 
 # Files to ignore
 .DS_Store
+etc/*

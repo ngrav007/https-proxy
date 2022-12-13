@@ -36,7 +36,7 @@ int Proxy_run(short port, size_t cache_size)
 
     /* Initialize SSL --------------------------------------------------------------------------- */
     SSL_load_error_strings();   // ? - might not need
-    SSL_library_init();         // ? - might not need
+    // SSL_library_init();         // ? - might not need
 
     /* Initialize Proxy ------------------------------------------------------------------------- */
     Proxy_init(&proxy, port, cache_size);
@@ -60,7 +60,6 @@ int Proxy_run(short port, size_t cache_size)
 
     /* Shutdown Proxy --------------------------------------------------------------------------- */
     print_error("proxy: failed and cannot recover");
-    Proxy_free(&proxy);
 
     return EXIT_FAILURE;
 }
@@ -692,9 +691,16 @@ int Proxy_handleGET(Proxy *proxy, Client *client)
             free(key);
             fprintf(stderr, "[Proxy_handleGET]: cache miss!\n");
             /* if in HTTPS mode use TLS/SSL otherwise do a regular fetch */
+            fprintf(stderr, "client->isSSL = %d\n", client->isSSL);
             ret = (client->isSSL) ? ProxySSL_connect(proxy, client->query) : Proxy_fetch(proxy, client->query);
             if (ret < 0) {
-                print_error("[Proxy_handleGET]:fetch failed");
+                if (client->isSSL) {
+                    /* stop SSL */
+                    SSL_shutdown(client->ssl);
+                    SSL_free(client->ssl);
+                    client->ssl = NULL;
+                    client->isSSL = 0;
+                } 
                 return ret; 
             }
 
@@ -746,7 +752,7 @@ int ProxySSL_read(void *sender, int sender_type)
             perror("recv");
             return ERROR_SSL;
             
-        } else if (n < q->buffer_sz - q->buffer_l) {
+        } else if (n < (size_t)q->buffer_sz - q->buffer_l) {
             q->buffer_l += n;
             q->res = Response_new(q->req->method, q->req->method_l, q->req->path, q->req->path_l,
                                 q->buffer, q->buffer_l);
@@ -986,12 +992,14 @@ int Proxy_sendServerResp(Proxy *proxy, Client *client)
         fprintf(stderr, "%s[Proxy_handle]: sending SSL response to client %d%s\n", YEL, client->socket, reset);
         if (ProxySSL_write(proxy, client, response_buffer, response_sz) <= 0) {
             print_error("proxy: failed to send response to client");
+            free(response_buffer);
             return ERROR_SSL;
         }
     } else {
         fprintf(stderr, "%s[Proxy_handle]: sending response to client %d%s\n", YEL, client->socket, reset);
         if (Proxy_send(client->socket, response_buffer, response_sz) < 0) {
             print_error("proxy: failed to send response to client");
+            free(response_buffer);
             return ERROR_SEND;
         }
     }
@@ -1259,6 +1267,10 @@ int Proxy_handleEvent(Proxy *proxy, Client *client, int error_code)
         break;
     case CLIENT_CLOSE:
         fprintf(stderr, "%s[+] proxy: closing client %d%s\n", GRN, client->socket, reset);
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
+        break;
+    case ERROR_CLOSE:
+        print_error("proxy: [-] closing client due to error");
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         break;
     case ERROR_CONNECT:
