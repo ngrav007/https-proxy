@@ -56,7 +56,10 @@ output/
 bin/
 build/
 archive/
+etc/*
+reports/*
+files/*
 
 # Files to ignore
 .DS_Store
-etc/*
+
