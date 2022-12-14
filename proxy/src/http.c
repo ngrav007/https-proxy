@@ -1617,7 +1617,7 @@ int perfectKeyPrefix(char *pre, int pre_l, char *str)
     // loop until you find a mismatch or until pre completes
     for (; pre_ptr != pre_end; (pre_ptr)++, (str_ptr)++) 
     {
-        if (*pre_ptr != *str_ptr) { // Mismatch
+        if (tolower(*pre_ptr) != tolower(*str_ptr)) { // Mismatch
             // fprintf(stderr, "Mismatch: %c vs. %c\n", *pre_ptr, *str_ptr);
             return 0;
         }
