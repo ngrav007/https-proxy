@@ -679,7 +679,7 @@ int ProxySSL_read(void *sender, int sender_type)
         print_debug("[proxyssl-read] reading from client ssl socket");
         fprintf(stderr, "[proxyssl-read] buffer_sz: %ld\n", c->buffer_sz);
         fprintf(stderr, "[proxyssl-read] buffer_l: %ld\n", c->buffer_l);
-        fprintf(stderr, "[proxyssl-read] bytes to read: %ld\n", c->buffer_sz - c->buffer_l)
+        fprintf(stderr, "[proxyssl-read] bytes to read: %ld\n", c->buffer_sz - c->buffer_l);
             fprintf(stderr, "[proxyssl-read] query ssl bytes read: %ld\n", n);
         print_ascii(c->buffer + c->buffer_l, n);
 #endif
@@ -929,7 +929,7 @@ int Proxy_handleGET(Proxy *proxy, Client *client)
     }
 
 #if DEBUG
-    fprintf(stderr, "[proxy-handle-get] Client State: %d\n", client->state)
+    fprintf(stderr, "[proxy-handle-get] Client State: %d\n", client->state);
     fprintf(stderr, "[proxy-handle-get] Query State: %d\n", client->query->state);
     fprintf(stderr, "[proxy-handle-get] Client Socket: %d\n", client->socket);
     fprintf(stderr, "[proxy-handle-get] Query Socket: %d\n", client->query->socket);
@@ -1125,8 +1125,8 @@ int Proxy_sendServerResp(Proxy *proxy, Client *client)
         client->state        = CLI_QUERY; // todo this might be slightly too early
         client->query->state = QRY_INIT;
 #if DEBUG
-        fprintf(stderr, "%s[proxy-handle] removing query socket %d from readfds%s");
-        fprintf(stderr, "%s[proxy-handle] removing query socket %d from master_set%s");
+        fprintf(stderr, "%s[proxy-handle] removing query socket %d from readfds%s", YEL, client->query->socket, reset);
+        fprintf(stderr, "%s[proxy-handle] removing query socket %d from master_set%s", YEL, client->query->socket, reset);
 #endif
         FD_CLR(client->query->socket, &proxy->readfds);
         FD_CLR(client->query->socket, &proxy->master_set);
@@ -1453,7 +1453,7 @@ int Proxy_handleTimeout(struct Proxy *proxy)
 #if DEBUG
             print_warning("proxy: client timed out");
             fprintf(stderr, "[handle-timeout] client timed out: %d\n", client->socket);
-            fprintf(stderr, "[handle-timeout] client request: %s\n", client->req->host);
+            fprintf(stderr, "[handle-timeout] client request host: %s\n", client->query->req->host);
 #endif
             Proxy_close(client->socket, &proxy->master_set, proxy->client_list, client);
         } else {
@@ -1613,7 +1613,7 @@ int Proxy_readFilterList(Proxy *proxy)
         }
     }
 #if DEBUG
-    print_info("[read-filter-list] filter list:")
+    print_info("[read-filter-list] filter list:");
     for (int i = 0; i < proxy->num_filters; i++) {
         fprintf(stderr, "[%d] %s\n", i, proxy->filters[i]);
     }
@@ -1700,7 +1700,7 @@ static char *get_key(Request *req)
     key[key_l] = '\0';
 
 #if DEBUG
-    print_debug("[get-key] generated key:")
+    print_debug("[get-key] generated key:");
     print_ascii(key, key_l);
 #endif
 

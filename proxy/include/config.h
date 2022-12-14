@@ -5,8 +5,8 @@
 // #include <fcntl.h> // oflags
 
 /* Compiler Directives */
-#define DEBUG      0
-#define RUN_SSL    0
+#define DEBUG      1
+#define RUN_SSL    1
 #define RUN_CACHE  1
 #define RUN_FILTER 0
 

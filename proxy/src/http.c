@@ -585,7 +585,7 @@ char *Raw_request(char *method, char *url, char *host, char *port, char *body, s
     *raw_l = raw_len;
 
 #if DEBUG
-    print_debug("http: [raw-request] Raw request: ")
+    print_debug("http: [raw-request] Raw request: ");
     print_ascii(raw_request, raw_len);
 #endif
 
