@@ -1452,10 +1452,10 @@ int color_links(char **buffer, size_t *buffer_l,
 {
     // fprintf(stderr, "Num keys: %d\n", num_keys);
     // fprintf(stderr, "[HTTP] KeyArray:\n");
-    int i = 0;
-    for (; i < num_keys; i++) {
-        fprintf(stderr, "%s\n", cache_keys[i]);
-    }
+    // int i = 0;
+    // for (; i < num_keys; i++) {
+    //     fprintf(stderr, "%s\n", cache_keys[i]);
+    // }
     // fprintf(stderr, "Initializing new buffer of size: %ld\n", *buffer_l);
     char *new_buffer = calloc(*buffer_l + COLOR_L + 1, sizeof(char));
     if (new_buffer == NULL) {
@@ -1581,7 +1581,7 @@ int foundKey(char *target, int target_l, char **arr, int arr_size)
     // fprintf(stderr, "Arr size: %d\n", arr_size);
     int i = 0;
     for (i = 0; i < arr_size; i++) {
-        fprintf(stderr, "i: %d\n", i);
+        // fprintf(stderr, "i: %d\n", i);
         if (perfectKeyPrefix(target, target_l, arr[i])) {
             // fprintf(stderr, "Perfect Key Prefix Match\n");
             return 1;
