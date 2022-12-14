@@ -13,7 +13,7 @@
 #if RUN_CACHE == 0      // if cache is disables RUN_COLOR must be disabled
 #define RUN_COLOR 0
 #else
-#define RUN_COLOR 1
+#define RUN_COLOR 1     // define RUN_COLOR here
 #endif 
 
 /* CA Certificates */
