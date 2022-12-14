@@ -36,7 +36,7 @@ static int sendall(int s, char *buf, size_t len);
 static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz);
 static void error(char *msg);
 static int connect_to_proxy(char *host, int port);
-static int save_to_file(char *uri, char *raw_response, size_t raw_response_l);
+// static int save_to_file(char *uri, char *raw_response, size_t raw_response_l);
 static int ssl_readall(SSL *s, char **buf, size_t *buf_l, size_t *buf_sz);
 
 
@@ -50,8 +50,8 @@ int main(int argc, char **argv)
 
     char *raw_response = NULL;
     size_t raw_response_l = 0, bytes_read = 0;
-    ssize_t bytes;
-    char buffer[BUFSIZE] = {0};
+    // ssize_t bytes;
+    // char buffer[BUFSIZE] = {0};
     
     /* get information to form request */
     char *proxy_host = argv[1];
@@ -317,45 +317,45 @@ static int connect_to_proxy(char *host, int port)
     return sockfd;
 }
 
-static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
-{
-    if (raw_response == NULL) {
-        return EXIT_FAILURE;
-    }
+// static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
+// {
+//     if (raw_response == NULL) {
+//         return EXIT_FAILURE;
+//     }
     
-    /* save raw response to file */
-    char output_file[BUFSIZE + 1];
-    char *basename = strrchr(uri, '/');
-    if (basename == NULL) {
-        basename = uri;
-    } else {
-        basename++;
-        if (basename[0] == '\0') {
-            basename = "index.html";
-        }
-    }
+//     /* save raw response to file */
+//     char output_file[BUFSIZE + 1];
+//     char *basename = strrchr(uri, '/');
+//     if (basename == NULL) {
+//         basename = uri;
+//     } else {
+//         basename++;
+//         if (basename[0] == '\0') {
+//             basename = "index.html";
+//         }
+//     }
 
-    char *body = strstr(raw_response, HEADER_END);
-    if (body == NULL) {
-        error("[!] Failed to find body");
-        return EXIT_FAILURE;
-    }
-    body += HEADER_END_L;
+//     char *body = strstr(raw_response, HEADER_END);
+//     if (body == NULL) {
+//         error("[!] Failed to find body");
+//         return EXIT_FAILURE;
+//     }
+//     body += HEADER_END_L;
 
-    snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
-    int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
-    if (fp == -1) {
-        return EXIT_FAILURE;
-    }
+//     snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
+//     int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
+//     if (fp == -1) {
+//         return EXIT_FAILURE;
+//     }
 
-    size_t body_l = raw_response_l - (body - raw_response);
-    if (write(fp, body, body_l) < 0) {
-        error("[!] Failed to write to output file");
-        close(fp);
-        return EXIT_FAILURE;
-    }
-    close(fp);
-    fprintf(stderr, "[+] Saved response to %s\n", output_file);
+//     size_t body_l = raw_response_l - (body - raw_response);
+//     if (write(fp, body, body_l) < 0) {
+//         error("[!] Failed to write to output file");
+//         close(fp);
+//         return EXIT_FAILURE;
+//     }
+//     close(fp);
+//     fprintf(stderr, "[+] Saved response to %s\n", output_file);
 
-    return EXIT_SUCCESS;
-}
+//     return EXIT_SUCCESS;
+// }

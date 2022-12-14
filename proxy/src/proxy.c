@@ -1407,67 +1407,6 @@ int Proxy_handleTimeout(struct Proxy *proxy)
     return TIMEOUT_TRUE;
 }
 
-/* Static Functions --------------------------------------------------------- */
-#if RUN_CACHE
-static char *get_key(Request *req)
-{
-    if (req == NULL) {
-        return NULL;
-    }
-
-    char *key = calloc(req->host_l + req->path_l + 1, sizeof(char));
-    memcpy(key, req->path, req->path_l);
-    memcpy(key + req->path_l, req->host, req->host_l);
-
-    return key;
-}
-#endif
-
-static short select_loop(Proxy *proxy)
-{
-    if (proxy == NULL) {
-        return ERROR_FAILURE;
-    }
-
-    short ret;
-    while (true) {
-        print_debug("proxy: waiting for connections");
-        Proxy_handleTimeout(proxy);
-        proxy->readfds = proxy->master_set;
-        ret            = select(proxy->fdmax + 1, &(proxy->readfds), NULL, NULL, NULL);
-        fprintf(stderr, "[Proxy_run] select returned: %d\n", ret);
-        switch (ret) {
-        case SELECT_ERROR:
-            print_error("proxy: select failed");
-            perror("select");
-            return ERROR_FAILURE;
-        case SELECT_TIMEOUT:
-            print_warning("proxy: select timed out");
-            continue;
-            break;
-        default:
-            /* check listening socket and accept new clients */
-            if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
-                Proxy_handleListener(proxy);
-                // if ((ret = Proxy_handleListener(proxy)) != EXIT_SUCCESS) {
-                //     ret = Proxy_handleEvent(proxy, NULL, ret);
-                //     if (ret != EXIT_SUCCESS) {
-                //         return ret;
-                //     }
-                // }
-            }
-            /* check client sockets for requests and serve responses */
-            fprintf(stderr, "[Proxy_run] calling Proxy_handle\n");
-            ret = Proxy_handle(proxy);
-        }
-
-        if (ret != EXIT_SUCCESS) {
-            break;
-        }
-    }
-
-    return ret;
-}
 /* serve from cache */
 #if RUN_CACHE
 int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key)
@@ -1647,3 +1586,73 @@ void Proxy_freeFilters(Proxy *proxy)
 }
 #endif
 
+
+/* Static Functions --------------------------------------------------------- */
+#if RUN_CACHE
+static char *get_key(Request *req)
+{
+    if (req == NULL) {
+        return NULL;
+    }
+    int key_l = req->host_l + req->port_l + req->path_l + COLON_L;
+    int offset = 0;
+    char *key = calloc(key_l + 1, sizeof(char));
+    memcpy(key, req->host, req->host_l);
+    offset += req->host_l;
+    memcpy(key + offset, COLON, COLON_L);
+    offset += COLON_L;
+    memcpy(key + offset, req->port, req->port_l);
+    offset += req->port_l;
+    memcpy(key + req->path_l, req->host, req->host_l);
+    offset += req->path_l;
+    key[key_l] = '\0';
+    
+    return key;
+}
+#endif
+
+static short select_loop(Proxy *proxy)
+{
+    if (proxy == NULL) {
+        return ERROR_FAILURE;
+    }
+
+    short ret;
+    while (true) {
+        print_debug("proxy: waiting for connections");
+        Proxy_handleTimeout(proxy);
+        proxy->readfds = proxy->master_set;
+        ret            = select(proxy->fdmax + 1, &(proxy->readfds), NULL, NULL, NULL);
+        fprintf(stderr, "[Proxy_run] select returned: %d\n", ret);
+        switch (ret) {
+        case SELECT_ERROR:
+            print_error("proxy: select failed");
+            perror("select");
+            return ERROR_FAILURE;
+        case SELECT_TIMEOUT:
+            print_warning("proxy: select timed out");
+            continue;
+            break;
+        default:
+            /* check listening socket and accept new clients */
+            if (FD_ISSET(proxy->listen_fd, &(proxy->readfds))) {
+                Proxy_handleListener(proxy);
+                // if ((ret = Proxy_handleListener(proxy)) != EXIT_SUCCESS) {
+                //     ret = Proxy_handleEvent(proxy, NULL, ret);
+                //     if (ret != EXIT_SUCCESS) {
+                //         return ret;
+                //     }
+                // }
+            }
+            /* check client sockets for requests and serve responses */
+            fprintf(stderr, "[Proxy_run] calling Proxy_handle\n");
+            ret = Proxy_handle(proxy);
+        }
+
+        if (ret != EXIT_SUCCESS) {
+            break;
+        }
+    }
+
+    return ret;
+}
