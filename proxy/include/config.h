@@ -5,10 +5,10 @@
 // #include <fcntl.h> // oflags
 
 /* Compiler Directives */
-#define RUN_CACHE 0
-#define RUN_SSL   0
-#define RUN_COLOR 0
-#define DEBUG     1
+#define RUN_CACHE  0
+#define RUN_SSL    0
+#define RUN_COLOR  0
+#define DEBUG      1
 #define RUN_FILTER 1
 
 /* CA Certificates */
@@ -140,7 +140,7 @@
 #define SERVER_RESP_RECVD 1
 
 #define FILTER_LIST_PATH "/workspaces/Development/https-proxy/proxy/config/filter_list.txt"
-#define MAX_FILTERS   100
+#define MAX_FILTERS      100
 
 /* Error Indicators */
 #define ERROR_FAILURE       -1
@@ -159,18 +159,16 @@
 #define ERROR_BAD_GATEWAY   -14
 #define HOST_UNKNOWN        -15
 #define ERROR_FILTERED      -16
-
-#define INVALID_URL -17
-
-#define ERROR_BAD_PORT    -18
-#define ERROR_BAD_METHOD  -19
-#define ERROR_BAD_VERSION -20
-#define ERROR_BAD_PATH    -21
-#define CLIENT_EXISTS     -22
-#define CLIENT_NOT_FOUND  -23
-#define CANT_DELIVER      -24
-#define PARTIAL_MESSAGE   -25
-#define OVERFLOW_MESSAGE  -26
+#define INVALID_URL         -17
+#define ERROR_BAD_PORT      -18
+#define ERROR_BAD_METHOD    -19
+#define ERROR_BAD_VERSION   -20
+#define ERROR_BAD_PATH      -21
+#define CLIENT_EXISTS       -22
+#define CLIENT_NOT_FOUND    -23
+#define CANT_DELIVER        -24
+#define PARTIAL_MESSAGE     -25
+#define OVERFLOW_MESSAGE    -26
 #define FILTER_LIST_TOO_BIG -27
 
 /* Limits */

@@ -35,14 +35,16 @@
 #endif 
 
 typedef struct Proxy {
-    #if RUN_CACHE 
+#if RUN_CACHE 
         Cache *cache;
-    #endif 
-    #if RUN_SSL
+#endif 
+#if RUN_SSL
         SSL_CTX *ctx;
-    #endif
+#endif
+#if RUN_FILTER
     char *filters[MAX_FILTERS];
     int num_filters;
+#endif
 
     List *client_list;
 
@@ -80,10 +82,12 @@ int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key);
 int Proxy_handleTunnel(int sender, int receiver);
 int Proxy_sendServerResp(Proxy *proxy, Client *client);
 
+#if RUN_FILTER
 int Proxy_readFilterList(Proxy *proxy);
 int Proxy_addFilter(Proxy *proxy, char *filter);
 bool Proxy_isFiltered(Proxy *proxy, char *host);
 void Proxy_freeFilters(Proxy *proxy);
+#endif
 
 #if RUN_SSL
     int ProxySSL_connect(Proxy *proxy, Query *query);
@@ -91,8 +95,8 @@ void Proxy_freeFilters(Proxy *proxy);
     int ProxySSL_write(Proxy *proxy, Client *client, char *buf, int len);
     int ProxySSL_shutdown(Proxy *proxy, Client *client);
     int ProxySSL_read(void *sender, int sender_type);
+    int ProxySSL_updateExtFile(Proxy *proxy, char *hostname);
+    int ProxySSL_updateContext(Proxy *proxy);
 #endif 
-int Proxy_updateExtFile(Proxy *proxy, char *hostname);
-int Proxy_updateContext(Proxy *proxy);
 
 #endif /* _PROXY_H_ */

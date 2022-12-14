@@ -8,9 +8,10 @@
 #define CLIENT_TYPE       1
 
 // Ports -- 9055 to 9059
+#if RUN_CACHE
 static char *get_key(Request *req);
+#endif
 static short select_loop(Proxy *proxy);
-static char *get_certificate(char *host, size_t host_l);
 
 /* ---------------------------------------------------------------------------------------------- */
 /* PROXY DRIVER FUNCTION ------------------------------------------------------------------------ */
@@ -765,7 +766,7 @@ int ProxySSL_handshake(Proxy *proxy, Client *client)
     }
 
     /* update proxy ext file ad context if needed */
-    if (Proxy_updateExtFile(proxy, hostname) != EXIT_SUCCESS) {
+    if (ProxySSL_updateExtFile(proxy, hostname) != EXIT_SUCCESS) {
         return ERROR_FAILURE;
     }
 
@@ -800,7 +801,7 @@ int ProxySSL_handshake(Proxy *proxy, Client *client)
     return EXIT_SUCCESS;
 }
 
-int Proxy_updateExtFile(Proxy *proxy, char *hostname)
+int ProxySSL_updateExtFile(Proxy *proxy, char *hostname)
 {
     if (proxy == NULL || hostname == NULL) {
         print_error("proxy: updateExtFile failed, invalid args");
@@ -818,7 +819,7 @@ int Proxy_updateExtFile(Proxy *proxy, char *hostname)
         return ERROR_FAILURE;
     } else if (ret > 0) {
         /* update proxy context */
-        if (Proxy_updateContext(proxy) == ERROR_FAILURE) {
+        if (ProxySSL_updateContext(proxy) == ERROR_FAILURE) {
             print_error("proxy: updateExtFile failed, updateContext failed");
             return ERROR_FAILURE;
         }
@@ -827,7 +828,7 @@ int Proxy_updateExtFile(Proxy *proxy, char *hostname)
     return EXIT_SUCCESS;
 }
 
-int Proxy_updateContext(Proxy *proxy)
+int ProxySSL_updateContext(Proxy *proxy)
 {
     if (proxy == NULL) {
         print_error("proxy: updateContext failed, invalid args");
@@ -1407,6 +1408,7 @@ int Proxy_handleTimeout(struct Proxy *proxy)
 }
 
 /* Static Functions --------------------------------------------------------- */
+#if RUN_CACHE
 static char *get_key(Request *req)
 {
     if (req == NULL) {
@@ -1419,6 +1421,7 @@ static char *get_key(Request *req)
 
     return key;
 }
+#endif
 
 static short select_loop(Proxy *proxy)
 {
@@ -1550,27 +1553,7 @@ int Proxy_handleTunnel(int sender, int receiver)
     return EXIT_SUCCESS;
 }
 
-static char *get_certificate(char *host, size_t host_l)
-{
-    if (host == NULL) {
-        return NULL;
-    }
-
-    char *cert_dir  = CA_CERT_DIR;
-    char *cert_path = calloc(CA_CERT_L + 1, sizeof(char));
-    memcpy(cert_path, cert_dir, CA_CERT_L);
-
-    char cert_name[host_l + 4];
-    zero(cert_name, host_l + 4);
-    memcpy(cert_name, host, host_l);
-    memcpy(cert_name + host_l, ".crt", 4);
-
-    memcpy(cert_path + CA_CERT_L, cert_name, host_l + 4);
-
-    return cert_path;
-}
-
-
+#if RUN_FILTER
 int Proxy_readFilterList(Proxy *proxy) 
 {
     if (proxy == NULL) {
@@ -1659,4 +1642,5 @@ void Proxy_freeFilters(Proxy *proxy)
         free(proxy->filters[i]);
     }
 }
+#endif
 

@@ -6,8 +6,8 @@ source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
 METHOD="GET"
-URL="http://www.cs.tufts.edu/comp/112/index.html"
-HOST="www.cs.tufts.edu"
+URL="http://neverssl.com"
+HOST="http://neverssl.com"
 SLEEPTIME="5"
 
 # File and Directory Setup
