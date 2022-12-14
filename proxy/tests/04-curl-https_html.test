@@ -1,16 +1,3 @@
-#!/bin/bash
-
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
-
-# Test 01: Test the http-proxy with a simple GET request and response
-# Get basename of test and strip off the .test extension
-TESTNAME=$(basename $0)
-
-# Get output directory
-OUTDIR=$(dirname $0)/output
-OUTFILE=${OUTDIR}/${TESTNAME%.*}.out
-URL="https://www.cs.cmu.edu/~prs/bio.html"
-#!/bin/bash
 
 # Test 01: GET Request, HTML File, HTTP
 

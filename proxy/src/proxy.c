@@ -1594,19 +1594,28 @@ static char *get_key(Request *req)
     if (req == NULL) {
         return NULL;
     }
+    Request_print(req);
+    fprintf(stderr, "%s[get-key]: host_l: %ld, port_l: %ld, path_l: %ld%s\n", BYEL, req->host_l, req->port_l, req->path_l, reset);
     int key_l = req->host_l + req->port_l + req->path_l + COLON_L;
+    fprintf(stderr, "%s[get-key]: key_l: %d%s\n", BYEL, key_l, reset);
     int offset = 0;
     char *key = calloc(key_l + 1, sizeof(char));
-    memcpy(key, req->host, req->host_l);
-    offset += req->host_l;
+    memcpy(key + offset, req->path, req->path_l);
+    offset += req->path_l;
     memcpy(key + offset, COLON, COLON_L);
     offset += COLON_L;
     memcpy(key + offset, req->port, req->port_l);
     offset += req->port_l;
-    memcpy(key + req->path_l, req->host, req->host_l);
-    offset += req->path_l;
+    memcpy(key + offset, req->host, req->host_l);
+    offset += req->host_l;
+
     key[key_l] = '\0';
-    
+
+    print_ascii(key, key_l);
+
+    fprintf(stderr, "%s[get-key]: key: %s%s\n", BYEL, key, reset);
+    fprintf(stderr, "%s[get-key]: key: %s%s\n", BYEL, key, reset);
+
     return key;
 }
 #endif
