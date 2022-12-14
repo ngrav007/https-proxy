@@ -6,14 +6,14 @@
 
 /* Compiler Directives */
 #define DEBUG      0
-#define RUN_SSL    0
+#define RUN_SSL    1
 #define RUN_CACHE  1
 #define RUN_FILTER 1
 
-#if RUN_CACHE == 0      // if cache is disables RUN_COLOR must be disabled
-#define RUN_COLOR 0
-#else
+#if RUN_CACHE != 0      // if cache is disables RUN_COLOR must be disabled
 #define RUN_COLOR 1     // define RUN_COLOR here
+#else
+#define RUN_COLOR 0    
 #endif 
 
 /* CA Certificates */

@@ -92,7 +92,7 @@ void Entry_print(void *entry, void (*foo)(void *))
     }
     
     Entry *e = (Entry *)entry;
-    fprintf(stderr, "Entry {\n");
+    fprintf(stderr, "[Entry]\n");
     if (foo == NULL) {
         fprintf(stderr, "    value = %p\n", e->value);
     } else {

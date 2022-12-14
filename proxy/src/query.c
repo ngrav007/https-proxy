@@ -48,7 +48,6 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
         return ERROR_FAILURE;
     }
 
-    fprintf(stderr, "%s[DEBUG]%s query_new: host: %s\n", BYEL, reset, (*q)->req->host);
     if ((*q)->req->host_l == 0) {
         print_warning("query_new: host is empty");
         return HOST_UNKNOWN;
@@ -56,7 +55,7 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
     
     (*q)->host_info = gethostbyname((*q)->req->host);
     if ((*q)->host_info == NULL) {
-        fprintf(stderr, "[!] proxy: unknown host\n");
+        print_error("query_new: host not found");
         return HOST_UNKNOWN;
     }
 
@@ -103,7 +102,7 @@ void Query_print(Query *query)
         return;
     }
 
-    printf("Query:\n");
+    printf("[Query]\n");
     Request_print(query->req);
     Response_print(query->res);
     fprintf(stderr, "Buffer Length: %zu\n", query->buffer_l);
@@ -142,4 +141,3 @@ void Query_clearSSLCtx(Query *query)
     query->ctx = NULL;
 }
 #endif 
-

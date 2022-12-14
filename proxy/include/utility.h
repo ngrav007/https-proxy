@@ -52,7 +52,7 @@ SSL_CTX *InitServerCTX();
 SSL_CTX *InitCTX();
 void ShowCerts(SSL *ssl);
 
-int is_root();
+int isRoot();
 // #endif
 
 #endif

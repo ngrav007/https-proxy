@@ -1,8 +1,6 @@
 #include "cache.h"
 
 static int remove_stale_entry(Cache *cache);
-// static void cache_clear_entry(void *entry);
-// static void cache_print_entry(void *entry);
 
 /* ----------------------- Cache Function Definitions ----------------------- */
 Cache *Cache_new(size_t cap, void (*free_foo)(void *), void (*print_foo)(void *))
@@ -42,7 +40,7 @@ Cache *Cache_new(size_t cap, void (*free_foo)(void *), void (*print_foo)(void *)
 int Cache_put(Cache *cache, char *key, void *value, long max_age)
 {
     if (cache == NULL || key == NULL || value == NULL) {
-        fprintf(stderr, "[!] cache: invalid parameters\n");
+        print_error("invalid parameters passed to put");
         return -1;
     }
 
@@ -87,7 +85,7 @@ int Cache_put(Cache *cache, char *key, void *value, long max_age)
 void *Cache_get(Cache *cache, char *key)
 {
     if (cache == NULL || key == NULL) {
-        fprintf(stderr, "[!] cache: invalid parameters passed to get\n");
+        print_error("cache: invalid parameters passed to get\n");
         return NULL;
     }
     size_t i;
@@ -96,16 +94,15 @@ void *Cache_get(Cache *cache, char *key)
         if (e == NULL) {
             continue;
         } else if (strncmp(e->key, key, strlen(key)) == 0) { // Key Found
-            if (e->stale) { // TODO - check if this is correct
-                fprintf(stderr, "%s[DEBUG] cache: entry is stale%s\n", BLU, reset);
-                // List_remove(cache->lru, e->value);
+            if (e->stale) {
+#if DEBUG
+                print_debug("cache: entry is stale");
+#endif
                 List_remove(cache->lru, e);
 
                 return NULL;
             } else {
-                // List_remove(cache->lru, e->value);
                 List_remove(cache->lru, e);
-                // List_push_back(cache->lru, e->value);
                 List_push_back(cache->lru, e);
                 e->retrieved = true;
             }
@@ -120,7 +117,7 @@ void *Cache_get(Cache *cache, char *key)
 Entry *Cache_find(Cache *cache, char *key)
 {
     if (cache == NULL || key == NULL) {
-        fprintf(stderr, "[!] cache: invalid parameters passed to find\n");
+        print_error("cache: invalid parameters passed to find\n");
         return NULL;
     }
 
@@ -130,7 +127,6 @@ Entry *Cache_find(Cache *cache, char *key)
         if (e == NULL) {
             continue;
         } else if (strcmp(e->key, key) == 0 && !e->deleted) {
-            fprintf(stderr, "[DEBUG] e->key = %s\tkey = %s\t\n", e->key, key);
             return e;
         }
     }
@@ -140,7 +136,7 @@ Entry *Cache_find(Cache *cache, char *key)
 int Cache_remove(Cache *cache, char *key)
 {
     if (cache == NULL || key == NULL) {
-        fprintf(stderr, "[!] cache: invalid parameters passed to remove\n");
+        print_error("cache: invalid parameters passed to remove\n");
         return -1;
     }
 
@@ -162,7 +158,7 @@ int Cache_remove(Cache *cache, char *key)
 int Cache_evict(Cache *cache)
 {
     if (cache == NULL) {
-        fprintf(stderr, "[!] cache: invalid parameters passed to evict\n");
+        print_error("cache: invalid parameters passed to evict\n");
         return -1;
     }
 
@@ -345,22 +341,5 @@ static int remove_stale_entry(Cache *cache)
 
 char **Cache_getKeyList(Cache *cache)
 {
-    // fprintf(stderr, "[Cache] KeyArray:\n");
-    // size_t i = 0;
-    // for (; i < cache->size; i++) {
-    //     fprintf(stderr, "%s\n", cache->key_array[i]);
-    // }
     return &(cache->key_array[0]);
 }
-
-// static void cache_clear_entry(void *cache)
-// {
-//     Cache *c = (Cache *)cache;
-//     Entry_delete(entry, c->free_foo);
-// }
-
-// static void cache_print_entry(void *cache)
-// {
-//     Cache *c = (Cache *)cache;
-//     Entry_print(entry, c->print_foo);
-// }

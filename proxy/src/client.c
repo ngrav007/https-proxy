@@ -202,19 +202,6 @@ int Client_setSocket(Client *client, int socket)
     return 0;
 }
 
-// int Client_setKey(Client *client, HTTP_Header *header)
-// {
-//     if (client == NULL) {
-//         return -1;
-//     }
-
-//     client->key = calloc(header->host_l + header->path_l + 1, sizeof(char));
-//     memcpy(client->key, header->host, header->host_l);
-//     memcpy(client->key + header->host_l, header->path, header->path_l);
-
-//     return 0;
-// }
-
 /* Client_setAddr
  *     Purpose: Copies the address of the client into the client struct for
  *              later use.
@@ -282,34 +269,6 @@ void Client_clearSSL(Client *client)
     client->isSSL = 0;
 }
 #endif 
-
-/* Client_getId
- *    Purpose: Returns the client id for a Client
- * Parameters: @client - Pointer to a Client
- *    Returns: A constant pointer to the client id string, or NULL on failure.
- */
-// const char *Client_getId(Client *client)
-// {
-//     if (client == NULL) {
-//         return NULL;
-//     }
-
-//     return client->id;
-// }
-
-/* Client_isLoggedIn
- *    Purpose: Returns the logged in status for a Client
- * Parameters: @client - Pointer to a Client
- *    Returns: Logged in status (true or false)
- */
-// bool Client_isLoggedIn(Client *client)
-// {
-//     if (client == NULL) {
-//         return false;
-//     }
-
-//     return client->loggedIn;
-// }
 
 /* Client_isisSlow
  *    Purpose: Returns the isSlow status for a Client

@@ -34,7 +34,7 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l);
 int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
 {
     if (buffer == NULL || *buffer == NULL || field == NULL || value == NULL || buffer_l == NULL) {
-        print_error("http_add_field: invalid parameter");
+        print_error("[http-add-field] invalid parameter");
         return ERROR_FAILURE;
     }
 
@@ -43,8 +43,8 @@ int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
     header_start = *buffer;
     header_end   = strstr(header_start, HEADER_END);
     if (header_end == NULL) {
-        print_error("http_add_field: invalid header");
-        return INVALID_HEADER; // TODO - error-handling: invalid header passed
+        print_error("[http-add-field] invalid header");
+        return INVALID_HEADER;
     }
 
     header_l = header_end - header_start;
@@ -55,7 +55,7 @@ int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
     new_buffer_l = *buffer_l + field_l + value_l + FIELD_SEP_L + CRLF_L;
     new_buffer   = calloc(new_buffer_l + 1, sizeof(char));
     if (new_buffer == NULL) {
-        fprintf(stderr, "[!] http: failed to create field buffer\n");
+        print_error("[http-add-field] calloc failed");
         return ERROR_FAILURE;
     }
 
@@ -263,8 +263,6 @@ int Request_compare(void *req1, void *req2)
     if (req1 == NULL || req2 == NULL) {
         return ERROR_FAILURE;
     }
-
-    fprintf(stderr, "%sIN REQUEST COMPARE%s\n", CYN, reset);
 
     Request *r1 = (Request *)req1;
     Request *r2 = (Request *)req2;
@@ -481,7 +479,7 @@ int Response_compare(void *response1, void *response2)
 char *Raw_request(char *method, char *url, char *host, char *port, char *body, size_t *raw_l)
 {
     if (method == NULL || url == NULL) {
-        fprintf(stderr, "[!] http: Method and url must be specified");
+        print_error("http: raw-request: method and url are required");
         return NULL;
     }
 
@@ -586,8 +584,10 @@ char *Raw_request(char *method, char *url, char *host, char *port, char *body, s
 
     *raw_l = raw_len;
 
-    fprintf(stderr, "[*] http: Raw request:\n");
+#if DEBUG
+    print_debug("http: [raw-request] Raw request: ")
     print_ascii(raw_request, raw_len);
+#endif
 
     return raw_request;
 }
@@ -608,8 +608,10 @@ static int parse_request(Request *req, char *buffer, size_t buffer_l)
     if (req == NULL || buffer == NULL) {
         return -1;
     }
-
-    fprintf(stderr, "[parse_request]: The request: \n%s\n", buffer);
+#if DEBUG
+    print_debug("http: [parse_request] Parsing request:");
+    fprintf(stderr, "\n%s\n", buffer);
+#endif
 
     char *buffer_lc = get_buffer_lc(buffer, buffer + buffer_l);
     if (parse_startline(req, buffer_lc) != 0) {
@@ -692,8 +694,7 @@ static int parse_response_fields(Response *res, char *buffer, size_t buffer_l)
     }
     res->content_length = parse_contentlength(buffer);
     res->body           = parse_body(buffer, buffer_l, &res->body_l);
-    if (res->content_length == 0 && res->body_l > 0)
-    { // TODO - ok? set contentl to bodyl if contentl is 0 (i.e. no field)
+    if (res->content_length == 0 && res->body_l > 0) { // TODO - ok? set contentl to bodyl if contentl is 0 (i.e. no field)
         res->content_length = res->body_l;
     }
 
@@ -1074,7 +1075,7 @@ static int parse_startline(Request *req, char *request)
 
     char *version = parse_version_req(request, &req->version_l, &sp);
     if (version == NULL) {
-        return -1; // TODO: error handling - invalid http version
+        return -1;
     }
     req->version = version;
 
@@ -1289,11 +1290,12 @@ static long parse_maxage(char *cachecontrol, size_t cc_l)
         return DEFAULT_MAX_AGE;
     }
 
-    char m[MAX_DIGITS_LONG + 1] = {0};
     char *maxage                = strstr(cachecontrol, "max-age=");
     if (maxage == NULL) {
         return DEFAULT_MAX_AGE;
     }
+
+    char m[MAX_DIGITS_LONG + 1] = {0};
 
     /* skip field name and any whitespace after the colon */
     while (!isdigit(*maxage)) {
@@ -1459,7 +1461,6 @@ int color_links(char **buffer, size_t *buffer_l,
     // fprintf(stderr, "Initializing new buffer of size: %ld\n", *buffer_l);
     char *new_buffer = calloc(*buffer_l + COLOR_L + 1, sizeof(char));
     if (new_buffer == NULL) {
-        // fprintf(stderr, "[color_links] calloc failed.\n");
         return ERROR_FAILURE;
     }
 
@@ -1471,32 +1472,22 @@ int color_links(char **buffer, size_t *buffer_l,
     // loop, copying individual bytes until you reach end of original buffer being copied over. 
     char *orig_buffer_pointer = *buffer;
 
-    while (orig_buffer_pointer < buffer_end) 
-    {
+    while (orig_buffer_pointer < buffer_end) {
         // ensure new_buffer capacity has enough for remaining bytes in original buffer. 
         int original_bytes_left = buffer_end - orig_buffer_pointer;
-        if ((original_bytes_left + COLOR_L) > (new_buffer_cap - new_buffer_sz)) 
-        {
-            // expand 
-            // fprintf(stderr, "+=+=+=EXPANDING+=+=+=\n");
+        if ((original_bytes_left + COLOR_L) > (new_buffer_cap - new_buffer_sz)) {
             new_buffer = realloc(new_buffer, new_buffer_cap + COLOR_L + 1);
             if (new_buffer == NULL) {
-                // fprintf(stderr, "[color_links] realloc failed.\n");
                 return ERROR_FAILURE;
             }
             // new_buffer_cap += original_bytes_left;
             new_buffer_cap += COLOR_L;
             new_buffer_pointer = new_buffer + new_buffer_sz;
-
-            // fprintf(stderr, "new_buffer_cap Expanded = %d\n", new_buffer_cap); 
         }
 
         //  strstr for the next "<a " tag
         char *anchor = strstr(orig_buffer_pointer, ANCHOR_HTTPS_OPEN);
         if (anchor != NULL) {   // found an anchor tag; COLOR
-            
-            // fprintf(stderr, "Found an <a> with http*\n");
-
             // copy the bytes up to the space in the anchor tag 
             char *stop = anchor + ANCHOR_OPEN_L;
             for (; orig_buffer_pointer != stop; 
@@ -1518,10 +1509,14 @@ int color_links(char **buffer, size_t *buffer_l,
             char *color_attribute = NULL;
             // if (foundKey(link2, cache_keys, num_keys)) {
             if (foundKey(start_of_link, link_l, cache_keys, num_keys)) {
-                // fprintf(stderr, "Found key: GREEN\n");
+                #if DEBUG
+                print_debug("Found key: GREEN\n");
+                #endif
                 color_attribute = GREEN_STYLE;
             } else {
-                // fprintf(stderr, "Not found key: RED\n");
+                #if DEBUG 
+                print_debug("Found key: RED\n");
+                #endif
                 color_attribute = RED_STYLE;
             }
 
@@ -1536,8 +1531,7 @@ int color_links(char **buffer, size_t *buffer_l,
                 new_buffer_sz++;
             }
 
-        } else { // no more anchor tags, copy bytes until the end 
-            // fprintf(stderr, "No more <a> with http*\n");
+        } else { // no more anchor tags, copy bytes until the end of the buffer.
             for (; orig_buffer_pointer != buffer_end; 
                    (new_buffer_pointer)++, (orig_buffer_pointer)++) 
             {
@@ -1547,7 +1541,6 @@ int color_links(char **buffer, size_t *buffer_l,
 
         }
     }
-
 
     free(*buffer);
 
