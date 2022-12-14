@@ -174,7 +174,10 @@ static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz)
         if (n < 0) {
             error("[!] client: error occurred when receiving.");
             return EXIT_FAILURE;
-        } else if (n == 0) {
+        } else if (n == 0 || n < (ssize_t)(*buf_sz - *buf_l)) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                fprintf(stderr, "[*] client: no more data to receive.\n");
+            }
             *buf_l += n;
             (*buf)[*buf_l] = '\0';
             break;

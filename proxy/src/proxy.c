@@ -100,7 +100,9 @@ int Proxy_init(struct Proxy *proxy, short port)
         return ERROR_FAILURE;
     }
 #endif
-
+#if RUN_FILTER
+    Proxy_readFilterList(proxy);
+#endif
     /* zero out the proxy addresses */
     zero(&(proxy->addr), sizeof(proxy->addr));
 
@@ -162,6 +164,10 @@ void Proxy_free(void *proxy)
     /* free the proxy */
 #if RUN_CACHE
     Cache_free(&p->cache);
+#endif
+
+#if RUN_FILTER
+    Proxy_freeFilters(p);
 #endif
 
     List_free(&p->client_list);
@@ -522,6 +528,8 @@ int Proxy_sendError(Client *client, int msg_code)
         return Proxy_send(client->socket, STATUS_501, STATUS_501_L);
     case BAD_GATEWAY_502:
         return Proxy_send(client->socket, STATUS_502, STATUS_502_L);
+    case FORBIDDEN_403:
+        return Proxy_send(client->socket, STATUS_403, STATUS_403_L);
     case IM_A_TEAPOT_418:
         return Proxy_send(client->socket, STATUS_418, STATUS_418_L);
     default: // Internal Server Error
@@ -1157,6 +1165,13 @@ int Proxy_handleClient(Proxy *proxy, Client *client)
             return ret;
         }
 
+        #if RUN_FILTER
+        if (Proxy_isFiltered(proxy, client->query->req->host)) {
+            print_error("proxy: request blocked by filter");
+            return ERROR_FILTERED;
+        }
+        #endif
+
         /* assign state to client */
         if (memcmp(client->query->req->method, CONNECT, CONNECT_L) == 0) {
             client->state = CLI_CONNECT;
@@ -1286,6 +1301,12 @@ int Proxy_handleEvent(Proxy *proxy, Client *client, int error_code)
     case PROXY_AUTH_REQUIRED:
         print_error("proxy: invalid method in request");
         Proxy_sendError(client, PROXY_AUTH_REQUIRED_407);
+        Proxy_close(client->socket, &proxy->master_set, proxy->client_list,
+                    client); // ? - close for persistent connections?
+        break;
+    case ERROR_FILTERED:
+        print_error("proxy: forbidden request");
+        Proxy_sendError(client, FORBIDDEN_403);
         Proxy_close(client->socket, &proxy->master_set, proxy->client_list,
                     client); // ? - close for persistent connections?
         break;
@@ -1548,3 +1569,94 @@ static char *get_certificate(char *host, size_t host_l)
 
     return cert_path;
 }
+
+
+int Proxy_readFilterList(Proxy *proxy) 
+{
+    if (proxy == NULL) {
+        return ERROR_FAILURE;
+    }
+
+    FILE *fp = fopen(FILTER_LIST_PATH, "r");
+    if (fp == NULL) {
+        print_error("proxy: failed to open filter list");
+        fprintf(stderr, "proxy: filter list path: %s\n", FILTER_LIST_PATH);
+        return ERROR_FAILURE;
+    }
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    proxy->num_filters = 0;
+
+    while ((read = getline(&line, &len, fp)) != -1) {
+        fprintf(stderr, "proxy: read line: %s", line);
+        if (read > 1) {
+            line[read - 1] = '\0';
+            if (Proxy_addFilter(proxy, line) != EXIT_SUCCESS) {
+                print_error("proxy: failed to add filter");
+                fprintf(stderr, "proxy: filter: %s\n", line);
+                fclose(fp);
+                return FILTER_LIST_TOO_BIG;
+            }
+        }
+    }
+
+    for (int i = 0; i < proxy->num_filters; i++) {
+        fprintf(stderr, "proxy: filter %d: %s\n", i, proxy->filters[i]);
+    }
+
+
+    fclose(fp);
+    if (line) {
+        free(line);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+int Proxy_addFilter(Proxy *proxy, char *filter) 
+{
+    if (proxy == NULL || filter == NULL) {
+        return ERROR_FAILURE;
+    }
+
+    if (proxy->num_filters == MAX_FILTERS) {
+        print_error("proxy: max filters reached");
+        return ERROR_FAILURE;
+    }
+
+    proxy->filters[proxy->num_filters] = calloc(strlen(filter) + 1, sizeof(char));
+    memcpy(proxy->filters[proxy->num_filters], filter, strlen(filter));
+    proxy->num_filters++;
+
+    return EXIT_SUCCESS;
+}
+
+bool Proxy_isFiltered(Proxy *proxy, char *host)
+{
+    if (proxy == NULL || host == NULL) {
+        return false;
+    }
+    /* both url and host must be filtered */
+    for (int i = 0; i < proxy->num_filters; i++) {
+        if (strstr(host, proxy->filters[i]) != NULL) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Proxy_freeFilters(Proxy *proxy)
+{
+    if (proxy == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < proxy->num_filters; i++) {
+        free(proxy->filters[i]);
+    }
+}
+

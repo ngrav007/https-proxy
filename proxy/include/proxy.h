@@ -40,7 +40,9 @@ typedef struct Proxy {
     #endif 
     #if RUN_SSL
         SSL_CTX *ctx;
-    #endif 
+    #endif
+    char *filters[MAX_FILTERS];
+    int num_filters;
 
     List *client_list;
 
@@ -77,6 +79,12 @@ int Proxy_handleCONNECT(Proxy *proxy, Client *client);
 int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key);
 int Proxy_handleTunnel(int sender, int receiver);
 int Proxy_sendServerResp(Proxy *proxy, Client *client);
+
+int Proxy_readFilterList(Proxy *proxy);
+int Proxy_addFilter(Proxy *proxy, char *filter);
+bool Proxy_isFiltered(Proxy *proxy, char *host);
+void Proxy_freeFilters(Proxy *proxy);
+
 #if RUN_SSL
     int ProxySSL_connect(Proxy *proxy, Query *query);
     int ProxySSL_handshake(Proxy *proxy, Client * client);

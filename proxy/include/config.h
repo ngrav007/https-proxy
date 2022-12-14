@@ -9,6 +9,7 @@
 #define RUN_SSL   0
 #define RUN_COLOR 0
 #define DEBUG     1
+#define RUN_FILTER 1
 
 /* CA Certificates */
 #define CA_CERT_DIR "/workspaces/Development/https-proxy/etc/certs"
@@ -82,26 +83,29 @@
 #define BAD_GATEWAY_502           502
 #define METHOD_NOT_ALLOWED_405    405
 #define PROXY_AUTH_REQUIRED_407   407
+#define FORBIDDEN_403             403
 
 #define STATUS_200     "HTTP/1.1 200 OK\r\n\r\n"
 #define STATUS_200_L   sizeof(STATUS_200) - 1
-#define STATUS_200CE   "200 Connection established\r\n\r\n"
+#define STATUS_200CE   "HTTP/1.1 200 Connection established\r\n\r\n"
 #define STATUS_200CE_L sizeof(STATUS_200CE) - 1
-#define STATUS_400     "400 Bad Request\r\n\r\n"
+#define STATUS_400     "HTTP/1.1 400 Bad Request\r\n\r\n"
 #define STATUS_400_L   sizeof(STATUS_400) - 1
-#define STATUS_404     "404 Not Found\r\n\r\n"
+#define STATUS_403     "HTTP/1.1 403 Forbidden\r\n\r\n"
+#define STATUS_403_L   sizeof(STATUS_403) - 1
+#define STATUS_404     "HTTP/1.1 404 Not Found\r\n\r\n"
 #define STATUS_404_L   sizeof(STATUS_404) - 1
-#define STATUS_405     "405 Method Not Allowed\r\n\r\n"
+#define STATUS_405     "HTTP/1.1 405 Method Not Allowed\r\n\r\n"
 #define STATUS_405_L   sizeof(STATUS_405) - 1
-#define STATUS_407     "407 Proxy Authentication Required\r\n\r\n"
+#define STATUS_407     "HTTP/1.1 407 Proxy Authentication Required\r\n\r\n"
 #define STATUS_407_L   sizeof(STATUS_407) - 1
-#define STATUS_418     "418 I'm a teapot\r\n\r\n"
+#define STATUS_418     "HTTP/1.1 418 I'm a teapot\r\n\r\n"
 #define STATUS_418_L   sizeof(STATUS_418) - 1
-#define STATUS_500     "500 Internal Server Error\r\n\r\n"
+#define STATUS_500     "HTTP/1.1 500 Internal Server Error\r\n\r\n"
 #define STATUS_500_L   sizeof(STATUS_500) - 1
-#define STATUS_501     "501 Not Implemented\r\n\r\n"
+#define STATUS_501     "HTTP/1.1 501 Not Implemented\r\n\r\n"
 #define STATUS_501_L   sizeof(STATUS_501) - 1
-#define STATUS_502     "502 Bad Gateway\r\n\r\n"
+#define STATUS_502     "HTTP/1.1 502 Bad Gateway\r\n\r\n"
 #define STATUS_502_L   sizeof(STATUS_502) - 1
 
 /* HTTP Header Fields --------------------------------------------------------------------------- */
@@ -135,6 +139,9 @@
 #define CLIENT_TIMEOUT    2
 #define SERVER_RESP_RECVD 1
 
+#define FILTER_LIST_PATH "/workspaces/Development/https-proxy/proxy/config/filter_list.txt"
+#define MAX_FILTERS   100
+
 /* Error Indicators */
 #define ERROR_FAILURE       -1
 #define ERROR_CLOSE         -2
@@ -151,6 +158,7 @@
 #define PROXY_AUTH_REQUIRED -13
 #define ERROR_BAD_GATEWAY   -14
 #define HOST_UNKNOWN        -15
+#define ERROR_FILTERED      -16
 
 #define INVALID_URL -17
 
@@ -163,6 +171,7 @@
 #define CANT_DELIVER      -24
 #define PARTIAL_MESSAGE   -25
 #define OVERFLOW_MESSAGE  -26
+#define FILTER_LIST_TOO_BIG -27
 
 /* Limits */
 #ifndef HOST_NAME_MAX
