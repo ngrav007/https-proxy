@@ -129,25 +129,7 @@ int main(int argc, char **argv)
         printf("[+] Connected with %s encryption\n", SSL_get_cipher(ssl));
         ShowCerts(ssl);
         SSL_write(ssl, raw_request, raw_l);
-        while ((bytes = SSL_read(ssl, buffer, BUFSIZE)) > 0) {
-            if (raw_response == NULL) {
-                raw_response = malloc(BUFSIZE);
-                raw_response_l = BUFSIZE;
-            } else if (raw_response_l < bytes_read + bytes) {
-                raw_response_l += BUFSIZE;
-                raw_response = realloc(raw_response, raw_response_l);
-            }
-            memset(buffer, 0, BUFSIZE);
-        }
-        if (bytes < 0) {
-            fprintf(stderr, "SSL_read failed\n");
-            ERR_print_errors_fp(stderr);
-            close(proxy_fd);
-            SSL_free(ssl);
-            error("[!] Failed failed on SSL_read");
-        } else {
-            printf("[+] Received %ld bytes\n", bytes_read);
-        }
+        ssl_readall(ssl, &raw_response, &raw_response_l, &bytes_read);
 
         printf("[+] Closing SSL Connection\n");
         SSL_shutdown(ssl);

@@ -1504,7 +1504,7 @@ int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key)
         fprintf(stderr, "[Proxy_serveFromCache]: colored hyperlinks.\n");
     }
 #endif
-
+#if RUN_SSL
     if (client->isSSL) {
         if (ProxySSL_write(proxy, client, response_dup, response_size) < 0) {
             print_error("proxy: send failed");
@@ -1512,12 +1512,15 @@ int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key)
             return ERROR_SEND;
         }
     } else {
+#endif
         if (Proxy_send(client->socket, response_dup, response_size) < 0) {
             print_error("proxy: send failed");
             free(key);
             return ERROR_SEND;
         }
+#if RUN_SSL 
     }
+#endif
 
     free(response_dup);
 

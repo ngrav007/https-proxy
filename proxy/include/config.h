@@ -5,11 +5,11 @@
 // #include <fcntl.h> // oflags
 
 /* Compiler Directives */
-#define RUN_CACHE  0
+#define RUN_CACHE  1
 #define RUN_SSL    0
-#define RUN_COLOR  0
-#define DEBUG      1
-#define RUN_FILTER 1
+#define RUN_COLOR  1
+#define DEBUG      0
+#define RUN_FILTER 0
 
 /* CA Certificates */
 #define CA_CERT_DIR "/workspaces/Development/https-proxy/etc/certs"
