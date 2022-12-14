@@ -45,7 +45,7 @@ int Proxy_run(short port)
     /* Initialize Proxy ------------------------------------------------------------------------- */
     Proxy_init(&proxy, port);
 #if DEBUG
-    print_success("HTTP Proxy ----------------------------------------------------------------- +");
+    print_info("HTTP Proxy ----------------------------------------------------------------- +");
     fprintf(stderr, "%s[*]%s   Proxy Port = %d\n", YEL, reset, proxy.port);
 #if RUN_CACHE
     fprintf(stderr, "%s[*]%s   Cache Size = %ld\n", YEL, reset, proxy.cache->capacity);
