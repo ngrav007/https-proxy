@@ -1,0 +1,86 @@
+#!/bin/bash
+
+source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+
+# Test 01: Test the http-proxy with a simple GET request and response
+# Get basename of test and strip off the .test extension
+TESTNAME=$(basename $0)
+
+# Get output directory
+OUTDIR=$(dirname $0)/output
+OUTFILE=${OUTDIR}/${TESTNAME%.*}.out
+URL="https://www.cs.cmu.edu/~prs/bio.html"
+#!/bin/bash
+
+# Test 01: GET Request, HTML File, HTTP
+
+source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+
+# Test Setup
+METHOD="CONNECT"
+URL="https://www.cs.cmu.edu/~prs/bio.html"
+HOST="www.cs.cmu.edu"
+SLEEPTIME="5"
+
+# File and Directory Setup
+TESTNAME=$(basename $0 | cut -d'.' -f1)
+FETCH_OUT="${OUTPUT_DIR}/${TESTNAME}-${FETCH}-${OUTPUT_EXT}"
+if [ -f ${FETCH_OUT} ]; then
+    rm ${FETCH_OUT}
+fi
+CACHE_OUT="${OUTPUT_DIR}/${TESTNAME}-${CACHE}-${OUTPUT_EXT}"
+if [ -f ${CACHE_OUT} ]; then
+    rm ${CACHE_OUT}
+fi
+
+# get random number
+RAND=$(shuf -i 1-100000 -n 1)
+
+FETCH_REPORT="${REPORT_DIR}/${TESTNAME}-${FETCH}-${RAND}-${REPORT_EXT}"
+CACHE_REPORT="${REPORT_DIR}/${TESTNAME}-${CACHE}-${RAND}-${REPORT_EXT}"
+
+FETCH_CMD="curl -k -v -o ${FETCH_OUT} -x ${PROXY_ADDR} ${URL}"
+CACHE_CMD="curl -v -o ${CACHE_OUT} -x ${PROXY_ADDR} ${URL}"
+
+echo "FETCH_CMD: ${FETCH_CMD}"
+echo "CACHE_CMD: ${CACHE_CMD}"
+
+# Reports
+printf "[*] Test Report -------------------------------------------------------- +\n"
+echo "FETCH_OUT: ${FETCH_OUT}"
+echo "CACHE_OUT: ${CACHE_OUT}"
+echo "FETCH_REPORT: ${FETCH_REPORT}"
+echo "CACHE_REPORT: ${CACHE_REPORT}"
+
+printf "+ ---------- ${TESTNAME}: ${METHOD} Request, HTML File, Tufts HTTP --------- +\n\n"
+
+printf "[*] Sending Request --------------------------------------------------- +\n"
+printf " |    ${METHOD} ${URL} HTTP/1.1\n"
+printf " |    Host: ${HOST}\n"
+printf " |--------------------------------------------------------------------- +\n\n"
+
+printf "[*] Sending initial request to ${URL}...\n\n"
+(${TIMER} ${TIMER_FLAGS} ${FETCH_REPORT} ${FETCH_CMD})
+printf "[*] Sleeping for ${SLEEPTIME} seconds"
+for i in $(seq 1 ${SLEEPTIME}); do
+    echo -n "."
+    sleep 1
+done
+printf "\n\n"
+
+printf "[*] Sending second request to ${URL}...\n\n"
+(${TIMER} ${TIMER_FLAGS} ${CACHE_REPORT} ${CACHE_CMD})
+
+FETCH_RESULTS=$(cat ${FETCH_REPORT})
+CACHE_RESULTS=$(cat ${CACHE_REPORT})
+
+printf "[+] ${TESTNAME} Results ----------------------------------------------- +\n\n"
+printf "[*] Time Elapsed w/ Fetch:\n"
+printf "${FETCH_RESULTS}\n\n"
+printf "[*] Time Elapsed w/ Cache:\n"
+printf "${CACHE_RESULTS}\n\n"
+printf "+ --------------------------------------------------------- +\n"
+
+exit 0
+
+# Path: https-proxy/proxy/tests/02-test-get_http_image.test
