@@ -53,8 +53,8 @@ typedef struct Proxy {
     short port;
 } Proxy;
 
-int Proxy_run(short port, size_t cache_size);
-int Proxy_init(Proxy *proxy, short port, size_t cache_size);
+int Proxy_run(short port);
+int Proxy_init(Proxy *proxy, short port);
 void Proxy_free(void *proxy);
 void Proxy_print(Proxy *proxy);
 

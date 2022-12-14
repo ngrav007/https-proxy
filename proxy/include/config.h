@@ -5,8 +5,8 @@
 // #include <fcntl.h> // oflags
 
 /* Compiler Directives */
-#define RUN_CACHE 1
-#define RUN_SSL   1
+#define RUN_CACHE 0
+#define RUN_SSL   0
 #define RUN_COLOR 0
 #define DEBUG     1
 
@@ -36,7 +36,7 @@
 #define CLIENT_PASSWD "friend"
 
 /* Script Paths */
-#define GENERATE_CERT "/workspaces/Development/https-proxy/scripts/generate_cert.sh"
+#define GENERATE_CERT     "/workspaces/Development/https-proxy/scripts/generate_cert.sh"
 #define UPDATE_PROXY_CERT "/workspaces/Development/https-proxy/scripts/update_proxy_cert.sh"
 /* Proxy */
 #define DEFAULT_MAX_AGE   3600
@@ -131,8 +131,9 @@
 #define MAXAGE_L        8
 
 /* Event Indicators */
-#define CLIENT_CLOSE   100
-#define CLIENT_TIMEOUT 101
+#define CLIENT_CLOSE      3
+#define CLIENT_TIMEOUT    2
+#define SERVER_RESP_RECVD 1
 
 /* Error Indicators */
 #define ERROR_FAILURE       -1
@@ -145,25 +146,23 @@
 #define ERROR_RECV          -8
 #define ERROR_SSL           -9
 #define INVALID_REQUEST     -10
+#define INVALID_HEADER      -12
 #define INVALID_RESPONSE    -11
 #define PROXY_AUTH_REQUIRED -13
 #define ERROR_BAD_GATEWAY   -14
+#define HOST_UNKNOWN        -15
 
-#define INVALID_HEADER -12
-#define INVALID_HOST   -6
+#define INVALID_URL -17
 
-#define INVALID_URL       -5
-#define HOST_UNKNOWN      -15
-#define ERROR_BAD_PORT    -7
-#define ERROR_BAD_METHOD  -8
-#define ERROR_BAD_VERSION -9
-#define ERROR_BAD_PATH    -10
-
-#define CLIENT_EXISTS    -5
-#define CLIENT_NOT_FOUND -6
-#define CANT_DELIVER     -7
-#define PARTIAL_MESSAGE  -8
-#define OVERFLOW_MESSAGE -9
+#define ERROR_BAD_PORT    -18
+#define ERROR_BAD_METHOD  -19
+#define ERROR_BAD_VERSION -20
+#define ERROR_BAD_PATH    -21
+#define CLIENT_EXISTS     -22
+#define CLIENT_NOT_FOUND  -23
+#define CANT_DELIVER      -24
+#define PARTIAL_MESSAGE   -25
+#define OVERFLOW_MESSAGE  -26
 
 /* Limits */
 #ifndef HOST_NAME_MAX
@@ -184,19 +183,19 @@
 #define COLOR_L     23
 
 /* Client States */
-#define CLI_QUERY      0
-#define CLI_GET        1
-#define CLI_CONNECT    2
-#define CLI_SSL        3
-#define CLI_TUNNEL     6
-#define CLI_POST       4
-#define CLI_CLOSE      5
+#define CLI_QUERY   0
+#define CLI_GET     1
+#define CLI_CONNECT 2
+#define CLI_SSL     3
+#define CLI_POST    4
+#define CLI_TUNNEL  5
+#define CLI_CLOSE   6
 
 /* Query State */
 #define QRY_INIT           0
-#define QRY_NOT_IN_CACHE   1
-#define QRY_SENT_REQUEST   2
-#define QRY_RECVD_RESPONSE 3
-#define QRY_DONE           4
+#define QRY_SENT_REQUEST   1
+#define QRY_RECVD_RESPONSE 2
+#define QRY_DONE           3
+#define QRY_TUNNEL         4
 
 #endif /* __PROXYCONFIG_H__ */

@@ -84,7 +84,9 @@ int Client_init(Client *client, int socket)
     client->socket            = -1;
     client->last_active.tv_sec  = 0;
     client->last_active.tv_usec = 0;
-    client->isSSL            = 0;
+    #if RUN_SSL
+        client->isSSL             = false;
+    #endif
 
     return 0;
 }
@@ -129,8 +131,10 @@ void Client_print(void *client)
     } else {
         fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
         fprintf(stderr, "  socket = %d\n", c->socket);
-        fprintf(stderr, "  partialRead = %s\n",
-                (c->isSSL) ? "true" : "false");
+        #if RUN_SSL
+            fprintf(stderr, "  ssl = %p\n", c->ssl);
+            fprintf(stderr, "  isSSL = %s\n", (c->isSSL) ? "true" : "false");
+        #endif
         fprintf(stderr, "  last_active = %ld.%ld\n", c->last_active.tv_sec,
                 c->last_active.tv_usec);
         fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
@@ -312,6 +316,7 @@ void Client_clearSSL(Client *client)
  * Parameters: @client - Pointer to a Client
  *    Returns: isSlow status (true or false)
  */
+#if RUN_SSL
 bool Client_isSSL(Client *client)
 {
     if (client == NULL) {
@@ -320,3 +325,4 @@ bool Client_isSSL(Client *client)
 
     return client->isSSL;
 }
+#endif

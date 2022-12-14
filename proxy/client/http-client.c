@@ -123,15 +123,14 @@ int main(int argc, char **argv)
     fprintf(stderr, "\n[*] --------------------------------------------\n");
 
     if (strstr(raw_response, "200 OK") != NULL) {
-        /* save raw response to file */
+        /* save to file */
         if (SAVEFILE) {
-            if (save_to_file(uri, raw_response, raw_response_l) < 0) {
-                free(raw_request);
-                free(raw_response);
-                close(proxy_fd);
-                error("[!] Failed to save raw response to file");
+            if (save_to_file("response", raw_response, raw_response_l) < 0) {
+                return EXIT_FAILURE;
             }
         }
+
+        return EXIT_SUCCESS;
     }
 
     free(raw_request);
@@ -262,6 +261,10 @@ static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
     if (raw_response == NULL) {
         return EXIT_FAILURE;
     }
+
+    /* GET RANDOM NUMBER */
+    srand(time(NULL));
+    int random = rand() % 1000000;
     
     /* save raw response to file */
     char output_file[BUFSIZE + 1];
@@ -271,7 +274,8 @@ static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
     } else {
         basename++;
         if (basename[0] == '\0') {
-            basename = "index.html";
+            basename = "test-output";
+            
         }
     }
 
@@ -282,19 +286,17 @@ static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
     }
     body += HEADER_END_L;
 
-    snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
-    int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
-    if (fp == -1) {
-        return EXIT_FAILURE;
-    }
-
+    snprintf(output_file, BUFSIZE, "%s/%s-%s.%d.out", OUTPUT_DIR, basename, "response", random);
     size_t body_l = raw_response_l - (body - raw_response);
-    if (write(fp, body, body_l) < 0) {
+
+    FILE *fp = fopen(output_file, "w");
+    if (fp == NULL) {
         error("[!] Failed to write to output file");
-        close(fp);
+        fclose(fp);
         return EXIT_FAILURE;
     }
-    close(fp);
+    fwrite(body, sizeof(char), body_l, fp);
+    fclose(fp);
     fprintf(stderr, "[+] Saved response to %s\n", output_file);
 
     return EXIT_SUCCESS;

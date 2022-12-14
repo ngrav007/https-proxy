@@ -96,7 +96,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    Proxy_run(port, 10);
+    Proxy_run(port);
 
     return EXIT_SUCCESS;
 }

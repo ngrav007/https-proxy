@@ -51,7 +51,7 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
     fprintf(stderr, "%s[DEBUG]%s query_new: host: %s\n", BYEL, reset, (*q)->req->host);
     if ((*q)->req->host_l == 0) {
         print_warning("query_new: host is empty");
-        return INVALID_HOST;
+        return HOST_UNKNOWN;
     }
     
     (*q)->host_info = gethostbyname((*q)->req->host);
@@ -63,11 +63,11 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
     bzero(&(*q)->server_addr, sizeof((*q)->server_addr));
     (*q)->server_addr.sin_family = AF_INET;
     memcpy((char *)&(*q)->server_addr.sin_addr.s_addr, (*q)->host_info->h_addr_list[0], ((*q)->host_info->h_length));
-    (*q)->server_addr.sin_port = htons(atoi((*q)->req->port)); // tODO - need to change port 443 
+    (*q)->server_addr.sin_port = htons(atoi((*q)->req->port)); // ! - caller needs to change port 443 for HTTPS
 
     (*q)->res = NULL;
 
-    (*q)->state = -1;
+    (*q)->state = QRY_INIT;
 
     return EXIT_SUCCESS;
 }
