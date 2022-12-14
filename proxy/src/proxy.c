@@ -153,8 +153,6 @@ void Proxy_free(void *proxy)
         return;
     }
 
-    fprintf(stderr, "FREESING Proxy\n");
-
     struct Proxy *p = (struct Proxy *)proxy;
 
     /* free the SSL context */
