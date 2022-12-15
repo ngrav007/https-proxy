@@ -14,7 +14,7 @@ Client *Client_new()
         return NULL;
     }
 
-    client->state             = CLI_QUERY;
+    client->state             = CLI_INIT;
     client->query             = NULL;
 
     #if RUN_SSL

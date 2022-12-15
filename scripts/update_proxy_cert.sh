@@ -33,19 +33,19 @@ if [ ! -f "${ROOTCA_KEY}" ]; then
     exit -1
 fi
 
-if [ ! -f "${PROXY_EXT}" ]; then
-    echo "[!] Proxy extension file ${PROXY_EXT} not found"
+if [ ! -f "${LOCAL_PROXY_EXT}" ]; then
+    echo "[!] Proxy extension file ${LOCAL_PROXY_EXT} not found"
     exit -1
 fi
 
 # Check if domain name already exists in the proxy config
-if grep -q ${DOMAIN_NAME} ${PROXY_EXT}; then
-    echo "[!] Domain name ${1} already exists in ${PROXY_EXT}"
+if grep -q ${DOMAIN_NAME} ${LOCAL_PROXY_EXT}; then
+    echo "[!] Domain name ${1} already exists in ${LOCAL_PROXY_EXT}"
     exit -1
 fi
 
 # Add domain name to the proxy configuration file
-echo "[*] Adding ${DOMAIN_NAME} to ${PROXY_EXT}"
+echo "[*] Adding ${DOMAIN_NAME} to ${LOCAL_PROXY_EXT}"
 if [ -z "${PROXY_DNS_COUNT}" ]; then
     echo "[!] PROXY_DNS_COUNT not set in ${CONFIG_FILE}"
     exit -1
@@ -53,10 +53,10 @@ fi
 
 # Write domain name to proxy config
 DOMAIN_STRING="DNS.${PROXY_DNS_COUNT} = ${DOMAIN_NAME}"
-echo "PROXY EXTENSION FILE: ${PROXY_EXT}"
+echo "PROXY EXTENSION FILE: ${LOCAL_PROXY_EXT}"
 echo "PROXY DNS COUNT: ${PROXY_DNS_COUNT}"
 echo "DOMAIN STRING: ${DOMAIN_STRING}"
-echo "${DOMAIN_STRING}" >> "${PROXY_EXT}"
+echo "${DOMAIN_STRING}" >> "${LOCAL_PROXY_EXT}"
 
 # Increment PROXY_DNS_COUNT in config file
 PROXY_DNS_COUNT=$(( ${PROXY_DNS_COUNT} + 1 ))
@@ -68,16 +68,16 @@ rm -f ${PROXY_CRT}
 
 # Generate new proxy certificate
 # Generate certificate using our own root ca
-echo "[*] Generating certificate for ${CN}"
+echo "[*] Generating certificate for ${PROXY_CN}"
 openssl x509 -req                       \
-        -in ${PROXY_CSR}               \
+        -in ${LOCAL_PROXY_CSR}               \
         -CA ${ROOTCA_CRT}               \
         -CAkey ${ROOTCA_KEY}            \
         -passin "file:${ROOTCA_PASSWD}" \
         -CAcreateserial                 \
-        -out ${PROXY_CRT} -days 365           \
+        -out ${LOCAL_PROXY_CRT} -days 365           \
         -sha256                         \
-        -extfile ${PROXY_EXT}
+        -extfile ${LOCAL_PROXY_EXT}
 
 # Update proxy certificate
 # echo "[*] Updating proxy certificate"

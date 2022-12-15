@@ -5,8 +5,8 @@
 source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
-METHOD="GET"
-URL="http://www.cs.tufts.edu/comp/112/index.html"
+METHOD="CONNECT"
+URL="https://www.cs.tufts.edu/comp/112/"
 HOST="www.cs.tufts.edu"
 SLEEPTIME="5"
 
@@ -27,6 +27,12 @@ RAND=$(shuf -i 1-100000 -n 1)
 FETCH_REPORT="${REPORT_DIR}/${TESTNAME}-${FETCH}-${RAND}-${REPORT_EXT}"
 CACHE_REPORT="${REPORT_DIR}/${TESTNAME}-${CACHE}-${RAND}-${REPORT_EXT}"
 
+FETCH_CMD="curl -k -v -o ${FETCH_OUT} -x ${PROXY_ADDR} ${URL}"
+CACHE_CMD="curl -k -v -o ${CACHE_OUT} -x ${PROXY_ADDR} ${URL}"
+
+echo "FETCH_CMD: ${FETCH_CMD}"
+echo "CACHE_CMD: ${CACHE_CMD}"
+
 # Reports
 printf "[*] Test Report -------------------------------------------------------- +\n"
 echo "FETCH_OUT: ${FETCH_OUT}"
@@ -42,7 +48,7 @@ printf " |    Host: ${HOST}\n"
 printf " |--------------------------------------------------------------------- +\n\n"
 
 printf "[*] Sending initial request to ${URL}...\n\n"
-(${TIMER} ${TIMER_FLAGS} ${FETCH_REPORT} ${CLIENT} ${CLIENT_FLAGS} ${METHOD} ${HOST} ${URL})
+(${TIMER} ${TIMER_FLAGS} ${FETCH_REPORT} ${FETCH_CMD})
 printf "[*] Sleeping for ${SLEEPTIME} seconds"
 for i in $(seq 1 ${SLEEPTIME}); do
     echo -n "."
@@ -51,7 +57,7 @@ done
 printf "\n\n"
 
 printf "[*] Sending second request to ${URL}...\n\n"
-(${TIMER} ${TIMER_FLAGS} ${CACHE_REPORT} ${CLIENT} ${CLIENT_FLAGS} ${METHOD} ${HOST} ${URL})
+(${TIMER} ${TIMER_FLAGS} ${CACHE_REPORT} ${CACHE_CMD})
 
 FETCH_RESULTS=$(cat ${FETCH_REPORT})
 CACHE_RESULTS=$(cat ${CACHE_REPORT})

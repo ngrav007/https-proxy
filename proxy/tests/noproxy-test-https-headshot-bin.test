@@ -1,0 +1,3 @@
+!#/bin/bash
+
+/usr/bin/time -p -o /workspaces/Development/https-proxy/proxy/reports/noproxy-test-https-headshot-bin.report curl -v -o /workspaces/Development/https-proxy/proxy/output/noproxy-test-https-headshot-bin.jpg https://www.cs.cmu.edu/~dga/dga-headshot.jpg

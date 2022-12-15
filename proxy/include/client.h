@@ -38,6 +38,7 @@ typedef struct Client {
     char *buffer;             // Buffer for outgoing messages
     int socket;               // Client socket
     int state;                // State of client
+    bool hasRequest;          // True if client has a request
 } Client;
 
 Client *Client_new();

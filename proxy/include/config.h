@@ -5,13 +5,13 @@
 // #include <fcntl.h> // oflags
 
 /* Compiler Directives */
-#define DEBUG      1
-#define RUN_SSL    1
+#define DEBUG      0
+#define RUN_SSL    0
 #define RUN_CACHE  1
-#define RUN_FILTER 0
+#define RUN_FILTER 1
 
-#if RUN_CACHE != 0      // if cache is disables RUN_COLOR must be disabled
-#define RUN_COLOR 1     // define RUN_COLOR here
+#if RUN_CACHE != 1      // if cache is disables RUN_COLOR must be disabled
+#define RUN_COLOR 1    // define RUN_COLOR here
 #else
 #define RUN_COLOR 0    
 #endif 
@@ -47,7 +47,7 @@
 /* Proxy */
 #define DEFAULT_MAX_AGE   3600
 #define LISTEN_BACKLOG    10
-#define TIMEOUT_THRESHOLD 30 // 10 minutes
+#define TIMEOUT_THRESHOLD 300 // 5 minutes
 
 /* Proxy Halt Signal */
 #define HALT         666 // Halt message
@@ -140,9 +140,11 @@
 #define MAXAGE_L        8
 
 /* Event Indicators */
+#define SERVER_CLOSE      4
 #define CLIENT_CLOSE      3
 #define CLIENT_TIMEOUT    2
 #define SERVER_RESP_RECVD 1
+#define CLIENT_REQ_RECVD  0
 
 #define FILTER_LIST_PATH "/workspaces/Development/https-proxy/proxy/config/filter_list.txt"
 #define MAX_FILTERS      100
@@ -195,13 +197,14 @@
 #define COLOR_L     23
 
 /* Client States */
-#define CLI_QUERY   0
-#define CLI_GET     1
-#define CLI_CONNECT 2
-#define CLI_SSL     3
-#define CLI_POST    4
-#define CLI_TUNNEL  5
-#define CLI_CLOSE   6
+#define CLI_INIT    0
+#define CLI_QUERY   1
+#define CLI_GET     2
+#define CLI_CONNECT 3
+#define CLI_SSL     4
+#define CLI_POST    5
+#define CLI_TUNNEL  6
+#define CLI_CLOSE   7
 
 /* Query State */
 #define QRY_INIT           0

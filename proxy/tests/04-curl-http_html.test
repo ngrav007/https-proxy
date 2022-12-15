@@ -6,8 +6,8 @@ source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
 METHOD="GET"
-URL="http://www.cs.tufts.edu/comp/112/"
-HOST="www.cs.tufts.edu"
+URL="http://www.cs.cmu.edu/~prs/bio.html"
+HOST="www.cs.cmu.edu"
 SLEEPTIME="5"
 
 # File and Directory Setup
