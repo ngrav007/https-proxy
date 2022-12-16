@@ -3,11 +3,11 @@
 # Test 11: GET Request, File Server, Small Text File (scroll.txt)
 
 # Import test config
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
 METHOD="GET"
-URL="http://localhost:${SERVER_PORT}/scroll.txt"
+URL="http://172.17.0.2:${SERVER_PORT}/scroll.txt"
 HOST="localhost:${SERVER_PORT}"
 SLEEPTIME="5"
 

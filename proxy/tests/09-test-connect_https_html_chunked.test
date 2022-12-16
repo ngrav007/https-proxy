@@ -2,7 +2,7 @@
 
 # Test 08: Connect Request, Root Directory, to HTTPS website
 
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
 METHOD="CONNECT"

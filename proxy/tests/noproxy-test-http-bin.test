@@ -1,3 +1,3 @@
 !#/bin/bash
 
-/usr/bin/time -p -o /workspaces/Development/https-proxy/proxy/reports/curl-bin-noproxy.report curl -v -o /workspaces/Development/https-proxy/proxy/output/curl-no_proxy.jpg http://www.cs.cmu.edu/~dga/dga-headshot.jpg
+/usr/bin/time -p -o /workspaces/Development/http-proxy/proxy/reports/curl-bin-noproxy.report curl -v -o /workspaces/Development/http-proxy/proxy/output/curl-no_proxy.jpg http://www.cs.cmu.edu/~dga/dga-headshot.jpg

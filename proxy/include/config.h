@@ -6,7 +6,7 @@
 
 /* Compiler Directives */
 #define DEBUG      0
-#define RUN_SSL    0
+#define RUN_SSL    1
 #define RUN_CACHE  1
 #define RUN_FILTER 1
 
@@ -21,29 +21,29 @@
 #define CA_CERT_L   sizeof(CA_CERT_DIR) - 1
 
 /* Root CA */
-#define ROOTCA_CERT        "/workspaces/Development/https-proxy/etc/certs/EnnorRootCA.pem"
-#define ROOTCA_KEY         "/workspaces/Development/https-proxy/etc/private/EnnorRootCA.key"
-#define ROOTCA_PASSWD_FILE "/workspaces/Development/https-proxy/etc/passwd/EnnorRootCA.passwd"
+#define ROOTCA_CERT        "/workspaces/Development/http-proxy/etc/certs/EnnorRootCA.pem"
+#define ROOTCA_KEY         "/workspaces/Development/http-proxy/etc/private/EnnorRootCA.key"
+#define ROOTCA_PASSWD_FILE "/workspaces/Development/http-proxy/etc/passwd/EnnorRootCA.passwd"
 #define ROOTCA_PASSWD      "friend"
 
 /* Proxy Certificate */
-#define PROXY_CERT   "/workspaces/Development/https-proxy/etc/certs/eregion.proxy.crt"
-#define PROXY_KEY    "/workspaces/Development/https-proxy/etc/private/eregion.proxy.key"
-#define PROXY_CSR    "/workspaces/Development/https-proxy/etc/csr/eregion.proxy.csr"
-#define PROXY_EXT    "/workspaces/Development/https-proxy/etc/ext/eregion.proxy.ext"
+#define PROXY_CERT   "/workspaces/Development/http-proxy/etc/certs/eregion.proxy.crt"
+#define PROXY_KEY    "/workspaces/Development/http-proxy/etc/private/eregion.proxy.key"
+#define PROXY_CSR    "/workspaces/Development/http-proxy/etc/csr/eregion.proxy.csr"
+#define PROXY_EXT    "/workspaces/Development/http-proxy/etc/ext/eregion.proxy.ext"
 #define PROXY_PASSWD "friend"
 
 /* Client Certificate */
 #define CLIENT_CN     "eregion.client"
-#define CLIENT_CERT   "/workspaces/Development/https-proxy/etc/certs/eregion.client.crt"
-#define CLIENT_KEY    "/workspaces/Development/https-proxy/etc/private/eregion.client.key"
-#define CLIENT_CSR    "/workspaces/Development/https-proxy/etc/csr/eregion.client.csr"
-#define CLIENT_EXT    "/workspaces/Development/https-proxy/etc/ext/eregion.client.ext"
+#define CLIENT_CERT   "/workspaces/Development/http-proxy/etc/certs/eregion.client.crt"
+#define CLIENT_KEY    "/workspaces/Development/http-proxy/etc/private/eregion.client.key"
+#define CLIENT_CSR    "/workspaces/Development/http-proxy/etc/csr/eregion.client.csr"
+#define CLIENT_EXT    "/workspaces/Development/http-proxy/etc/ext/eregion.client.ext"
 #define CLIENT_PASSWD "friend"
 
 /* Script Paths */
-#define GENERATE_CERT     "/workspaces/Development/https-proxy/scripts/generate_cert.sh"
-#define UPDATE_PROXY_CERT "/workspaces/Development/https-proxy/scripts/update_proxy_cert.sh"
+#define GENERATE_CERT     "/workspaces/Development/http-proxy/scripts/generate_cert.sh"
+#define UPDATE_PROXY_CERT "/workspaces/Development/http-proxy/scripts/update_proxy_cert.sh"
 /* Proxy */
 #define DEFAULT_MAX_AGE   3600
 #define LISTEN_BACKLOG    10
@@ -146,7 +146,8 @@
 #define SERVER_RESP_RECVD 1
 #define CLIENT_REQ_RECVD  0
 
-#define FILTER_LIST_PATH "/workspaces/Development/https-proxy/proxy/config/filter_list.txt"
+/* Filtering */
+#define FILTER_LIST_PATH "/workspaces/Development/http-proxy/proxy/config/filter_list.txt"
 #define MAX_FILTERS      100
 
 /* Error Indicators */

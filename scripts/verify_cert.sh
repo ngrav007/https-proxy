@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
 # This script is used to verify the certificate of a remote host.
 # It is used by the https-proxy script to verify the certificate of the

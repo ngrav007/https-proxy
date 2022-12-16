@@ -5,4 +5,4 @@ subjectAltName = @alt_names
 [alt_names]
 DNS.1 = eregion.proxy
 DNS.2 = *.eregion.proxy
-DNS.3 = example.com
+DNS.4 = www.cs.tufts.edu

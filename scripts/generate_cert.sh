@@ -1,9 +1,9 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
 # External Scripts
-GENERATE_EXT="/workspaces/Development/https-proxy/scripts/generate_ext.sh"
+GENERATE_EXT="/workspaces/Development/http-proxy/scripts/generate_ext.sh"
 
 # Get Common Name
 if [ -z "$1" ]; then

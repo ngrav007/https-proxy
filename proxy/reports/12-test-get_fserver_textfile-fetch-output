@@ -1,0 +1,15 @@
+[+] Connecting to proxy localhost:9055
+[+] Sending request:
+GET http://172.17.0.2:9066/scroll.txt HTTP/1.1
+Host: localhost:9066
+Connection: close
+
+[+] Length: 91
+[*] client: sent 91 bytes
+[*] client: received 1511 bytes
+[*] HTTP Response Header --------------------- +
+
+HTTP/1.1 HTTP/1.1 200 OK
+
+[*] --------------------------------------------
+[+] Saved response to output/response-response.695100.out

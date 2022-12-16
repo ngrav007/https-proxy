@@ -3,10 +3,10 @@
 # Add the given host to an existing certificate
 # Usage: generate_ext_file.sh <common name> <domain name>
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
 # External Scripts
-GENERATE_CERT="/workspaces/Development/https-proxy/scripts/generate_cert.sh"
+GENERATE_CERT="/workspaces/Development/http-proxy/scripts/generate_cert.sh"
 
 # Get Domain Name
 if [ -z "$1" ]; then

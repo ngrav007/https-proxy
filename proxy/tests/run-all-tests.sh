@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
 
 # ./01-curl-http_html.test (cs112) 
 # ./04-curl-http_html.test (bio)

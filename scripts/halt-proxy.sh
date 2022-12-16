@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
 
 # Halt the proxy
 # Test Setup

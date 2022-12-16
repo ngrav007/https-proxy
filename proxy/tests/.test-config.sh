@@ -2,7 +2,7 @@
 
 PROXY_HALT_CODE="__halt__"
 
-WORKDIR="/workspaces/Development/https-proxy/proxy"
+WORKDIR="/workspaces/Development/http-proxy/proxy"
 BINDIR="${WORKDIR}/bin"
 TESTDIR="${WORKDIR}/tests"
 REPORT_DIR="${WORKDIR}/reports"

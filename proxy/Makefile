@@ -61,8 +61,18 @@ $(BINDIR)/$(SERVER): $(SERVER_MAIN) $(SEROBJS)
 $(BLDDIR)/$(SERVER).o: $(SERDIR)/$(SERVER).c $(INCS) ./build/http.o
 	$(CC) $(CFLAGS) -o $@ -c $<
 
+filesystem:
+	mkdir -p $(BLDDIR)
+	mkdir -p $(BINDIR)
+	mkdir -p $(OUTDIR)
+	mkdir -p $(REPORTDIR)
+	
+
 clean:
 	rm -f $(BLDDIR)/*.o $(BINDIR)/* vgcore.* core.* $(OUTDIR)/*
 
 clean_reports:
 	rm -f $(REPORTDIR)/*
+
+clean_output:
+	rm -f $(OUTDIR)/*

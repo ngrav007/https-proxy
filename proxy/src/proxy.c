@@ -422,7 +422,7 @@ ssize_t Proxy_send(int socket, char *buffer, size_t buffer_l)
     while ((size_t)written < buffer_l) {
         n = send(socket, buffer + written, to_write, MSG_NOSIGNAL);
         if (n <= 0) {
-            print_error("proxy-send: connection reset by peer");
+            print_info("proxy-send: connection reset by peer");
             return ERROR_CLOSE;
         } else {
             written += n;
@@ -493,7 +493,8 @@ ssize_t Proxy_recv(void *sender, int sender_type)
                 c->state = CLI_CLOSE;
                 return CLIENT_CLOSE;
             } else {
-                print_info("proxy: no more data to read");
+                print_info("proxy: request received");
+                print_ascii(c->buffer, c->buffer_l);
                 return EXIT_SUCCESS;
             }
         } else if (n < 0) {
@@ -501,7 +502,6 @@ ssize_t Proxy_recv(void *sender, int sender_type)
             perror("recv");
             return ERROR_RECV;
         } else {
-            fprintf(stderr, "CLIENT STATE: %d\n", c->state); // TODO
             c->buffer_l += n;
             if (c->buffer_l == c->buffer_sz) {
                 if (expand_buffer(&c->buffer, &c->buffer_l, &c->buffer_sz) < 0) {
@@ -889,7 +889,7 @@ int Proxy_handleGET(Proxy *proxy, Client *client)
             ret = Proxy_serveFromCache(proxy, client, cache_res_age, key);
             if (ret < 0) {
                 free(key);
-                print_error("[proxy-handle-get] failed to serve from cache");
+                // print_error("[proxy-handle-get] failed to serve from cache");
                 return ret;
             }
             free(key);
@@ -1581,7 +1581,7 @@ int Proxy_serveFromCache(Proxy *proxy, Client *client, long age, char *key)
     } else {
 #endif
         if (Proxy_send(client->socket, response_dup, response_size) < 0) {
-            print_error("[proxy-serve-from-cache] send failed");
+            // print_error("[proxy-serve-from-cache] send failed");
             return ERROR_SEND;
         }
 #if RUN_SSL

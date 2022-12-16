@@ -1,8 +1,8 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
-GENERATE_CERT=/workspaces/Development/https-proxy/scripts/generate_cert.sh
+GENERATE_CERT=/workspaces/Development/http-proxy/scripts/generate_cert.sh
 
 # Check for sudo privileges
 if [[ $EUID -ne 0 ]]; then

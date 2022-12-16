@@ -3,7 +3,7 @@
 # Test 10: GET Request, HTML File, HTTP
 
 # Import test config
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
 METHOD="CONNECT"

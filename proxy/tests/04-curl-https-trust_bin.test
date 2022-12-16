@@ -1,7 +1,8 @@
+#!/bin/bash
 
 # Test 04: CONNECT Request, Binary File, CMU HTTPS
 
-source /workspaces/Development/https-proxy/proxy/tests/.test-config.sh
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
 
 # Test Setup
 METHOD="CONNECT"
