@@ -1,0 +1,3 @@
+!#/bin/bash
+
+/usr/bin/time -p -o /workspaces/Development/http-proxy/proxy/reports/noproxy-cs112-html-https.report curl -v -o /workspaces/Development/http-proxy/proxy/output/noproxy-cs112-html-https.html https://www.cs.tufts.edu/comp/112/

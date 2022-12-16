@@ -24,13 +24,14 @@
 #define BUFSIZE 1024
 #define OUTPUT_DIR "output"
 #define OUTPUT_FILE "resp"
-#define SAVE_FILE 1
+#define SAVEFILE 1
 #define PERMS 0644
 
 static int sendall(int s, char *buf, size_t len);
 static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz);
 static void error(char *msg);
 static int connect_to_proxy(char *host, int port);
+static int save_to_file(char *uri, char *raw_response, size_t raw_response_l);
 
 int main(int argc, char **argv)
 {
@@ -122,48 +123,15 @@ int main(int argc, char **argv)
     fprintf(stderr, "\n[*] --------------------------------------------\n");
 
     if (strstr(raw_response, "200 OK") != NULL) {
-        /* save raw response to file */
-        char output_file[BUFSIZE + 1];
-        char *basename = strrchr(uri, '/');
-        if (basename == NULL) {
-            basename = uri;
-        } else {
-            basename++;
-            if (basename[0] == '\0') {
-                basename = "index.html";
+        /* save to file */
+        if (SAVEFILE) {
+            if (save_to_file("response", raw_response, raw_response_l) < 0) {
+                return EXIT_FAILURE;
             }
         }
 
-        char *body = strstr(raw_response, HEADER_END);
-        if (body == NULL) {
-            free(raw_request);
-            free(raw_response);
-            close(proxy_fd);
-            error("[!] Failed to find body");
-        }
-        body += HEADER_END_L;
-
-        snprintf(output_file, BUFSIZE, "%s/%s-%s", OUTPUT_DIR, OUTPUT_FILE, basename);
-        int fp = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, PERMS);
-        if (fp == -1) {
-            free(raw_request);
-            free(raw_response);
-            close(proxy_fd);
-            error("[!] Failed to open output file");
-        }
-    
-        size_t body_l = raw_response_l - (body - raw_response);
-        if (write(fp, body, body_l) < 0) {
-            free(raw_request);
-            free(raw_response);
-            close(fp);
-            close(proxy_fd);
-            error("[!] Failed to write to output file");
-        }
-        close(fp);
-        fprintf(stderr, "[+] Saved response to %s\n", output_file);
+        return EXIT_SUCCESS;
     }
-
 
     free(raw_request);
     free(raw_response);
@@ -206,7 +174,10 @@ static int recvall(int s, char **buf, size_t *buf_l, size_t *buf_sz)
         if (n < 0) {
             error("[!] client: error occurred when receiving.");
             return EXIT_FAILURE;
-        } else if (n == 0) {
+        } else if (n == 0 || n < (ssize_t)(*buf_sz - *buf_l)) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                fprintf(stderr, "[*] client: no more data to receive.\n");
+            }
             *buf_l += n;
             (*buf)[*buf_l] = '\0';
             break;
@@ -286,4 +257,50 @@ static int connect_to_proxy(char *host, int port)
     }
 
     return sockfd;
+}
+
+static int save_to_file(char *uri, char *raw_response, size_t raw_response_l)
+{
+    if (raw_response == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    /* GET RANDOM NUMBER */
+    srand(time(NULL));
+    int random = rand() % 1000000;
+    
+    /* save raw response to file */
+    char output_file[BUFSIZE + 1];
+    char *basename = strrchr(uri, '/');
+    if (basename == NULL) {
+        basename = uri;
+    } else {
+        basename++;
+        if (basename[0] == '\0') {
+            basename = "test-output";
+            
+        }
+    }
+
+    char *body = strstr(raw_response, HEADER_END);
+    if (body == NULL) {
+        error("[!] Failed to find body");
+        return EXIT_FAILURE;
+    }
+    body += HEADER_END_L;
+
+    snprintf(output_file, BUFSIZE, "%s/%s-%s.%d.out", OUTPUT_DIR, basename, "response", random);
+    size_t body_l = raw_response_l - (body - raw_response);
+
+    FILE *fp = fopen(output_file, "w");
+    if (fp == NULL) {
+        error("[!] Failed to write to output file");
+        fclose(fp);
+        return EXIT_FAILURE;
+    }
+    fwrite(body, sizeof(char), body_l, fp);
+    fclose(fp);
+    fprintf(stderr, "[+] Saved response to %s\n", output_file);
+
+    return EXIT_SUCCESS;
 }

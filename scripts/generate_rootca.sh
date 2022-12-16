@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
 # Check for sudo privileges
 if [[ $EUID -ne 0 ]]; then

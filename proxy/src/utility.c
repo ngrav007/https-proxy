@@ -81,7 +81,7 @@ unsigned long hash_foo(unsigned char *str)
     return hash;
 }
 
-double get_time(void)
+double get_current_time(void)
 {
     struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
@@ -105,6 +105,23 @@ struct timespec timespec_diff(struct timespec start, struct timespec end)
         diff.tv_nsec += NS_PER_S;
     }
     return diff;
+}
+
+double timeval_to_double(struct timeval t)
+{
+    double d = t.tv_sec;
+    d += t.tv_usec / US_PER_S;
+    return d;
+}
+
+void double_to_timeval(struct timeval *t, double d)
+{
+    if (t == NULL) {
+        return;
+    }
+
+    t->tv_sec  = (time_t)d;
+    t->tv_usec = (suseconds_t)((d - t->tv_sec) * US_PER_S);
 }
 
 void print_ascii(char *buf, size_t len)
@@ -244,14 +261,14 @@ void print_debug(char *msg)
     fprintf(stderr, "%s[DEBUG]%s %s\n", BYEL, reset, msg);
 }
 
-SSL_CTX *init_server_context()
+SSL_CTX *InitServerCTX()
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
 
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
-    method = TLS_server_method();
+    // OpenSSL_add_all_algorithms(); // ? - we might not need this
+    // SSL_load_error_strings();     // ? - we might not need this
+    method = TLS_method();
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
         ERR_print_errors_fp(stderr);
@@ -260,17 +277,16 @@ SSL_CTX *init_server_context()
     return ctx;
 }
 
-SSL_CTX *init_ctx()
+SSL_CTX *InitCTX()
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
 
-    method = TLS_client_method();
+    // OpenSSL_add_all_algorithms(); // ? - we might not need this
+    // SSL_load_error_strings();     // ? - we might not need this
+    method = TLS_method();
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
-        fprintf(stderr, "[Proxy_SSL_connect]: failed to create SSL_CTX to connect to destination host\n");
         ERR_print_errors_fp(stderr);
         return NULL; /* should close the client since we can't connect to server */
     }
@@ -278,7 +294,7 @@ SSL_CTX *init_ctx()
     return ctx;
 }
 
-void display_certs(SSL *ssl)
+void ShowCerts(SSL *ssl)
 {
     X509 *cert;
     char *line;
@@ -297,16 +313,34 @@ void display_certs(SSL *ssl)
     }
 }
 
-int load_ca_certificates(SSL_CTX *ctx, char *ca_cert_file, char *ca_key_file)
+
+int LoadCertificates(SSL_CTX *ctx, char *cert_file, char *key_file) // , char *passwd)
 {
     /* set the key and the certificate */
-    if (SSL_CTX_use_certificate_file(ctx, ca_cert_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
 
     /* set the private key from the key file - can be same as CertFile */
-    if (SSL_CTX_use_PrivateKey_file(ctx, ca_key_file, SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    return 0;
+}
+
+int LoadClientCertificates(SSL_CTX *ctx, char *cert_file, char *key_file) // , char *passwd)
+{
+    /* set the key and the certificate */
+    if (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
+
+    /* set the private key from the key file - can be same as CertFile */
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         return -1;
     }
@@ -320,13 +354,10 @@ int load_ca_certificates(SSL_CTX *ctx, char *ca_cert_file, char *ca_key_file)
     return 0;
 }
 
-int is_root()
+int isRoot()
 {
     if (getuid() != 0) {
         return 0;
     }
     return 1;
 }
-
-
-

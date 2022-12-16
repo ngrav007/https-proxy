@@ -14,15 +14,21 @@ Client *Client_new()
         return NULL;
     }
 
-    client->state             = CLI_QUERY;
+    client->state             = CLI_INIT;
     client->query             = NULL;
+
+    #if RUN_SSL
     client->ssl               = NULL;
-    client->buffer            = NULL;
+    client->isSSL             = false;
+
+    #endif 
+
+    client->buffer            = calloc(BUFFER_SZ, sizeof(char));
     client->buffer_l          = 0;
+    client->buffer_sz         = BUFFER_SZ;
     client->socket            = -1;
-    client->last_recv.tv_sec  = 0;
-    client->last_recv.tv_usec = 0;
-    client->isSlow            = false;
+    client->last_active.tv_sec  = 0;
+    client->last_active.tv_usec = 0;
 
     return client;
 }
@@ -68,13 +74,19 @@ int Client_init(Client *client, int socket)
 
     Client_setSocket(client, socket);
     client->query             = NULL;
-    client->ssl               = NULL;
+
+    #if RUN_SSL
+        client->ssl               = NULL;
+    #endif 
+
     client->buffer            = NULL;
     client->buffer_l          = 0;
     client->socket            = -1;
-    client->last_recv.tv_sec  = 0;
-    client->last_recv.tv_usec = 0;
-    client->isSlow            = false;
+    client->last_active.tv_sec  = 0;
+    client->last_active.tv_usec = 0;
+    #if RUN_SSL
+        client->isSSL             = false;
+    #endif
 
     return 0;
 }
@@ -91,14 +103,18 @@ void Client_free(void *client)
     }
 
     Client *c = (Client *)client;
-    if (c->socket != -1) {
-        close(c->socket);
-        c->socket = -1;
-    }
 
     Client_clearQuery(c);
-    Client_clearSSL(c);
-    free_buffer(&c->buffer, &c->buffer_l, NULL);
+
+    #if RUN_SSL
+        Client_clearSSL(c);
+    #endif 
+
+    
+    close(c->socket);
+    c->socket = -1;
+
+    free_buffer(&c->buffer, &c->buffer_l, &c->buffer_sz);
     free(c);
 }
 
@@ -115,10 +131,12 @@ void Client_print(void *client)
     } else {
         fprintf(stderr, "%s[Client]%s\n", CYN, CRESET);
         fprintf(stderr, "  socket = %d\n", c->socket);
-        fprintf(stderr, "  partialRead = %s\n",
-                (c->isSlow) ? "true" : "false");
-        fprintf(stderr, "  last_recv = %ld.%ld\n", c->last_recv.tv_sec,
-                c->last_recv.tv_usec);
+        #if RUN_SSL
+            fprintf(stderr, "  ssl = %p\n", c->ssl);
+            fprintf(stderr, "  isSSL = %s\n", (c->isSSL) ? "true" : "false");
+        #endif
+        fprintf(stderr, "  last_active = %ld.%ld\n", c->last_active.tv_sec,
+                c->last_active.tv_usec);
         fprintf(stderr, "  buffer_l = %zd\n", c->buffer_l);
         Query_print(c->query);
     }
@@ -159,7 +177,7 @@ int Client_timestamp(Client *client)
         return -1;
     }
 
-    return gettimeofday(&client->last_recv, NULL);
+    return gettimeofday(&client->last_active, NULL);
 }
 
 /* Client_setSocket
@@ -183,19 +201,6 @@ int Client_setSocket(Client *client, int socket)
 
     return 0;
 }
-
-// int Client_setKey(Client *client, HTTP_Header *header)
-// {
-//     if (client == NULL) {
-//         return -1;
-//     }
-
-//     client->key = calloc(header->host_l + header->path_l + 1, sizeof(char));
-//     memcpy(client->key, header->host, header->host_l);
-//     memcpy(client->key + header->host_l, header->path, header->path_l);
-
-//     return 0;
-// }
 
 /* Client_setAddr
  *     Purpose: Copies the address of the client into the client struct for
@@ -242,8 +247,7 @@ void Client_clearQuery(Client *client)
         return;
     }
 
-    Query *q = client->query;
-    Query_free(q);
+    Query_free(client->query);
     client->query = NULL;
 }
 
@@ -252,6 +256,7 @@ void Client_clearQuery(Client *client)
  * Parameters: @client - Pointer to a Client to clear SLL from
  *    Returns: 0 on success, -1 on failure.
  */
+#if RUN_SSL
 void Client_clearSSL(Client *client)
 {
     if (client == NULL || client->ssl == NULL) {
@@ -261,46 +266,22 @@ void Client_clearSSL(Client *client)
     SSL_shutdown(client->ssl);
     SSL_free(client->ssl);
     client->ssl = NULL;
+    client->isSSL = 0;
 }
-
-/* Client_getId
- *    Purpose: Returns the client id for a Client
- * Parameters: @client - Pointer to a Client
- *    Returns: A constant pointer to the client id string, or NULL on failure.
- */
-// const char *Client_getId(Client *client)
-// {
-//     if (client == NULL) {
-//         return NULL;
-//     }
-
-//     return client->id;
-// }
-
-/* Client_isLoggedIn
- *    Purpose: Returns the logged in status for a Client
- * Parameters: @client - Pointer to a Client
- *    Returns: Logged in status (true or false)
- */
-// bool Client_isLoggedIn(Client *client)
-// {
-//     if (client == NULL) {
-//         return false;
-//     }
-
-//     return client->loggedIn;
-// }
+#endif 
 
 /* Client_isisSlow
  *    Purpose: Returns the isSlow status for a Client
  * Parameters: @client - Pointer to a Client
  *    Returns: isSlow status (true or false)
  */
-bool Client_isisSlow(Client *client)
+#if RUN_SSL
+bool Client_isSSL(Client *client)
 {
     if (client == NULL) {
         return false;
     }
 
-    return client->isSlow;
+    return client->isSSL;
 }
+#endif

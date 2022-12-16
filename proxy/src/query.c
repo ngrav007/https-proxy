@@ -48,29 +48,29 @@ int Query_new(Query **q, char *buffer, size_t buffer_l)
         return ERROR_FAILURE;
     }
 
-    fprintf(stderr, "%s[DEBUG]%s query_new: host: %s\n", BYEL, reset, (*q)->req->host);
     if ((*q)->req->host_l == 0) {
         print_warning("query_new: host is empty");
-        return INVALID_HOST;
+        return HOST_UNKNOWN;
     }
     
     (*q)->host_info = gethostbyname((*q)->req->host);
     if ((*q)->host_info == NULL) {
-        fprintf(stderr, "[!] proxy: unknown host\n");
+        print_error("query_new: host not found");
         return HOST_UNKNOWN;
     }
 
     bzero(&(*q)->server_addr, sizeof((*q)->server_addr));
     (*q)->server_addr.sin_family = AF_INET;
     memcpy((char *)&(*q)->server_addr.sin_addr.s_addr, (*q)->host_info->h_addr_list[0], ((*q)->host_info->h_length));
-    (*q)->server_addr.sin_port = htons(atoi((*q)->req->port));
+    (*q)->server_addr.sin_port = htons(atoi((*q)->req->port)); // ! - caller needs to change port 443 for HTTPS
 
     (*q)->res = NULL;
+
+    (*q)->state = QRY_INIT;
 
     return EXIT_SUCCESS;
 }
 
-Query *Query_create(Request *req, Response *res, struct sockaddr_in *server_addr, socklen_t server_addr_l, int server_fd);
 
 void Query_free(Query *query)
 {
@@ -80,9 +80,18 @@ void Query_free(Query *query)
 
     Request_free(query->req);
     Response_free(query->res);
+
+    #if RUN_SSL
     Query_clearSSL(query);
-    Query_clearSSLCtx(query);
+    #endif 
+
     close(query->socket);
+    query->socket = -1;
+
+    #if RUN_SSL
+    Query_clearSSLCtx(query);
+    #endif 
+
     free(query->buffer);
     free(query);
 }
@@ -93,7 +102,7 @@ void Query_print(Query *query)
         return;
     }
 
-    printf("Query:\n");
+    printf("[Query]\n");
     Request_print(query->req);
     Response_print(query->res);
     fprintf(stderr, "Buffer Length: %zu\n", query->buffer_l);
@@ -111,6 +120,7 @@ int Query_compare(Query *query1, Query *query2)
     return Request_compare(query1->req, query2->req);
 }
 
+#if RUN_SSL
 void Query_clearSSL(Query *query)
 {
     if (query == NULL) {
@@ -130,4 +140,4 @@ void Query_clearSSLCtx(Query *query)
     SSL_CTX_free(query->ctx);
     query->ctx = NULL;
 }
-
+#endif 

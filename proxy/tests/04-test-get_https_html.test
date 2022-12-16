@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Test 03: GET Request, HTML File, HTTP
+
+source /workspaces/Development/http-proxy/proxy/tests/.test-config.sh
+
+# Test Setup
+METHOD="GET"
+URL="https://www.cs.tufts.edu/comp/112/index.html"
+HOST="www.cs.tufts.edu:443"
+SLEEPTIME="5"
+
+# File and Directory Setup
+TESTNAME=$(basename $0 | cut -d'.' -f1)
+FETCH_OUT="${REPORT_DIR}/${TESTNAME}-${FETCH}-${OUTPUT_EXT}"
+CACHE_OUT="${REPORT_DIR}/${TESTNAME}-${CACHE}-${OUTPUT_EXT}"
+FETCH_REPORT="${REPORT_DIR}/${TESTNAME}-${FETCH}-${REPORT_EXT}"
+CACHE_REPORT="${REPORT_DIR}/${TESTNAME}-${CACHE}-${REPORT_EXT}"
+
+printf "+ ---------- ${TESTNAME}: ${METHOD} Request, HTML File, Tufts HTTP --------- +\n\n"
+
+printf "[*] Sending Request --------------------------------------------------- +\n"
+printf " |    ${METHOD} ${URL} HTTP/1.1\n"
+printf " |    Host: ${HOST}\n"
+printf " |--------------------------------------------------------------------- +\n\n"
+
+printf "[*] Sending initial request to ${URL}...\n\n"
+(${TIMER} ${TIMER_FLAGS} ${FETCH_REPORT} ${CLIENT} ${CLIENT_FLAGS} ${METHOD} ${HOST} ${URL}) 2> ${FETCH_OUT}
+printf "[*] Sleeping for ${SLEEPTIME} seconds"
+for i in $(seq 1 ${SLEEPTIME}); do
+    echo -n "."
+    sleep 1
+done
+printf "\n\n"
+
+printf "[*] Sending second request to ${URL}...\n\n"
+$(${TIMER} ${TIMER_FLAGS} ${CACHE_REPORT} ${CLIENT} ${CLIENT_FLAGS} ${METHOD} ${HOST} ${URL} 2> ${CACHE_OUT})
+
+FETCH_RESULTS=$(cat ${FETCH_REPORT})
+CACHE_RESULTS=$(cat ${CACHE_REPORT})
+
+printf "[+] ${TESTNAME} Results ----------------------------------------------- +\n\n"
+printf "[*] Time Elapsed w/ Fetch:\n"
+printf "${FETCH_RESULTS}\n\n"
+printf "[*] Time Elapsed w/ Cache:\n"
+printf "${CACHE_RESULTS}\n\n"
+printf "+ --------------------------------------------------------- +\n"

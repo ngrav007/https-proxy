@@ -1,8 +1,8 @@
 #ifndef _CACHE_H_
 #define _CACHE_H_
 
-#include "colors.h"
 #include "config.h"
+#include "colors.h"
 #include "entry.h"
 #include "http.h"
 #include "list.h"
@@ -29,8 +29,7 @@ typedef struct Cache {
     char *key_array[CACHE_SZ];
 } Cache;
 
-Cache *Cache_new(size_t cap, void (*free_foo)(void *),
-                 void (*print_foo)(void *), int (*cmp_foo)(void *, void *));
+Cache *Cache_new(size_t cap, void (*free_foo)(void *), void (*print_foo)(void *));
 void Cache_free(Cache **cache);
 void Cache_print(Cache *cache);
 int Cache_put(Cache *cache, char *key, void *value, long max_age);

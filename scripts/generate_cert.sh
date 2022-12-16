@@ -1,9 +1,9 @@
 #!/bin/bash
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
 # External Scripts
-GENERATE_EXT="/workspaces/Development/https-proxy/scripts/generate_ext.sh"
+GENERATE_EXT="/workspaces/Development/http-proxy/scripts/generate_ext.sh"
 
 # Get Common Name
 if [ -z "$1" ]; then
@@ -72,3 +72,8 @@ openssl x509 -req                       \
         -out ${CRT} -days 365           \
         -sha256                         \
         -extfile ${EXT}
+
+# Add certificate to local trust store
+# echo "[*] Adding certificate to local trust store"  
+# cp ${CRT} /usr/local/share/ca-certificates/${CN}.crt
+# update-ca-certificates

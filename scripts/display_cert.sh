@@ -3,7 +3,7 @@
 # This script is used to display the certificate information for a given
 # certificate. 
 
-source /workspaces/Development/https-proxy/scripts/config/.config
+source /workspaces/Development/http-proxy/scripts/config/.config
 
 # Get Common Name
 if [ -z $1 ]; then
