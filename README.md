@@ -1,2 +1,2 @@
-# http-proxy
+# HTTPS Proxy
 A C-based project for creating a simple HTTP server and client, emphasizing network programming with sockets and OpenSSL for SSL/TLS communications. The server code can accept connections, handle HTTP requests, and serve files, while the client is designed to make HTTP requests through a proxy server, handle SSL connections, and possibly save responses to files. The code includes detailed error handling, connection management, and system-level file operations, showcasing practical applications of network programming in C.
