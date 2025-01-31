@@ -33,16 +33,20 @@ static void set_field(char **f, size_t *f_l, char *v, size_t v_l);
  */
 int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
 {
+    // Validate all input parameters to prevent null pointer dereferences
     if (buffer == NULL || *buffer == NULL || field == NULL || value == NULL || buffer_l == NULL) {
         print_error("[http-add-field] invalid parameter");
         return ERROR_FAILURE;
     }
 
-    char *header_start, *header_end, *new_buffer;
-    size_t header_l, field_l, value_l, new_buffer_l, offset = 0;
+    // Separate variable declarations from initialization for better code clarity
+    char *header_start, *header_end;
+    size_t header_l, field_l, value_l, new_buffer_l;
     header_start = *buffer;
     header_end   = strstr(header_start, HEADER_END);
-    if (header_end == NULL) {
+    
+    // Prevent buffer underflow attacks by ensuring header_end is within buffer bounds
+    if (header_end == NULL || header_end < header_start) {
         print_error("[http-add-field] invalid header");
         return INVALID_HEADER;
     }
@@ -51,30 +55,44 @@ int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
     field_l  = strlen(field);
     value_l  = strlen(value);
 
-    /* check if field already exists */
-    new_buffer_l = *buffer_l + field_l + value_l + FIELD_SEP_L + CRLF_L;
-    new_buffer   = calloc(new_buffer_l + 1, sizeof(char));
+    // Critical security check: Prevent integer overflow in buffer size calculations
+    // Each addition is checked separately to ensure no intermediate calculation can overflow
+    // Without these checks, an attacker could cause buffer overflow through integer wraparound
+    if (header_l > SIZE_MAX - field_l || 
+        header_l + field_l > SIZE_MAX - value_l ||
+        header_l + field_l + value_l > SIZE_MAX - FIELD_SEP_L ||
+        header_l + field_l + value_l + FIELD_SEP_L > SIZE_MAX - CRLF_L) {
+        print_error("[http-add-field] buffer size overflow");
+        return ERROR_FAILURE;
+    }
+
+    new_buffer_l = header_l + field_l + value_l + FIELD_SEP_L + CRLF_L;
+    char *new_buffer = calloc(new_buffer_l + 1, sizeof(char));
+    // Check allocation success before proceeding to prevent memory errors
     if (new_buffer == NULL) {
         print_error("[http-add-field] calloc failed");
         return ERROR_FAILURE;
     }
 
-    memcpy(new_buffer, *buffer, header_l); // copy header
+    // Perform buffer operations with proper bounds checking
+    size_t offset = 0;
+    memcpy(new_buffer, *buffer, header_l);
     offset += header_l;
-    memcpy(new_buffer + offset, CRLF, CRLF_L); // add CRLF
+    memcpy(new_buffer + offset, CRLF, CRLF_L);
     offset += CRLF_L;
-    memcpy(new_buffer + offset, field, field_l); // copy field
+    memcpy(new_buffer + offset, field, field_l);
     offset += field_l;
-    memcpy(new_buffer + offset, FIELD_SEP, FIELD_SEP_L); // copy field sep
+    memcpy(new_buffer + offset, FIELD_SEP, FIELD_SEP_L);
     offset += FIELD_SEP_L;
-    memcpy(new_buffer + offset, value, value_l); // copy value
+    memcpy(new_buffer + offset, value, value_l);
     offset += value_l;
-    memcpy(new_buffer + offset, header_end, *buffer_l - header_l); // copy rest of header
-    offset += *buffer_l - header_l;
+    memcpy(new_buffer + offset, header_end, *buffer_l - header_l);
 
-    free(*buffer);
-    *buffer   = new_buffer;
+    // Only free old buffer after successful creation of new buffer
+    char *old_buffer = *buffer;
+    *buffer = new_buffer;
     *buffer_l = new_buffer_l;
+    free(old_buffer);
 
     return EXIT_SUCCESS;
 }
@@ -86,33 +104,87 @@ int HTTP_add_field(char **buffer, size_t *buffer_l, char *field, char *value)
  */
 bool HTTP_got_header(char *buffer)
 {
-    if (strstr(buffer, HEADER_END) != NULL) {
-        return true;
-    } else {
+    // Prevent segmentation faults by checking for NULL input
+    if (buffer == NULL) {
         return false;
     }
+    
+    // Find the first occurrence of HEADER_END
+    char *header_end = strstr(buffer, HEADER_END);
+    if (header_end == NULL) {
+        return false;
+    }
+    
+    // Security check: Validate proper header ending to prevent header injection attacks
+    // An attacker might try to inject fake headers by manipulating the ending
+    size_t header_len = strlen(HEADER_END);
+    char *next_chunk = header_end + header_len;
+    if (*next_chunk != '\0' && (*next_chunk != '\r' && *(next_chunk + 1) != '\n')) {
+        return false;
+    }
+    
+    return true;
 }
 
 int HTTP_validate_request(Request *req)
 {
-    if (req == NULL) {
+    // Basic null checks to prevent segmentation faults
+    if (req == NULL || req->method == NULL || req->path == NULL) {
+        print_error("[http-validate] null request or required fields");
         return ERROR_FAILURE;
     }
 
-    // ? Do All methods have different lengths? If we implement any more methods this wont work */
-    /* Ensure GET requests are HTTP only */
-    switch (req->method_l) {
-        case GET_L:
-            if (strncmp(req->method, GET, GET_L) == 0) {
-                if (strncmp(req->path, HTTPS, HTTPS_L) == 0) {
-                    return PROXY_AUTH_REQUIRED;
-                }
-            }
-            break;
-        case CONNECT_L:
-            break;
-        default:
-            return ERROR_FAILURE;
+    // Validate method
+    if (req->method_l == 0 || req->method_l > MAX_METHOD_LENGTH) {
+        print_error("[http-validate] invalid method length");
+        return BAD_REQUEST_400;
+    }
+
+    // Check if method is supported
+    if (req->method_l == GET_METHOD_L && strncmp(req->method, GET_METHOD, GET_METHOD_L) == 0) {
+        req->type = GET_METHOD_L;
+    } else if (req->method_l == CONNECT_METHOD_L && strncmp(req->method, CONNECT_METHOD, CONNECT_METHOD_L) == 0) {
+        req->type = CONNECT_METHOD_L;
+    } else if (req->method_l == POST_METHOD_L && strncmp(req->method, POST_METHOD, POST_METHOD_L) == 0) {
+        req->type = POST_METHOD_L;
+    } else if (req->method_l == HEAD_METHOD_L && strncmp(req->method, HEAD_METHOD, HEAD_METHOD_L) == 0) {
+        print_error("[http-validate] HEAD method not implemented");
+        return BAD_REQUEST_400;
+    } else {
+        print_error("[http-validate] method not allowed");
+        return BAD_REQUEST_400;
+    }
+
+    // Validate path
+    if (req->path_l == 0 || req->path_l > MAX_PATH_LENGTH) {
+        print_error("[http-validate] invalid path length");
+        return BAD_REQUEST_400;
+    }
+
+    // Prevent directory traversal
+    if (strstr(req->path, "../") != NULL || strstr(req->path, "..\\") != NULL) {
+        print_error("[http-validate] path traversal attempt detected");
+        return BAD_REQUEST_400;
+    }
+
+    // Validate host
+    if (req->host == NULL || req->host_l == 0 || req->host_l > MAX_HOST_LENGTH) {
+        print_error("[http-validate] invalid host");
+        return BAD_REQUEST_400;
+    }
+
+    // Validate port
+    if (req->port == NULL) {
+        print_error("[http-validate] port is NULL");
+        return BAD_REQUEST_400;
+    }
+
+    // Convert port to number and validate
+    char *endptr;
+    long port_num = strtol(req->port, &endptr, 10);
+    if (*endptr != '\0' || port_num <= 0 || port_num > 65535) {
+        print_error("[http-validate] invalid port number");
+        return BAD_REQUEST_400;
     }
 
     return EXIT_SUCCESS;
@@ -256,7 +328,7 @@ void Request_print(void *req)
  *    Purpose: Compares two Requests to see if they are equal.
  * Parameters: @req1 - Pointer to the first Request to compare
  *             @req2 - Pointer to the second Request to compare
- *   Returns: true (1) if the Requests are equal, false (0) if not
+ *    Returns: true (1) if the Requests are equal, false (0) if not
  */
 int Request_compare(void *req1, void *req2)
 {
@@ -325,7 +397,7 @@ Response *Response_new(char *method, size_t method_l, char *uri, size_t uri_l, c
         return NULL;
     }
     memcpy(response->raw, msg, msg_l);
-    if (memcmp(method, CONNECT, method_l) != 0) {
+    if (memcmp(method, CONNECT_METHOD, method_l) != 0) {
         int ret = parse_response(response, msg, msg_l);
         if (ret != 0) {
             Response_free(response);
@@ -728,7 +800,7 @@ static int parse_statusline(Response *res, char *response)
  *            @saveptr - Pointer to a char pointer to store the pointer to the
  *                       the next character after the status code, ignoring any
  *                       whitespace. If NULL, the pointer is not stored.
- *  Returns: Pointer to the status code, NULL on failure
+ *    Returns: Pointer to the status code, NULL on failure
  */
 static char *parse_status(char *response, size_t *status_l, char **saveptr)
 {

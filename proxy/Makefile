@@ -27,8 +27,8 @@ CLIOBJS = $(subst $(PROXY_MAIN), $(CLIENT_MAIN), $(OBJS))
 SEROBJS = $(subst $(CLIENT_MAIN), $(SERVER_MAIN), $(CLIOBJS))
 TLSOBJS = $(subst $(SERVER_MAIN), $(TLSCLI_MAIN), $(SEROBJS))
 
-CFLAGS = -g -Wall -Wextra -fdiagnostics-color=always -I$(INCDIR)  # -Werror
-LDFLAGS = -lssl -lcrypto
+CFLAGS = -g -Wall -Wextra -fdiagnostics-color=always -I$(INCDIR) -I/opt/homebrew/opt/openssl@3/include  # -Werror
+LDFLAGS = -L/opt/homebrew/opt/openssl@3/lib -lssl -lcrypto
 
 .PHONY: all clean
 

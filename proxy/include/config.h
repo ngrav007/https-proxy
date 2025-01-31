@@ -79,6 +79,16 @@
 #define DEFAULT_HTTP_PORT    "80"
 #define DEFAULT_HTTP_PORT_L  2
 
+/* HTTP Methods */
+#define GET_METHOD     "GET"
+#define GET_METHOD_L   3
+#define POST_METHOD    "POST"
+#define POST_METHOD_L  4
+#define HEAD_METHOD    "HEAD"
+#define HEAD_METHOD_L  4
+#define CONNECT_METHOD "CONNECT"
+#define CONNECT_METHOD_L 7
+
 /* HTTP Errors ---------------------------------------------------------------------------------- */
 #define BAD_REQUEST_400           400
 #define NOT_FOUND_404             404
@@ -89,6 +99,11 @@
 #define METHOD_NOT_ALLOWED_405    405
 #define PROXY_AUTH_REQUIRED_407   407
 #define FORBIDDEN_403             403
+#define REQUEST_TIMEOUT_408      408
+#define LENGTH_REQUIRED_411      411
+#define URI_TOO_LONG_414        414
+#define EXPECTATION_FAILED_417   417
+#define GATEWAY_TIMEOUT_504     504
 
 #define STATUS_200     "HTTP/1.1 200 OK\r\n\r\n"
 #define STATUS_200_L   sizeof(STATUS_200) - 1
@@ -104,6 +119,14 @@
 #define STATUS_405_L   sizeof(STATUS_405) - 1
 #define STATUS_407     "HTTP/1.1 407 Proxy Authentication Required\r\n\r\n"
 #define STATUS_407_L   sizeof(STATUS_407) - 1
+#define STATUS_408     "HTTP/1.1 408 Request Timeout\r\n\r\n"
+#define STATUS_408_L   sizeof(STATUS_408) - 1
+#define STATUS_411     "HTTP/1.1 411 Length Required\r\n\r\n"
+#define STATUS_411_L   sizeof(STATUS_411) - 1
+#define STATUS_414     "HTTP/1.1 414 URI Too Long\r\n\r\n"
+#define STATUS_414_L   sizeof(STATUS_414) - 1
+#define STATUS_417     "HTTP/1.1 417 Expectation Failed\r\n\r\n"
+#define STATUS_417_L   sizeof(STATUS_417) - 1
 #define STATUS_418     "HTTP/1.1 418 I'm a teapot\r\n\r\n"
 #define STATUS_418_L   sizeof(STATUS_418) - 1
 #define STATUS_500     "HTTP/1.1 500 Internal Server Error\r\n\r\n"
@@ -112,18 +135,14 @@
 #define STATUS_501_L   sizeof(STATUS_501) - 1
 #define STATUS_502     "HTTP/1.1 502 Bad Gateway\r\n\r\n"
 #define STATUS_502_L   sizeof(STATUS_502) - 1
+#define STATUS_504     "HTTP/1.1 504 Gateway Timeout\r\n\r\n"
+#define STATUS_504_L   sizeof(STATUS_504) - 1
 
 /* HTTP Header Fields --------------------------------------------------------------------------- */
 #define HEADER_END      "\r\n\r\n"
 #define HEADER_END_L    4
 #define CRLF            "\r\n"
 #define CRLF_L          2
-#define GET             "get"
-#define GET_L           3
-#define CONNECT         "connect"
-#define CONNECT_L       7
-#define POST            "post"
-#define POST_L          4
 #define FIELD_SEP       ": "
 #define FIELD_SEP_L     2
 #define SPACE           " "
@@ -138,6 +157,15 @@
 #define CACHECONTROL_L  14
 #define MAXAGE          "max-age="
 #define MAXAGE_L        8
+
+/* Size Limits */
+#define MAX_METHOD_LENGTH 20
+#define MAX_PATH_LENGTH 2048
+#define MAX_HOST_LENGTH 255
+
+/* Timeouts */
+#define TUNNEL_TIMEOUT 60  // 60 seconds
+#define SSL_TIMEOUT 30     // 30 seconds
 
 /* Event Indicators */
 #define SERVER_CLOSE      4

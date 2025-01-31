@@ -67,7 +67,7 @@ int main(int argc, char **argv)
         *port_start = '\0';
         port_start++;
         char *port_end = port_start;
-        while(isdigit(port_end)) {
+        while(*port_end && isdigit(*port_end)) {  
             port_end++;
         }        
         memcpy(port, port_start, port_end-port_start);

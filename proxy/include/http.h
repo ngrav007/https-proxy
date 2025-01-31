@@ -28,6 +28,7 @@ typedef struct Request {
     size_t port_l;
     size_t body_l;
     size_t raw_l;
+    int type;  // Type of request (GET, POST, etc.)
 
 } Request;
 

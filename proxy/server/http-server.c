@@ -1,4 +1,3 @@
-
 #include "http.h"
 #include "utility.h"
 
@@ -132,7 +131,7 @@ int main(int argc, char **argv)
         Request_print(reqinfo);
 
         /* identify the file to be sent */
-        if (strncmp(reqinfo->method, GET, GET_L) == 0) {
+        if (strncmp(reqinfo->method, GET_METHOD, GET_METHOD_L) == 0) {
             char *basename = strrchr(reqinfo->path, '/');
             if (basename == NULL) {
                 basename = reqinfo->path;
